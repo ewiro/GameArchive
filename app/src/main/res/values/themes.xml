@@ -1,0 +1,17 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.SteamTracker" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- 如果是浅色模式，状态栏文字变黑；深色模式变白 -->
+        <item name="android:windowLightStatusBar">true</item>
+
+        <!--主色调 (当不支持动态取色时的备选方案) -->
+        <item name="colorPrimary">#66C0F4</item>
+    </style>
+
+    <!-- 底部导航超小字体 -->
+    <style name="SmallBottomNavText" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textSize">12sp</item> <!-- 默认是12sp，改小一点 -->
+        <item name="android:letterSpacing">0.05</item>
+    </style>
+
+</resources>

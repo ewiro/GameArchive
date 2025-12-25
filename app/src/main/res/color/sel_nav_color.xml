@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 选中状态：纯黑 -->
+    <item android:color="#000000" android:state_checked="true" />
+    <!-- 默认状态：深灰色 (Material Grey 500) -->
+    <item android:color="#9E9E9E" />
+</selector>

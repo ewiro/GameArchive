@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_library"
+        android:icon="@drawable/sel_icon_library"
+        android:title="库存" />
+    <item
+        android:id="@+id/nav_specials"
+        android:icon="@drawable/sel_icon_specials"
+        android:title="特惠" />
+</menu>

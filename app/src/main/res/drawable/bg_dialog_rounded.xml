@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="?attr/colorSurfaceContainerHigh"/> <!-- 使用卡片背景色 -->
+    <corners android:radius="28dp"/> <!-- 🔥 这里控制圆角大小，28dp 很大了 -->
+</shape>

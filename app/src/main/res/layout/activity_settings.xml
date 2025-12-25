@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/settings_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
+
+    <!-- 1. 顶部工具栏 (加了 ID: settings_app_bar) -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/settings_app_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:elevation="0dp"
+        android:background="?attr/colorSurface">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:contentInsetStart="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/btnBack"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_back"
+                    app:tint="?attr/colorOnSurface"
+                    android:padding="12dp"/>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="设置"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:singleLine="true"
+                    android:layout_marginEnd="48dp"
+                    android:gravity="center"/>
+            </LinearLayout>
+        </androidx.appcompat.widget.Toolbar>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- 2. 可滚动设置区域 (加了 ID: settings_scroll_view) -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/settings_scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- 外观设置卡片 -->
+            <TextView
+                android:text="外观设置"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:text="深色模式"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+                    <RadioGroup
+                        android:id="@+id/radioGroupTheme"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp"
+                        android:weightSum="3">
+                        <RadioButton
+                            android:id="@+id/rbAuto"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="跟随系统"
+                            android:textSize="13sp"/>
+                        <RadioButton
+                            android:id="@+id/rbLight"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="浅色"
+                            android:textSize="13sp"/>
+                        <RadioButton
+                            android:id="@+id/rbDark"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="深色"
+                            android:textSize="13sp"/>
+                    </RadioGroup>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginVertical="12dp" android:alpha="0.5"/>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchDynamic"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="动态取色 (Material You)"
+                        android:textSize="16sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchPureBlack"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="纯黑背景 (AMOLED)"
+                        android:textSize="16sp"
+                        android:layout_marginTop="8dp"/>
+
+                    <GridLayout
+                        android:id="@+id/gridColors"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="5"
+                        android:layout_marginTop="12dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <!-- 个人资料自定义  -->
+            <TextView
+                android:text="个人资料"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- 1. 总开关 -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchShowProfile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="显示个人资料卡片"
+                        android:textSize="16sp" />
+
+                    <!-- 2. 输入框容器 (默认隐藏，代码控制显示) -->
+                    <LinearLayout
+                        android:id="@+id/llProfileInputs"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        android:layout_marginTop="8dp">
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginBottom="16dp" android:alpha="0.5"/>
+
+                        <!-- 头像输入 -->
+                        <TextView android:text="自定义头像 URL" android:textSize="13sp" android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etAvatarUrl"
+                                android:textSize="13sp"
+                                android:inputType="textUri"
+                                android:hint="支持 GIF，留空则使用官方头像"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Space android:layout_height="12dp" android:layout_width="match_parent"/>
+
+                        <!-- 背景输入 -->
+                        <TextView android:text="背景图片 URL" android:textSize="13sp" android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etBgUrl"
+                                android:textSize="13sp"
+                                android:inputType="textUri"
+                                android:hint="留空则显示纯色主题背景"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Space android:layout_height="12dp" android:layout_width="match_parent"/>
+
+                        <!-- 挂件输入 -->
+                        <TextView android:text="头像挂件 URL" android:textSize="13sp" android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etFrameUrl"
+                                android:textSize="13sp"
+                                android:inputType="textUri"
+                                android:hint="必须为 PNG 格式，留空隐藏"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- 保存按钮 -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSaveProfile"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="保存链接设置"
+                            android:layout_marginTop="20dp"
+                            android:layout_gravity="center_horizontal"/>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space android:layout_width="match_parent" android:layout_height="24dp"/>
+
+            <!-- 库存列表设置卡片 -->
+            <TextView
+                android:text="库存列表设置"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="开启状态分组"
+                        android:textSize="16sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchGroupRecent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="单独显示 '近期活跃' 分组"
+                        android:textSize="16sp"
+                        android:layout_marginTop="8dp"/>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginVertical="12dp" android:alpha="0.5"/>
+
+                    <TextView
+                        android:text="默认排序方式"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+                    <RadioGroup
+                        android:id="@+id/rgSort"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="8dp">
+                        <RadioButton
+                            android:id="@+id/rbSortTime"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="按游戏时长 (从高到低)"
+                            android:paddingVertical="4dp"/>
+                        <RadioButton
+                            android:id="@+id/rbSortName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="按名称 (A-Z)"
+                            android:paddingVertical="4dp"/>
+                    </RadioGroup>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 退出按钮 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="退出登录 / 切换账号"
+                android:textColor="#FFCDD2"
+                android:backgroundTint="#B71C1C"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="32dp"/>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

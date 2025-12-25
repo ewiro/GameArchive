@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginTop="16dp"
+    android:layout_marginBottom="8dp"
+    app:cardBackgroundColor="?attr/colorPrimary"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp">
+
+    <!-- 允许子视图超出父容器边界，以完整显示头像挂件 -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <!-- 个人资料背景图，铺满整个卡片 -->
+        <ImageView
+            android:id="@+id/ivHeaderBg"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:scaleType="centerCrop"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- 半透明遮罩层，确保文字清晰可见 -->
+        <View
+            android:id="@+id/vHeaderMask"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="#40000000"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- 头像容器：设置为直角以贴合挂件 -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cvAvatar"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="24dp"
+            app:cardCornerRadius="0dp"
+            app:cardBackgroundColor="#000000"
+            app:cardElevation="0dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageView
+                android:id="@+id/ivAvatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"/>
+        </androidx.cardview.widget.CardView>
+
+        <!-- 头像挂件框 -->
+        <ImageView
+            android:id="@+id/ivAvatarFrame"
+            android:layout_width="76dp"
+            android:layout_height="76dp"
+            android:scaleType="fitCenter"
+            android:translationZ="10dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/cvAvatar"
+            app:layout_constraintEnd_toEndOf="@id/cvAvatar"
+            app:layout_constraintStart_toStartOf="@id/cvAvatar"
+            app:layout_constraintTop_toTopOf="@id/cvAvatar" />
+
+        <!-- 用户名 -->
+        <TextView
+            android:id="@+id/tvPersonaName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="20dp"
+            android:text="User Name"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:shadowColor="#80000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2"
+            app:layout_constraintStart_toEndOf="@id/cvAvatar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/cvAvatar" />
+
+        <!-- Steam 等级 -->
+        <TextView
+            android:id="@+id/tvSteamLevel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lv. --"
+            android:textColor="#DDDDDD"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="2dp"
+            android:shadowColor="#80000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2"
+            app:layout_constraintStart_toStartOf="@id/tvPersonaName"
+            app:layout_constraintTop_toBottomOf="@id/tvPersonaName" />
+
+        <!-- 在线状态 -->
+        <LinearLayout
+            android:id="@+id/llStatusContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/tvPersonaName"
+            app:layout_constraintTop_toBottomOf="@id/tvSteamLevel">
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Online"
+                android:textColor="#4CAF50"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="2"/>
+
+            <TextView
+                android:id="@+id/tvGameStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text=""
+                android:textColor="#A3CF06"
+                android:textSize="12sp"
+                android:visibility="gone"
+                android:singleLine="true"
+                android:ellipsize="marquee"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="2"/>
+        </LinearLayout>
+
+        <!-- 统计数据区域 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="24dp"
+            android:orientation="horizontal"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cvAvatar">
+
+            <!-- 总游戏时长 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="32dp"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/tvTotalHours"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0h"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:shadowColor="#80000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="游戏时长"
+                    android:textColor="#CCCCCC"
+                    android:textSize="11sp"
+                    android:shadowColor="#80000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"/>
+            </LinearLayout>
+
+            <!-- 游戏库存数量 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/tvGameCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:shadowColor="#80000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="库存数量"
+                    android:textColor="#CCCCCC"
+                    android:textSize="11sp"
+                    android:shadowColor="#80000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"/>
+            </LinearLayout>
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>
