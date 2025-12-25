@@ -1,14 +1,16 @@
 <div align="center">
-  <a href="README.md">
-    <img src="https://img.shields.io/badge/中文-点击查看-grey?style=for-the-badge" alt="Chinese">
-  </a>
-  <a href="README_EN.md">
-    <img src="https://img.shields.io/badge/English-Active-blue?style=for-the-badge" alt="English">
-  </a>
-</div>
 
+<a href="README.md">
+  <img src="https://img.shields.io/badge/中文-简体-1976D2?logoColor=white" alt="中文" />
+</a>
+<a href="README_EN.md">
+  <img src="https://img.shields.io/badge/English-EN-546E7A?logoColor=white" alt="English" />
+</a>
+
+</div>
 <br>
-# Game Archive 🎮
+
+# Game Archive 
 
 > A modern Steam library management and special offers query tool designed based on Material Design 3.
 
