@@ -1,3 +1,13 @@
+<div align="center">
+  <a href="README.md">
+    <img src="https://img.shields.io/badge/中文-Active-red?style=for-the-badge" alt="Chinese">
+  </a>
+  <a href="README_EN.md">
+    <img src="https://img.shields.io/badge/English-Click_Here-grey?style=for-the-badge" alt="English">
+  </a>
+</div>
+
+<br>
 # GameArchive 🎮
 
 一个基于 Material Design 3 的 Steam 库存与特惠查询工具。
