@@ -1,13 +1,15 @@
 <div align="center">
-  <a href="README.md">
-    <img src="https://img.shields.io/badge/中文-Active-red?style=for-the-badge" alt="Chinese">
-  </a>
-  <a href="README_EN.md">
-    <img src="https://img.shields.io/badge/English-Click_Here-grey?style=for-the-badge" alt="English">
-  </a>
-</div>
 
+<a href="README.md">
+  <img src="https://img.shields.io/badge/中文-简体-1976D2?logoColor=white" alt="中文" />
+</a>
+<a href="README_EN.md">
+  <img src="https://img.shields.io/badge/English-EN-546E7A?logoColor=white" alt="English" />
+</a>
+
+</div>
 <br>
+
 # Game Archive 
 
 > 一个基于 Material Design 3 设计的现代化 Steam 库存管理与特惠查询工具。
