@@ -12,7 +12,7 @@
 
 # Game Archive 
 
-> 一个基于 Material Design 3 设计的现代化 Steam 库存管理与特惠查询工具。
+> 一个基于 MIUIX 设计的现代化 Steam 游戏时长数据追踪与特惠查询工具。
 
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Language](https://img.shields.io/badge/Language-Kotlin-orange.svg)
@@ -34,7 +34,7 @@
 ##  核心功能 
 
 ###  个人库存
-*   **视觉**：完全适配 **Material You**，UI 颜色随壁纸动态变化。支持深色/纯黑模式。
+*   **视觉**：采用MIUIX设计，干净好看。
 *   **统计**：顶部展示个人头像、等级、游戏总数及总时长。
 *   **卡片**：列表卡片颜色根据游玩时长动态分级（由浅入深），直观展示你的“肝度”。
 
