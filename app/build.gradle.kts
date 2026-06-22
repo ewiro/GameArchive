@@ -1,6 +1,13 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+val keystoreProperties = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -11,8 +18,8 @@ android {
         applicationId = "com.example.gamearchive"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -38,8 +45,21 @@ android {
         abortOnError = false
     }
 
+    signingConfigs {
+        create("release") {
+            val ksFile = keystoreProperties.getProperty("storeFile")
+            if (ksFile != null) {
+                storeFile = rootProject.file(ksFile)
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             // 开启代码混淆
             isMinifyEnabled = false
             // 开启资源压缩
