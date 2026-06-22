@@ -22,12 +22,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import kotlinx.coroutines.launch
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 
 class DetailActivity : AppCompatActivity() {
 
-    private val BASE_URL = "https://api.steam-tracker-proxy.cyou/"
     private val mediaList = mutableListOf<MediaItem>()
 
     data class MediaItem(val url: String, val thumbnailUrl: String, val isVideo: Boolean)
@@ -47,21 +44,17 @@ class DetailActivity : AppCompatActivity() {
         // 2. 手动处理状态栏高度，确保 AppBar 完整滑动
         ViewCompat.setOnApplyWindowInsetsListener(appBar) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-
-            // 计算 ActionBar 的默认高度
-            val typedValue = TypedValue()
-            theme.resolveAttribute(android.R.attr.actionBarSize, typedValue, true)
-            val actionBarHeight = TypedValue.complexToDimensionPixelSize(typedValue.data, resources.displayMetrics)
-
-            // 设置 AppBar 的最小高度 = ActionBar 实际高度 + 状态栏高度
-            // 这样 AppBar 就能作为一个整体被滑动出去
-            v.minimumHeight = actionBarHeight + systemBars.top
-
-            // 给 Toolbar 内部内容加 Padding，避开状态栏
+            // Toolbar 用 wrap_content + minHeight，这里加的 top padding 会撑高而不再裁切标题
             toolbar.setPadding(0, systemBars.top, 0, 0)
-
             insets
         }
+
+        // 3. 彻底关闭 AppBar 滚动时的动态染色 (Material You 残留)
+        appBar.setLiftOnScroll(false)
+        appBar.isLiftOnScroll = false
+        appBar.setBackgroundColor(androidx.core.content.ContextCompat.getColor(this, R.color.list_page_bg))
+        appBar.outlineProvider = null
+        androidx.core.view.ViewCompat.setElevation(appBar, 0f)
 
         val appId = intent.getIntExtra("APP_ID", 0)
         val appName = intent.getStringExtra("APP_NAME") ?: "Unknown"
@@ -141,8 +134,7 @@ class DetailActivity : AppCompatActivity() {
         rvScreenshots: RecyclerView, tvFinalPrice: TextView, tvOriginalPrice: TextView, tvDiscount: TextView,
         tvDeveloper: TextView, tvName: TextView
     ) {
-        val retrofit = Retrofit.Builder().baseUrl(BASE_URL).addConverterFactory(GsonConverterFactory.create()).build()
-        val apiService = retrofit.create(SteamApiService::class.java)
+        val apiService = MainActivity.apiServiceGlobal
 
         lifecycleScope.launch {
             try {
@@ -209,13 +201,18 @@ class DetailActivity : AppCompatActivity() {
                     rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*&nbsp;\\s*</p>"), "")
                     rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*</p>"), "")
 
+                    val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    val bodyColor = if (isNight) "#D8D8D8" else "#333333"
+                    val headColor = if (isNight) "#F2F2F2" else "#000000"
+                    val linkColor = if (isNight) "#5E9BFF" else "#3482FF"
+
                     val css = """
                         <style>
                             * { margin: 0; padding: 0; box-sizing: border-box; max-width: 100%; }
-                            body { background-color: transparent; color: #333; font-family: sans-serif; width: 100vw; overflow-x: hidden; font-size: 15px !important; line-height: 1.6 !important; }
+                            body { background-color: transparent; color: $bodyColor; font-family: sans-serif; width: 100vw; overflow-x: hidden; font-size: 15px !important; line-height: 1.6 !important; }
                             img, video { display: block !important; max-width: 100% !important; width: auto !important; height: auto !important; border: 0 !important; margin: 0 !important; }
-                            a { color: #2196F3; text-decoration: none; font-weight: bold; }
-                            h1, h2, h3 { margin: 24px 0 12px 0 !important; font-weight: bold; line-height: 1.4 !important; color: #000; font-size: 18px !important; }
+                            a { color: $linkColor; text-decoration: none; font-weight: bold; }
+                            h1, h2, h3 { margin: 24px 0 12px 0 !important; font-weight: bold; line-height: 1.4 !important; color: $headColor; font-size: 18px !important; }
                             p { margin-bottom: 12px !important; }
                             ul, ol { margin-left: 20px !important; margin-bottom: 12px !important; }
                         </style>
@@ -257,8 +254,7 @@ class DetailActivity : AppCompatActivity() {
 
 
     private fun fetchGameReviews(appId: Int, tvSummary: TextView, tvPercent: TextView, tvCount: TextView, rvReviews: RecyclerView) {
-        val retrofit = Retrofit.Builder().baseUrl(BASE_URL).addConverterFactory(GsonConverterFactory.create()).build()
-        val apiService = retrofit.create(SteamApiService::class.java)
+        val apiService = MainActivity.apiServiceGlobal
 
         lifecycleScope.launch {
             try {
@@ -352,12 +348,12 @@ class DetailActivity : AppCompatActivity() {
                 holder.tvVoteState.text = "推荐"
                 holder.tvVoteState.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
                 holder.ivVoteIcon.setColorFilter(android.graphics.Color.parseColor("#4CAF50"))
-                holder.ivVoteIcon.setImageResource(R.drawable.ic_lib_filled)
+                holder.ivVoteIcon.setImageResource(R.drawable.ic_thumb_up)
             } else {
                 holder.tvVoteState.text = "不推荐"
                 holder.tvVoteState.setTextColor(android.graphics.Color.parseColor("#D32F2F"))
                 holder.ivVoteIcon.setColorFilter(android.graphics.Color.parseColor("#D32F2F"))
-                holder.ivVoteIcon.setImageResource(R.drawable.ic_lib_outlined)
+                holder.ivVoteIcon.setImageResource(R.drawable.ic_thumb_down)
             }
 
             val hours = item.author.playtime_forever / 60

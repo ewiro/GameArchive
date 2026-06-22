@@ -88,7 +88,7 @@ class LibraryFragment : Fragment() {
             }
         })
 
-        swipe.setColorSchemeColors(ThemeUtils.COLOR_PALETTE[5])
+        swipe.setColorSchemeColors(ThemeUtils.ACCENT_BLUE)
         swipe.setOnRefreshListener { loadData() }
         btnSettings.setOnClickListener { startActivity(Intent(context, SettingsActivity::class.java)) }
 
@@ -120,7 +120,7 @@ class LibraryFragment : Fragment() {
 
                 if (!swipe.isRefreshing) progress.visibility = View.VISIBLE
 
-                // 这三行代码会同时发出网络请求，不用排队
+                // 三个请求并发发出，一起等待 (不重复请求)
                 val gameDeferred = async { MainActivity.apiServiceGlobal.getOwnedGames(apiKey, steamId) }
                 val userDeferred = async { MainActivity.apiServiceGlobal.getPlayerSummaries(apiKey, steamId) }
                 val levelDeferred = async {
@@ -129,15 +129,11 @@ class LibraryFragment : Fragment() {
                     } catch (e: Exception) { null } // 等级失败不影响其他
                 }
 
-                // 获取库存游戏
-                val gameRes = MainActivity.apiServiceGlobal.getOwnedGames(apiKey, steamId)
-                rawGameList = gameRes.response.games
-
-                // 黑名单过滤逻辑
-                val allGames = gameRes.response.games
+                // 获取库存游戏 + 黑名单过滤
+                val gameRes = gameDeferred.await()
+                // 黑名单：战地6测试版 (Steam 已下架其数据，但库存接口仍返回，强制隐藏)
                 val blackListIds = setOf(3081410)
-                // 必须使用 filter 生成新的列表并赋值给 rawGameList
-                rawGameList = allGames.filter { game ->
+                rawGameList = gameRes.response.games.filter { game ->
                     !blackListIds.contains(game.appid)
                 }
 
@@ -146,14 +142,11 @@ class LibraryFragment : Fragment() {
                 MainActivity.ownedGameIds.addAll(rawGameList.map { it.appid })
 
                 // 获取玩家信息
-                val userRes = MainActivity.apiServiceGlobal.getPlayerSummaries(apiKey, steamId)
+                val userRes = userDeferred.await()
                 if (userRes.response.players.isNotEmpty()) playerInfo = userRes.response.players[0]
 
                 // 获取Steam等级
-                try {
-                    val levelRes = MainActivity.apiServiceGlobal.getSteamLevel(apiKey, steamId)
-                    playerLevel = levelRes.response.player_level ?: 0
-                } catch (e: Exception) { playerLevel = 0 }
+                playerLevel = levelDeferred.await()?.response?.player_level ?: 0
 
                 // 批量获取前20个游戏的价格
                 fetchBatchPrices(rawGameList.sortedByDescending { it.playtime_forever }.take(20))
@@ -316,11 +309,37 @@ class LibraryFragment : Fragment() {
                     transformations(RoundedCornersTransformation(8f))
                 }
             } else {
-                holder.ivGameIcon.load("https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg") {
+                // 优先用缓存到的真实地址；否则先试旧 CDN 的 header.jpg
+                val ctx = holder.itemView.context
+                val headerCache = ctx.getSharedPreferences("steam_header_cache", Context.MODE_PRIVATE)
+                val cachedHeader = headerCache.getString("header_${game.appid}", null)
+                val primaryUrl = cachedHeader
+                    ?: "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg"
+
+                holder.ivGameIcon.load(primaryUrl) {
                     crossfade(true)
                     placeholder(R.drawable.placeholder_grey)
                     error(R.drawable.placeholder_grey)
                     memoryCacheKey(game.appid.toString())
+                    // 旧 CDN 路径 404 (如 DEATH STRANDING 2 等新游戏)：查 appdetails 拿真实地址并缓存
+                    listener(onError = { _, _ ->
+                        if (cachedHeader != null) return@listener
+                        (ctx as? androidx.lifecycle.LifecycleOwner)?.lifecycleScope?.launch {
+                            try {
+                                val resp = MainActivity.apiServiceGlobal.getGameDetails(game.appid)
+                                val realUrl = resp[game.appid.toString()]?.data?.header_image
+                                if (!realUrl.isNullOrEmpty()) {
+                                    headerCache.edit().putString("header_${game.appid}", realUrl).apply()
+                                    holder.ivGameIcon.load(realUrl) {
+                                        crossfade(false)
+                                        placeholder(R.drawable.placeholder_grey)
+                                        error(R.drawable.placeholder_grey)
+                                        memoryCacheKey(game.appid.toString())
+                                    }
+                                }
+                            } catch (e: Exception) { }
+                        }
+                    })
                 }
             }
 

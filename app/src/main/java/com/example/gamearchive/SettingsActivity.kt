@@ -1,14 +1,9 @@
 package com.example.gamearchive
 
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.view.Gravity
 import android.view.View
 import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import com.google.android.material.textfield.TextInputEditText
@@ -19,8 +14,6 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.materialswitch.MaterialSwitch
 
 class SettingsActivity : AppCompatActivity() {
-
-    private var currentSelectedColor: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -47,15 +40,13 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
 
         val rgTheme = findViewById<RadioGroup>(R.id.radioGroupTheme)
-        val switchDynamic = findViewById<MaterialSwitch>(R.id.switchDynamic)
         val switchPureBlack = findViewById<MaterialSwitch>(R.id.switchPureBlack)
-        val gridColors = findViewById<GridLayout>(R.id.gridColors)
         val switchGroup = findViewById<MaterialSwitch>(R.id.switchGroup)
         val switchGroupRecent = findViewById<MaterialSwitch>(R.id.switchGroupRecent)
         val rgSort = findViewById<RadioGroup>(R.id.rgSort)
 
         // 绑定个人资料设置控件
-        val switchShowProfile = findViewById<MaterialSwitch>(R.id.switchShowProfile) // 🔥 新开关
+        val switchShowProfile = findViewById<MaterialSwitch>(R.id.switchShowProfile)
         val llProfileInputs = findViewById<View>(R.id.llProfileInputs)
 
         val etAvatarUrl = findViewById<TextInputEditText>(R.id.etAvatarUrl)
@@ -69,15 +60,8 @@ class SettingsActivity : AppCompatActivity() {
             2 -> findViewById<RadioButton>(R.id.rbAuto).isChecked = true
         }
 
-        val isDynamic = ThemeUtils.isDynamicColorEnabled(this)
-        switchDynamic.isChecked = isDynamic
-
         switchPureBlack.isEnabled = true
         switchPureBlack.isChecked = ThemeUtils.isPureBlackEnabled(this)
-
-        val prefs = getSharedPreferences("app_theme_prefs", MODE_PRIVATE)
-        currentSelectedColor = prefs.getInt("custom_color", ThemeUtils.COLOR_PALETTE[5])
-        renderPaletteGrid(gridColors, isDynamic)
 
         switchGroup.isChecked = ThemeUtils.isGroupingEnabled(this)
         switchGroupRecent.isChecked = ThemeUtils.isGroupRecentEnabled(this)
@@ -93,24 +77,16 @@ class SettingsActivity : AppCompatActivity() {
         etBgUrl.setText(UserPrefs.getCustomBgUrl(this))
         etFrameUrl.setText(UserPrefs.getCustomFrameUrl(this))
 
-        // 读取当前开关状态
+        // 资料卡总开关：决定输入框区域是否展开
         val isProfileShown = UserPrefs.isShowProfile(this)
         switchShowProfile.isChecked = isProfileShown
-        // 根据状态决定是否显示输入框
         llProfileInputs.visibility = if (isProfileShown) View.VISIBLE else View.GONE
 
-        // 回显文本
-        etAvatarUrl.setText(UserPrefs.getCustomAvatarUrl(this))
-        etBgUrl.setText(UserPrefs.getCustomBgUrl(this))
-        etFrameUrl.setText(UserPrefs.getCustomFrameUrl(this))
-
-        // 🔥 监听开关变化
         switchShowProfile.setOnCheckedChangeListener { _, isChecked ->
-            UserPrefs.saveShowProfile(this, isChecked) // 保存状态
-            llProfileInputs.visibility = if (isChecked) View.VISIBLE else View.GONE // 切换显示
-            ThemeUtils.isChanged = true // 通知主页刷新
+            UserPrefs.saveShowProfile(this, isChecked)
+            llProfileInputs.visibility = if (isChecked) View.VISIBLE else View.GONE
+            ThemeUtils.isChanged = true
         }
-
 
         // 保存链接按钮
         btnSaveProfile.setOnClickListener {
@@ -140,12 +116,6 @@ class SettingsActivity : AppCompatActivity() {
             reload()
         }
 
-        switchDynamic.setOnCheckedChangeListener { _, c ->
-            ThemeUtils.saveDynamicColor(this, c)
-            renderPaletteGrid(gridColors, c)
-            reload()
-        }
-
         switchPureBlack.setOnCheckedChangeListener { _, c ->
             ThemeUtils.savePureBlack(this, c)
             reload()
@@ -163,62 +133,10 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderPaletteGrid(grid: GridLayout, isDynamic: Boolean) {
-        grid.removeAllViews()
-
-        if (isDynamic) {
-            grid.visibility = View.GONE
-            return
-        }
-        grid.visibility = View.VISIBLE
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val availableWidth = screenWidth - dpToPx(64 + 32)
-        val itemSize = availableWidth / 5
-
-        for (color in ThemeUtils.COLOR_PALETTE) {
-            val card = FrameLayout(this)
-            val params = GridLayout.LayoutParams()
-            params.width = itemSize
-            params.height = itemSize
-            params.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-            card.layoutParams = params
-
-            val bgDrawable = GradientDrawable()
-            bgDrawable.cornerRadius = dpToPx(50).toFloat()
-            if (color == currentSelectedColor) {
-                bgDrawable.setColor(Color.TRANSPARENT)
-                bgDrawable.setStroke(dpToPx(2), color)
-            } else {
-                bgDrawable.setColor(Color.TRANSPARENT)
-            }
-            card.background = bgDrawable
-
-            val colorDot = View(this)
-            val dotBg = GradientDrawable()
-            dotBg.shape = GradientDrawable.OVAL
-            dotBg.setColor(color)
-            colorDot.background = dotBg
-
-            val dotParams = FrameLayout.LayoutParams(itemSize - dpToPx(12), itemSize - dpToPx(12))
-            dotParams.gravity = Gravity.CENTER
-            card.addView(colorDot, dotParams)
-
-            card.setOnClickListener {
-                ThemeUtils.saveCustomColor(this, color)
-                currentSelectedColor = color
-                reload()
-            }
-            grid.addView(card)
-        }
-    }
-
     private fun reload() {
         finish()
         overridePendingTransition(0, 0)
         startActivity(intent)
         overridePendingTransition(0, 0)
     }
-
-    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 }
