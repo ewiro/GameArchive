@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 列表页深色底 / 详情页内嵌卡 (深色) -->
+    <color name="list_page_bg">#FF101013</color>
+    <color name="miuix_inset_card">#FF1C1C1E</color>
+</resources>

@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         val viewPager = findViewById<ViewPager2>(R.id.viewPager)
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
 
-        // 设置ViewPager适配器，禁止用户滑动切换，预加载2个页面
+        // 设置ViewPager适配器，允许左右滑动切换，预加载2个页面
         viewPager.adapter = MainPagerAdapter(this)
         viewPager.isUserInputEnabled = true
         viewPager.offscreenPageLimit = 2

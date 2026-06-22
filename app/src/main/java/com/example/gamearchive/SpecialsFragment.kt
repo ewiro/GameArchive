@@ -57,7 +57,10 @@ class SpecialsFragment : Fragment() {
         rv.setHasFixedSize(true)
         rv.itemAnimator = null
 
-        btnSort.iconTint = android.content.res.ColorStateList.valueOf(android.graphics.Color.BLACK)
+        val iconColor = android.util.TypedValue().also {
+            requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorOnSurface, it, true)
+        }.data
+        btnSort.iconTint = android.content.res.ColorStateList.valueOf(iconColor)
 
         rv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -97,7 +100,7 @@ class SpecialsFragment : Fragment() {
         val titleFilter = TextView(context).apply {
             text = "筛选内容"
             textSize = 14f
-            setTextColor(android.graphics.Color.parseColor("#1E88E5"))
+            setTextColor(android.graphics.Color.parseColor("#3482FF"))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setPadding(64, 0, 64, 16)
         }
@@ -126,7 +129,7 @@ class SpecialsFragment : Fragment() {
         val titleSort = TextView(context).apply {
             text = "排序方式"
             textSize = 14f
-            setTextColor(android.graphics.Color.parseColor("#1E88E5"))
+            setTextColor(android.graphics.Color.parseColor("#3482FF"))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setPadding(64, 0, 64, 16)
         }
@@ -161,7 +164,7 @@ class SpecialsFragment : Fragment() {
         val confirmBtn = Button(context).apply {
             text = "确定"
             background = null
-            setTextColor(android.graphics.Color.parseColor("#1E88E5"))
+            setTextColor(android.graphics.Color.parseColor("#3482FF"))
             setOnClickListener {
                 isFilteringOwned = switchFilter.isChecked
                 sortMode = radioGroup.checkedRadioButtonId
