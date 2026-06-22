@@ -12,7 +12,7 @@
 
 # Game Archive 
 
-> A modern Steam library management and special offers query tool designed based on Material Design 3.
+> A modern Steam game playtime data tracking and special deal search tool based on MIUIX design..
 
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Language](https://img.shields.io/badge/Language-Kotlin-orange.svg)
@@ -34,7 +34,7 @@
 ##  Core Features 
 
 ###  My Library
-*   **Visuals**: Fully adapted to **Material You**, with UI colors dynamically changing based on the wallpaper. Supports Dark/Pure Black modes.
+*   **Visuals**: Adopts MIUIX design, clean and visually appealing.
 *   **Statistics**: Displays avatar, level, total game count, and total playtime at the top.
 *   **Cards**: List card colors are dynamically graded based on playtime (from light to dark), intuitively showing your "dedication."
 
