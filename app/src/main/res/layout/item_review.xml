@@ -3,9 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-    app:cardCornerRadius="8dp"
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="@color/miuix_inset_card"
+    app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
     app:strokeWidth="0dp">
 

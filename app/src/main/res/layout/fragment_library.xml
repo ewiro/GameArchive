@@ -4,7 +4,7 @@
     android:id="@+id/library_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:background="@color/list_page_bg">
 
     <!-- 列表刷新容器 -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -27,7 +27,7 @@
         android:id="@+id/topBarContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="@color/list_page_bg"
         android:elevation="0dp"
         android:paddingTop="36dp"
         android:paddingBottom="12dp"

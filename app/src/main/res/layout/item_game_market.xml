@@ -8,20 +8,22 @@
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="4dp">
+    android:paddingHorizontal="18dp"
+    android:paddingVertical="6dp">
+    <!-- ↑ 行高/间距调节处：改 paddingVertical (当前 6dp) -->
 
-    <!-- 游戏封面 (左侧固定) -->
+    <!-- 游戏封面：Steam header 原始比例 (460x215 ≈ 130x61)，完整显示不裁切 -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cvImage"
         android:layout_width="130dp"
-        android:layout_height="73dp"
-        app:cardCornerRadius="4dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        android:layout_height="61dp"
+        app:cardCornerRadius="6dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
         app:cardElevation="0dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
+        <!-- ↑ 封面尺寸调节处：改 layout_width / layout_height (当前 130x61) -->
 
         <ImageView
             android:id="@+id/ivGameIcon"
@@ -31,25 +33,25 @@
             tools:src="@android:drawable/ic_menu_gallery"/>
     </androidx.cardview.widget.CardView>
 
-    <!-- 价格信息区域 (右侧垂直排列) -->
+    <!-- 价格信息区域 -->
     <LinearLayout
         android:id="@+id/llPriceContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="end"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/cvImage"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="@id/cvImage">
 
-        <!-- 折扣显示胶囊 (位于上方) -->
+        <!-- 折扣显示胶囊 -->
         <androidx.cardview.widget.CardView
             android:id="@+id/cvDiscount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="2dp"
-            app:cardBackgroundColor="#4CAF50"
-            app:cardCornerRadius="4dp"
+            android:layout_marginBottom="4dp"
+            app:cardBackgroundColor="#FFA1CD44"
+            app:cardCornerRadius="7dp"
             app:cardElevation="0dp"
             android:visibility="gone"
             tools:visibility="visible">
@@ -57,15 +59,15 @@
                 android:id="@+id/tvDiscount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="4dp"
-                android:paddingVertical="1dp"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
                 android:text="-50%"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF"/>
+                android:textColor="#FF000400"/>
         </androidx.cardview.widget.CardView>
 
-        <!-- 具体价格 (位于下方) -->
+        <!-- 具体价格 -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -78,7 +80,7 @@
                 android:layout_height="wrap_content"
                 android:text="¥199"
                 android:textSize="10sp"
-                android:textColor="#9E9E9E"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:visibility="gone"
                 tools:visibility="visible"/>
 
@@ -87,18 +89,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="¥99"
-                android:textSize="14sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 游戏名称 (顶部对齐，最多显示两行) -->
+    <!-- 游戏名称 -->
     <TextView
         android:id="@+id/tvGameName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="14dp"
         android:layout_marginEnd="8dp"
         android:ellipsize="end"
         android:maxLines="2"
@@ -110,7 +112,7 @@
         app:layout_constraintEnd_toStartOf="@id/llPriceContainer"
         app:layout_constraintTop_toTopOf="@id/cvImage" />
 
-    <!-- 好评率 (底部对齐，与封面底部平齐) -->
+    <!-- 好评率 -->
     <TextView
         android:id="@+id/tvReviewScore"
         android:layout_width="wrap_content"
@@ -120,8 +122,18 @@
         android:textStyle="bold"
         android:visibility="gone"
         tools:visibility="visible"
-        tools:textColor="#66C0F4"
+        tools:textColor="#3482FF"
         app:layout_constraintStart_toStartOf="@id/tvGameName"
         app:layout_constraintBottom_toBottomOf="@id/cvImage" />
+
+    <!-- 行间细灰线分隔 -->
+    <View
+        android:layout_width="0dp"
+        android:layout_height="0.5dp"
+        android:layout_marginTop="6dp"
+        android:background="?attr/colorOutlineVariant"
+        app:layout_constraintStart_toStartOf="@id/tvGameName"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cvImage" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

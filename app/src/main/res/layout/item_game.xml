@@ -8,27 +8,29 @@
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="4dp">
+    android:paddingHorizontal="18dp"
+    android:paddingVertical="6dp">
+    <!-- ↑ 行高/间距调节处：改 paddingVertical (当前 6dp) -->
 
-    <!-- 游戏封面 -->
+    <!-- 游戏封面：还原 Steam header 真实比例 460:215，centerCrop 完整显示不裁切 -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cvImage"
         android:layout_width="130dp"
-        android:layout_height="73dp"
-        app:cardCornerRadius="4dp"
+        android:layout_height="61dp"
+        app:cardCornerRadius="6dp"
         app:cardElevation="0dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
+        <!-- ↑ 封面尺寸调节处：改 layout_width / layout_height (当前 130x61，比例≈2.14:1) -->
 
         <ImageView
             android:id="@+id/ivGameIcon"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
-            android:src="@android:drawable/ic_menu_gallery" />
+            tools:src="@android:drawable/ic_menu_gallery" />
     </androidx.cardview.widget.CardView>
 
     <!-- 游戏时长胶囊 -->
@@ -36,19 +38,18 @@
         android:id="@+id/cvTimeBadge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="9dp"
         app:cardElevation="0dp"
         app:cardBackgroundColor="@android:color/transparent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintTop_toTopOf="@id/cvImage">
 
         <LinearLayout
             android:id="@+id/llTimeBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingHorizontal="8dp"
+            android:paddingHorizontal="9dp"
             android:paddingVertical="4dp"
             android:gravity="center_vertical">
 
@@ -71,12 +72,12 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- 两周活跃时长 (显示在胶囊下方) -->
+    <!-- 两周活跃时长 -->
     <TextView
         android:id="@+id/tvPlayTime2Weeks"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="3dp"
         android:text="+12.5h"
         android:textColor="?attr/colorPrimary"
         android:textSize="10sp"
@@ -85,12 +86,12 @@
         app:layout_constraintEnd_toEndOf="@id/cvTimeBadge"
         app:layout_constraintTop_toBottomOf="@id/cvTimeBadge" />
 
-    <!-- 游戏名称 (顶部对齐，最多显示两行) -->
+    <!-- 游戏名称 -->
     <TextView
         android:id="@+id/tvGameName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="14dp"
         android:layout_marginEnd="8dp"
         android:ellipsize="end"
         android:maxLines="2"
@@ -102,7 +103,7 @@
         app:layout_constraintEnd_toStartOf="@id/cvTimeBadge"
         app:layout_constraintTop_toTopOf="@id/cvImage" />
 
-    <!-- 好评率 (底部对齐，与封面底部平齐) -->
+    <!-- 好评率 -->
     <TextView
         android:id="@+id/tvReviewRate"
         android:layout_width="wrap_content"
@@ -111,8 +112,18 @@
         android:textSize="11sp"
         android:textStyle="bold"
         android:visibility="visible"
-        tools:textColor="#1565C0"
+        tools:textColor="#3482FF"
         app:layout_constraintStart_toStartOf="@id/tvGameName"
         app:layout_constraintBottom_toBottomOf="@id/cvImage" />
+
+    <!-- 行间细灰线分隔 -->
+    <View
+        android:layout_width="0dp"
+        android:layout_height="0.5dp"
+        android:layout_marginTop="6dp"
+        android:background="?attr/colorOutlineVariant"
+        app:layout_constraintStart_toStartOf="@id/tvGameName"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cvImage" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

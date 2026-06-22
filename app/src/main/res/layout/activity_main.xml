@@ -31,8 +31,8 @@
         app:itemTextColor="@color/sel_nav_color"
 
         app:itemIconSize="24dp"
-        app:itemPaddingTop="2dp"
-        app:itemPaddingBottom="12dp"
+        app:itemPaddingTop="3dp"
+        app:itemPaddingBottom="3dp"
 
         app:itemActiveIndicatorStyle="@null"
         app:itemRippleColor="@android:color/transparent"

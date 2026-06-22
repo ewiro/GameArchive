@@ -6,26 +6,31 @@
     android:id="@+id/detail_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:background="@color/list_page_bg">
 
     <!-- 1. 顶部工具栏 (支持滑动隐藏) -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorSurface"
-        app:elevation="0dp">
+        android:layout_height="wrap_content"
+        android:background="@color/list_page_bg"
+        android:stateListAnimator="@null"
+        app:elevation="0dp"
+        app:liftOnScroll="false"
+        app:liftOnScrollColor="@android:color/transparent">
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="?attr/actionBarSize"
             app:layout_scrollFlags="scroll|enterAlways|snap"
             app:contentInsetStart="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="?attr/actionBarSize"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -99,11 +104,10 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:layout_marginEnd="6dp"
-                        app:cardBackgroundColor="#171A21"
-                        app:cardCornerRadius="4dp"
-                        app:cardElevation="2dp"
-                        app:strokeColor="#20FFFFFF"
-                        app:strokeWidth="1dp">
+                        app:cardBackgroundColor="@color/miuix_inset_card"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -121,10 +125,10 @@
                                 android:textSize="18sp"
                                 android:textStyle="bold"
                                 android:fontFamily="sans-serif-black"
-                                android:background="#4C6B22"
-                                android:textColor="#BEEE11"
+                                android:background="#FFA1CD44"
+                                android:textColor="#FF000400"
                                 android:gravity="center"
-                                android:paddingHorizontal="8dp"
+                                android:paddingHorizontal="10dp"
                                 android:visibility="gone"/>
 
                             <!-- 价格信息 -->
@@ -164,7 +168,7 @@
                                     android:text="¥ --"
                                     android:textSize="16sp"
                                     android:textStyle="bold"
-                                    android:textColor="#FFFFFF"/>
+                                    android:textColor="?attr/colorOnSurface"/>
                             </LinearLayout>
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
@@ -175,11 +179,10 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
-                        app:cardBackgroundColor="#1A2B3C"
-                        app:cardCornerRadius="4dp"
-                        app:cardElevation="2dp"
-                        app:strokeColor="#2066C0F4"
-                        app:strokeWidth="1dp">
+                        app:cardBackgroundColor="@color/miuix_inset_card"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -215,7 +218,7 @@
                                     android:text="--"
                                     android:textSize="14sp"
                                     android:textStyle="bold"
-                                    android:textColor="#FFFFFF"/>
+                                    android:textColor="?attr/colorOnSurface"/>
 
                                 <TextView
                                     android:text=" 好评"
