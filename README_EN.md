@@ -51,8 +51,9 @@
 *   **Cover**: Automatically fixes irregular promotional images, prioritizing the display of standard Steam covers.
 
 ###  Customization
-*   Supports custom profile backgrounds, avatars, and **avatar frames**.
-*   Supports custom Cloudflare Worker proxy addresses.
+*   Supports custom profile backgrounds, avatars, and **avatar frames** (GIF supported).
+*   Library grouping (recent / played / backlog) with multiple sort options.
+*   Light / Dark / Follow-system themes, with an optional pure-black mode in dark.
 
 
 ---
@@ -70,7 +71,7 @@ We understand the importance of Steam account security, therefore:
 ##  Deployment & Usage
 
 ### 1. Download & Install
-Go to the [Releases Page](https://github.com/YourUsername/GameArchive/releases) to download the latest version of the APK.
+Go to the [Releases Page](https://github.com/ewiro/GameArchive/releases) to download the latest version of the APK.
 *   Modern phones are recommended to download the `arm64` version.
 
 ### 2. Get Necessary Information
@@ -79,8 +80,8 @@ You need to enter your Steam information for the first time use:
 *   **Web API Key**: Go to the [Steam Developer Page](https://steamcommunity.com/dev/apikey) to apply for free (domain name can be filled in arbitrarily).
 
 ### 3. (Advanced) Self-hosted Proxy Service
-To ensure stable access in mainland China, the App uses a built-in Cloudflare Worker proxy by default.
-For absolute data security and faster speeds, **it is strongly recommended that you deploy your own Worker**.
+To ensure stable access in mainland China, the App uses a built-in Cloudflare Worker proxy by default (address `api.steam-tracker-proxy.cyou`, hardcoded in `MainActivity.kt` and `SpecialsFragment.kt`).
+For absolute data security and faster speeds, **it is strongly recommended that you deploy your own Worker and replace the `BASE_URL` in the source before building**.
 
  **[Click to View: Self-hosted Cloudflare Worker Tutorial](WORKER_SETUP.md)**
 
@@ -95,7 +96,7 @@ This project is built using modern Android development standards:
 *   **Image Loading**: [Coil](https://coil-kt.github.io/coil/) (optimized for GIF animations and memory caching)
 *   **UI Components**: Material Design 3, ConstraintLayout, CoordinatorLayout
 *   **Asynchronous Processing**: Kotlin Coroutines (Async/Await concurrent requests)
-*   **Backend/Proxy**
+*   **Backend/Proxy**: Cloudflare Worker (request forwarding & anti-scraping)
   
 ---
 

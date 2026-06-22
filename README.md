@@ -51,8 +51,9 @@
 *   **封面**：自动修复不规范的活动宣传图，优先展示 Steam 标准封面。
 
 ###  个性化
-*   支持自定义个人资料背景图、头像及**头像挂件**。
-*   支持自定义 Cloudflare Worker 代理地址。
+*   支持自定义个人资料背景图、头像及**头像挂件**（支持 GIF 动图）。
+*   库存支持分组显示（近期活跃 / 已玩 / 堆积库存）与多种排序方式。
+*   主题支持浅色 / 深色 / 跟随系统，深色下可开启纯黑模式。
 
 
 ---
@@ -70,7 +71,7 @@
 ##  部署与使用
 
 ### 1. 下载安装
-前往 [Releases 页面](https://github.com/你的用户名/GameArchive/releases) 下载最新版本的 APK。
+前往 [Releases 页面](https://github.com/ewiro/GameArchive/releases) 下载最新版本的 APK。
 *   现代手机推荐下载 `arm64` 版本。
 
 ### 2. 获取必要信息
@@ -79,8 +80,8 @@
 *   **Web API Key**: 前往 [Steam 开发者页面](https://steamcommunity.com/dev/apikey) 免费申请（域名可随意填写）。
 
 ### 3. (进阶) 自建代理服务
-为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理。
-为了数据绝对安全和更快的速度，**强烈建议您部署自己的 Worker**。
+为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理（地址 `api.steam-tracker-proxy.cyou`，硬编码于 `MainActivity.kt` 与 `SpecialsFragment.kt`）。
+为了数据绝对安全和更快的速度，**强烈建议您部署自己的 Worker**，并在源码中替换上述地址后重新编译。
 
  **[点击查看：自建 Cloudflare Worker 教程](WORKER_SETUP.md)**
 
@@ -95,8 +96,7 @@
 *   **图片加载**: [Coil](https://coil-kt.github.io/coil/) (针对 GIF 动图及内存缓存优化)
 *   **UI 组件**: Material Design 3, ConstraintLayout, CoordinatorLayout
 *   **异步处理**: Kotlin Coroutines (Async/Await 并发请求)
-*   **后端/代理**
-  
+*   **后端/代理**: Cloudflare Worker (反爬虫伪装 + CORS 跨域处理)
 ---
 
 ##  许可证
