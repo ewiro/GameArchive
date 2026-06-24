@@ -20,10 +20,12 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 # ==============================================
-# 1. 阻止对你的包名下所有内容的修改
--keep class com.example.steamtracker.** { *; }
--keep interface com.example.steamtracker.** { *; }
--keepclassmembers class com.example.steamtracker.** { *; }
+# 1. 保护数据模型类（Gson 反射解析依赖字段名，混淆会导致解析失败）
+#    数据类已加 @Keep 注解作为主保护，这里按正确包名再加一层双保险
+-keep @androidx.annotation.Keep class * { *; }
+-keepclassmembers class com.example.gamearchive.** {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
 
 # 2. 核心：保留所有泛型和反射信息（解决 ParameterizedType 报错的关键）
 -keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
@@ -47,6 +49,15 @@
 -keepclassmembers interface * {
     @retrofit2.http.* <methods>;
 }
+
+# 5.1 Retrofit 官方 R8 规则：保留泛型类型信息
+# 修复 suspend 函数 + R8 混淆导致的 "Class cannot be cast to ParameterizedType" 崩溃
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+
+# 5.2 完整保留本项目的网络接口及其方法签名 (Retrofit 靠它解析返回类型)
+-keep interface com.example.gamearchive.SteamApiService { *; }
 
 # 6. 保护 Coil
 -keep class coil.** { *; }

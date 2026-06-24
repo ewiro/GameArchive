@@ -21,3 +21,12 @@ keystore.properties
 
 # Built release artifacts
 /dist
+
+# 泄露过的私钥,绝不能再进仓库
+steamtracker_key
+
+# 内部开发档案,不公开
+/docs/
+
+# IDE 临时文件
+/.idea/

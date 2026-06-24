@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
 
         // 初始化Retrofit网络请求客户端
         val retrofit = Retrofit.Builder()
-            .baseUrl("https://api.steam-tracker-proxy.cyou/")
+            .baseUrl(AppConfig.PROXY_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         apiServiceGlobal = retrofit.create(SteamApiService::class.java)
