@@ -13,34 +13,21 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONObject
 
 class SpecialsFragment : Fragment() {
 
-    private val PROXY_URL = "https://api.steam-tracker-proxy.cyou/"
+    private val viewModel: SpecialsViewModel by viewModels()
 
     private lateinit var rv: RecyclerView
     private lateinit var progress: ProgressBar
     private lateinit var adapter: MarketAdapter
     private lateinit var btnSort: MaterialButton
     private lateinit var topBar: View
-
-    private var rawList = listOf<MarketGame>()
-
-    private var isFilteringOwned = false
-    private var sortMode = 0
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_specials, container, false)
@@ -77,7 +64,22 @@ class SpecialsFragment : Fragment() {
 
         btnSort.setOnClickListener { showSortAndFilterDialog() }
 
-        loadSpecialsViaSearch()
+        observeViewModel()
+        viewModel.loadIfNeeded()
+    }
+
+    // 观察数据管家：数据一变就刷新界面
+    private fun observeViewModel() {
+        viewModel.loading.observe(viewLifecycleOwner) { isLoading ->
+            progress.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+        viewModel.rawList.observe(viewLifecycleOwner) { applySortAndFilter() }
+        viewModel.error.observe(viewLifecycleOwner) { msg ->
+            if (msg != null) {
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                viewModel.clearError()
+            }
+        }
     }
 
     private fun animateTopBar(visible: Boolean) {
@@ -110,7 +112,7 @@ class SpecialsFragment : Fragment() {
         val switchFilter = MaterialSwitch(context).apply {
             text = "隐藏已在库中的游戏"
             textSize = 16f
-            isChecked = isFilteringOwned
+            isChecked = viewModel.isFilteringOwned
             setPadding(64, 0, 64, 0)
             layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
@@ -149,7 +151,7 @@ class SpecialsFragment : Fragment() {
                 setPadding(24, 16, 24, 16)
                 layoutParams = RadioGroup.LayoutParams(-1, -2)
             }
-            if (i == sortMode) rb.isChecked = true
+            if (i == viewModel.sortMode) rb.isChecked = true
             radioGroup.addView(rb)
         }
         dialogView.addView(radioGroup)
@@ -166,9 +168,9 @@ class SpecialsFragment : Fragment() {
             background = null
             setTextColor(android.graphics.Color.parseColor("#3482FF"))
             setOnClickListener {
-                isFilteringOwned = switchFilter.isChecked
-                sortMode = radioGroup.checkedRadioButtonId
-                if (sortMode == -1) sortMode = 0
+                viewModel.isFilteringOwned = switchFilter.isChecked
+                viewModel.sortMode = radioGroup.checkedRadioButtonId
+                if (viewModel.sortMode == -1) viewModel.sortMode = 0
 
                 applySortAndFilter()
                 dialog.dismiss()
@@ -184,13 +186,14 @@ class SpecialsFragment : Fragment() {
     }
 
     private fun applySortAndFilter() {
-        var list = if (isFilteringOwned) {
+        val rawList = viewModel.rawList.value ?: emptyList()
+        var list = if (viewModel.isFilteringOwned) {
             rawList.filter { !MainActivity.ownedGameIds.contains(it.id) }
         } else {
             rawList
         }
 
-        list = when (sortMode) {
+        list = when (viewModel.sortMode) {
             1 -> list.sortedBy { it.priceVal }
             2 -> list.sortedByDescending { it.priceVal }
             3 -> list.sortedByDescending { it.discount }
@@ -205,126 +208,5 @@ class SpecialsFragment : Fragment() {
             adapter = MarketAdapter(list)
             rv.adapter = adapter
         }
-    }
-
-    // 并发加载特惠游戏
-    private fun loadSpecialsViaSearch() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                //配置更长的超时时间 (30秒)
-                val client = OkHttpClient.Builder()
-                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .build()
-                val totalPages = 2
-
-                val deferredResults = (0 until totalPages).map { pageIndex ->
-                    async {
-                        // 在每个异步任务内部加 try-catch
-                        // 这样即使某一页请求超时，也不会导致整个 App 闪退，只会少显示那一页的数据
-                        try {
-                            val start = pageIndex * 100
-                            val url = "${PROXY_URL}search/results/?query&start=$start&count=100&dynamic_data=&sort_by=_ASC&specials=1&infinite=1&l=schinese&cc=cn&category1=998"
-
-                            val request = Request.Builder().url(url).build()
-                            val response = client.newCall(request).execute()
-                            val jsonStr = response.body?.string() ?: "{}"
-                            val jsonObj = JSONObject(jsonStr)
-                            val html = jsonObj.optString("results_html", "")
-
-                            parseSteamSearchHtml(html)
-                        } catch (e: Exception) {
-                            // 如果这一页加载失败 (比如超时)，只打印日志，返回空列表，保全大局
-                            android.util.Log.e("SpecialsLoad", "第 $pageIndex 页加载失败: ${e.message}")
-                            emptyList<MarketGame>()
-                        }
-                    }
-                }
-
-                val allBatches = deferredResults.awaitAll()
-                val mergedList = allBatches.flatten()
-                val distinctList = mergedList.distinctBy { it.name }
-
-                withContext(Dispatchers.Main) {
-                    if (distinctList.isEmpty()) {
-                        Toast.makeText(context, "未获取到数据", Toast.LENGTH_SHORT).show()
-                    }
-                    rawList = distinctList
-                    applySortAndFilter()
-                    progress.visibility = View.GONE
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    progress.visibility = View.GONE
-                }
-            }
-        }
-    }
-
-    // 解析HTML数据
-    private fun parseSteamSearchHtml(html: String): List<MarketGame> {
-        val list = mutableListOf<MarketGame>()
-        val localUnique = mutableSetOf<String>()
-
-        // 过滤非游戏内容的关键词
-        val bannedKeywords = listOf(
-            "DLC", "Soundtrack", "原声带", "Artbook", "Upgrade", "升级包",
-            "Season Pass", "季票", "Expansion", "扩展包", "Demo", "试玩",
-            "Pack", "Content", "Ticket", "Pass", "Skin", "Outfit",
-            "Map", "Token", "Coin", "Wallpaper", "OST",
-            "Deluxe", "Edition", "Bundle", "Collection", "Master", "Remastered",
-            "Gold", "Ultimate", "Premium", "组合包", "纪念版"
-        )
-
-        val rows = html.split("<a href=")
-
-        for (row in rows) {
-            try {
-                val nameMatch = Regex("<span class=\"title\">(.*?)</span>").find(row)
-                val name = nameMatch?.groupValues?.get(1)?.trim() ?: "Unknown"
-
-                if (bannedKeywords.any { name.contains(it, ignoreCase = true) }) continue
-                if (localUnique.contains(name)) continue
-                localUnique.add(name)
-
-                val appIdMatch = Regex("data-ds-appid=\"([0-9,]+)\"").find(row)
-
-                var id = appIdMatch?.groupValues?.get(1)?.split(",")?.first()?.toIntOrNull() ?: 0
-                val isBundle = id == 0
-                if (isBundle) continue // 仅保留游戏本体
-                if (id == 0) continue
-
-                val rawImgMatch = Regex("src=\"(https://[^\"]+?\\.jpg[^\"]*)\"").find(row)
-                val rawImgUrl = rawImgMatch?.groupValues?.get(1) ?: ""
-                val standardImgUrl = "https://cdn.cloudflare.steamstatic.com/steam/apps/$id/header.jpg"
-
-                val discountMatch = Regex("-([0-9]+)%").find(row)
-                val discount = discountMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
-
-                val priceMatch = Regex("discount_final_price\">([^<]+)</div>").find(row)
-                val priceStr = priceMatch?.groupValues?.get(1)?.trim() ?: "¥ --"
-                val priceVal = try { priceStr.replace(Regex("[^0-9.]"), "").toDouble() } catch (e: Exception) { 0.0 }
-
-                val originMatch = Regex("discount_original_price\">([^<]+)</div>").find(row)
-                val originStr = originMatch?.groupValues?.get(1)?.trim() ?: ""
-
-                // 好评率解析
-                var reviewScore = -1
-                val tooltipMatch = Regex("data-tooltip-html=\"([^\"]+)\"").find(row)
-                if (tooltipMatch != null) {
-                    val content = tooltipMatch.groupValues[1]
-                    val scoreMatch = Regex("([0-9]{1,3})%").find(content)
-                    if (scoreMatch != null) {
-                        reviewScore = scoreMatch.groupValues[1].toIntOrNull() ?: -1
-                    }
-                }
-
-                list.add(MarketGame(id, name, standardImgUrl, priceStr, originStr, discount, null, rawImgUrl, priceVal, reviewScore))
-
-            } catch (e: Exception) {}
-        }
-        return list
     }
 }

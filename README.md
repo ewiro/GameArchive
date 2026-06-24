@@ -80,8 +80,8 @@
 *   **Web API Key**: 前往 [Steam 开发者页面](https://steamcommunity.com/dev/apikey) 免费申请（域名可随意填写）。
 
 ### 3. (进阶) 自建代理服务
-为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理（地址 `api.steam-tracker-proxy.cyou`，硬编码于 `MainActivity.kt` 与 `SpecialsFragment.kt`）。
-为了数据绝对安全和更快的速度，**强烈建议您部署自己的 Worker**，并在源码中替换上述地址后重新编译。
+为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理（地址统一配置于 `AppConfig.kt` 中的 `PROXY_URL` 常量）。
+为了数据绝对安全和更快的速度，**强烈建议您部署自己的 Worker**，只需修改 `AppConfig.kt` 一处地址后重新编译即可。
 
  **[点击查看：自建 Cloudflare Worker 教程](WORKER_SETUP.md)**
 
@@ -91,12 +91,13 @@
 本项目采用现代 Android 开发标准构建：
 
 *   **语言**: [Kotlin](https://kotlinlang.org/)
-*   **架构**: MVVM (Fragment + ViewPager2)
+*   **架构**: MVVM (Fragment + ViewPager2 + ViewModel + LiveData，配置变化不丢数据)
 *   **网络**: [Retrofit](https://square.github.io/retrofit/) + [OkHttp](https://square.github.io/okhttp/) + [GSON](https://github.com/google/gson)
 *   **图片加载**: [Coil](https://coil-kt.github.io/coil/) (针对 GIF 动图及内存缓存优化)
 *   **UI 组件**: Material Design 3, ConstraintLayout, CoordinatorLayout
 *   **异步处理**: Kotlin Coroutines (Async/Await 并发请求)
 *   **后端/代理**: Cloudflare Worker (反爬虫伪装 + CORS 跨域处理)
+*   **发布优化**: 正式版开启 R8 代码压缩与混淆，安装包体积缩减约 64%（约 7MB → 2.5MB）
 ---
 
 ##  许可证

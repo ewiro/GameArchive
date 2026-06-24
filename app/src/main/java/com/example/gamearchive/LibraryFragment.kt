@@ -13,6 +13,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -44,12 +45,9 @@ class LibraryFragment : Fragment() {
     private lateinit var tvTitle: TextView
     private lateinit var btnSettings: View
 
-    // 游戏列表数据
-    private var rawGameList: List<GameInfo> = emptyList()
+    // 数据管家：负责联网拉数据、存数据（转屏/切页面不丢）
+    private val viewModel: LibraryViewModel by viewModels()
 
-    private var playerInfo: PlayerInfo? = null
-    private var playerLevel: Int = 0
-    private val priceMap = mutableMapOf<Int, String>()
     private val collapsedGroups = mutableSetOf<String>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -89,10 +87,34 @@ class LibraryFragment : Fragment() {
         })
 
         swipe.setColorSchemeColors(ThemeUtils.ACCENT_BLUE)
-        swipe.setOnRefreshListener { loadData() }
+        swipe.setOnRefreshListener { viewModel.refresh(apiKey, steamId) }
         btnSettings.setOnClickListener { startActivity(Intent(context, SettingsActivity::class.java)) }
 
-        loadData()
+        observeViewModel()
+        viewModel.loadIfNeeded(apiKey, steamId)
+    }
+
+    // 观察数据管家：数据一变就刷新界面
+    private fun observeViewModel() {
+        viewModel.loading.observe(viewLifecycleOwner) { isLoading ->
+            if (isLoading) {
+                if (!swipe.isRefreshing) progress.visibility = View.VISIBLE
+            } else {
+                progress.visibility = View.GONE
+                swipe.isRefreshing = false
+            }
+        }
+
+        viewModel.games.observe(viewLifecycleOwner) { updateListUI() }
+        viewModel.player.observe(viewLifecycleOwner) { updateListUI() }
+        viewModel.level.observe(viewLifecycleOwner) { updateListUI() }
+
+        viewModel.error.observe(viewLifecycleOwner) { msg ->
+            if (msg != null) {
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                viewModel.clearError()
+            }
+        }
     }
 
     private fun animateTopBar(visible: Boolean) {
@@ -110,78 +132,12 @@ class LibraryFragment : Fragment() {
         }
     }
 
-    private fun loadData() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                if (apiKey.isEmpty() || steamId.isEmpty()) {
-                    Toast.makeText(context, "请先登录", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-
-                if (!swipe.isRefreshing) progress.visibility = View.VISIBLE
-
-                // 三个请求并发发出，一起等待 (不重复请求)
-                val gameDeferred = async { MainActivity.apiServiceGlobal.getOwnedGames(apiKey, steamId) }
-                val userDeferred = async { MainActivity.apiServiceGlobal.getPlayerSummaries(apiKey, steamId) }
-                val levelDeferred = async {
-                    try {
-                        MainActivity.apiServiceGlobal.getSteamLevel(apiKey, steamId)
-                    } catch (e: Exception) { null } // 等级失败不影响其他
-                }
-
-                // 获取库存游戏 + 黑名单过滤
-                val gameRes = gameDeferred.await()
-                // 黑名单：战地6测试版 (Steam 已下架其数据，但库存接口仍返回，强制隐藏)
-                val blackListIds = setOf(3081410)
-                rawGameList = gameRes.response.games.filter { game ->
-                    !blackListIds.contains(game.appid)
-                }
-
-                // 更新全局拥有的游戏ID列表
-                MainActivity.ownedGameIds.clear()
-                MainActivity.ownedGameIds.addAll(rawGameList.map { it.appid })
-
-                // 获取玩家信息
-                val userRes = userDeferred.await()
-                if (userRes.response.players.isNotEmpty()) playerInfo = userRes.response.players[0]
-
-                // 获取Steam等级
-                playerLevel = levelDeferred.await()?.response?.player_level ?: 0
-
-                // 批量获取前20个游戏的价格
-                fetchBatchPrices(rawGameList.sortedByDescending { it.playtime_forever }.take(20))
-
-                updateListUI()
-                progress.visibility = View.GONE
-                swipe.isRefreshing = false
-            } catch (e: Exception) {
-                progress.visibility = View.GONE
-                swipe.isRefreshing = false
-                Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                e.printStackTrace()
-            }
-        }
-    }
-
-    private suspend fun fetchBatchPrices(games: List<GameInfo>) {
-        if (games.isEmpty()) return
-        try {
-            val ids = games.joinToString(",") { it.appid.toString() }
-            val response = MainActivity.apiServiceGlobal.getGamePrices(ids)
-
-            for ((idStr, details) in response) {
-                val id = idStr.toInt()
-                if (details.success && details.data?.price_overview != null) {
-                    priceMap[id] = details.data.price_overview.final_formatted ?: "¥ --"
-                } else {
-                    priceMap[id] = "免费/未知"
-                }
-            }
-        } catch (e: Exception) { }
-    }
-
     private fun updateListUI() {
+        val rawGameList = viewModel.games.value ?: return
         if (rawGameList.isEmpty()) return
+        val playerInfo = viewModel.player.value
+        val playerLevel = viewModel.level.value ?: 0
+        val priceMap = viewModel.priceMap
         val context = requireContext()
         val isGrouping = ThemeUtils.isGroupingEnabled(context)
         val isRecentGroup = ThemeUtils.isGroupRecentEnabled(context)
@@ -197,7 +153,7 @@ class LibraryFragment : Fragment() {
         // 只有当 开关打开 且 数据不为空 时，才添加头部
         if (showProfile && playerInfo != null) {
             val totalHours = rawGameList.sumOf { it.playtime_forever } / 60
-            adapters.add(ProfileHeaderAdapter(playerInfo!!, rawGameList.size, totalHours, playerLevel, gifLoader))
+            adapters.add(ProfileHeaderAdapter(playerInfo, rawGameList.size, totalHours, playerLevel, gifLoader))
         }
 
         if (!isGrouping) {
