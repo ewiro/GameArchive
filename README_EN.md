@@ -97,7 +97,6 @@ This project is built using modern Android development standards:
 *   **UI Components**: Material Design 3, ConstraintLayout, CoordinatorLayout
 *   **Asynchronous Processing**: Kotlin Coroutines (Async/Await concurrent requests)
 *   **Backend/Proxy**: Cloudflare Worker (request forwarding & anti-scraping)
-*   **Release**: R8 code shrinking & obfuscation enabled, APK size reduced ~64% (≈7 MB → 2.5 MB)
 ---
 
 ##  License
