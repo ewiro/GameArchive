@@ -80,8 +80,8 @@ You need to enter your Steam information for the first time use:
 *   **Web API Key**: Go to the [Steam Developer Page](https://steamcommunity.com/dev/apikey) to apply for free (domain name can be filled in arbitrarily).
 
 ### 3. (Advanced) Self-hosted Proxy Service
-To ensure stable access in mainland China, the App uses a built-in Cloudflare Worker proxy by default (address `api.steam-tracker-proxy.cyou`, hardcoded in `MainActivity.kt` and `SpecialsFragment.kt`).
-For absolute data security and faster speeds, **it is strongly recommended that you deploy your own Worker and replace the `BASE_URL` in the source before building**.
+To ensure stable access in mainland China, the App uses a built-in Cloudflare Worker proxy by default (address configured in the `PROXY_URL` constant of `AppConfig.kt`).
+For absolute data security and faster speeds, **it is strongly recommended that you deploy your own Worker** — simply replace that one address in `AppConfig.kt` and rebuild.
 
  **[Click to View: Self-hosted Cloudflare Worker Tutorial](WORKER_SETUP.md)**
 
@@ -91,13 +91,13 @@ For absolute data security and faster speeds, **it is strongly recommended that 
 This project is built using modern Android development standards:
 
 *   **Language**: [Kotlin](https://kotlinlang.org/)
-*   **Architecture**: MVVM (Fragment + ViewPager2)
+*   **Architecture**: MVVM (Fragment + ViewPager2 + ViewModel + LiveData)
 *   **Network**: [Retrofit](https://square.github.io/retrofit/) + [OkHttp](https://square.github.io/okhttp/) + [GSON](https://github.com/google/gson)
 *   **Image Loading**: [Coil](https://coil-kt.github.io/coil/) (optimized for GIF animations and memory caching)
 *   **UI Components**: Material Design 3, ConstraintLayout, CoordinatorLayout
 *   **Asynchronous Processing**: Kotlin Coroutines (Async/Await concurrent requests)
 *   **Backend/Proxy**: Cloudflare Worker (request forwarding & anti-scraping)
-  
+*   **Release**: R8 code shrinking & obfuscation enabled, APK size reduced ~64% (≈7 MB → 2.5 MB)
 ---
 
 ##  License

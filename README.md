@@ -97,6 +97,8 @@
 *   **UI 组件**: Material Design 3, ConstraintLayout, CoordinatorLayout
 *   **异步处理**: Kotlin Coroutines (Async/Await 并发请求)
 *   **后端/代理**: Cloudflare Worker (反爬虫伪装 + CORS 跨域处理)
+*   **发布优化**: 正式版开启 R8 代码压缩与混淆，安装包体积缩减约 64%（约 7MB → 2.5MB）
+
 ---
 
 ##  许可证
