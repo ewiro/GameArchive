@@ -3,6 +3,8 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.compose")
 }
 
 val keystoreProperties = Properties().apply {
@@ -12,7 +14,7 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.example.gamearchive"
-    compileSdk = 34
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.example.gamearchive"
@@ -75,8 +77,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 }
 
@@ -105,4 +109,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
+
+    // Compose Multiplatform + MIUI X UI 组件库
+    implementation("top.yukonga.miuix.kmp:miuix-ui:0.9.2")
+    implementation("androidx.activity:activity-compose:1.9.0")
 }

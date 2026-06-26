@@ -4,75 +4,149 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.widget.Button
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.textfield.TextInputEditText
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(newBase?.let { LocaleHelper.setLocale(it) })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 应用应用主题配置
         ThemeUtils.applyTheme(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 检查用户是否已登录，如果已登录直接跳转主页
         if (UserPrefs.isLoggedIn(this)) {
             startMainActivity()
             return
         }
 
-        setContentView(R.layout.activity_login)
-
-        // 处理系统栏边距，防止内容被状态栏或导航栏遮挡
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.login_root)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
-        val etSteamId = findViewById<TextInputEditText>(R.id.etSteamId)
-        val etApiKey = findViewById<TextInputEditText>(R.id.etApiKey)
-        val btnLogin = findViewById<Button>(R.id.btnLogin)
-        val tvHelp = findViewById<TextView>(R.id.tvHelp)
-
-        // 处理登录按钮点击事件
-        btnLogin.setOnClickListener {
-            val steamId = etSteamId.text.toString().trim()
-            val apiKey = etApiKey.text.toString().trim()
-
-            // 校验输入内容是否为空
-            if (steamId.isEmpty() || apiKey.isEmpty()) {
-                Toast.makeText(this, R.string.login_empty_fields, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+        setContent {
+            MiuixTheme {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoginScreen(
+                        onLoginSuccess = { startMainActivity() },
+                        onHelpClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/dev/apikey"))
+                            startActivity(intent)
+                        }
+                    )
+                }
             }
-
-            // 保存用户凭证到本地存储
-            UserPrefs.saveCredentials(this, apiKey, steamId)
-            Toast.makeText(this, R.string.login_success, Toast.LENGTH_SHORT).show()
-            startMainActivity()
-        }
-
-        // 跳转浏览器打开Steam API Key申请页面
-        tvHelp.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/dev/apikey"))
-            startActivity(intent)
         }
     }
 
-    // 启动主页面并关闭当前登录页面
     private fun startMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish()
+    }
+}
+
+@Composable
+private fun LoginScreen(
+    onLoginSuccess: () -> Unit,
+    onHelpClick: () -> Unit
+) {
+    val context = LocalContext.current
+    var steamId by remember { mutableStateOf("") }
+    var apiKey by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 400.dp)
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = context.getString(R.string.login_title),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Text(
+            text = context.getString(R.string.login_subtitle),
+            modifier = Modifier.padding(bottom = 48.dp)
+        )
+
+        // Steam ID 输入框 — label 当 placeholder 用
+        TextField(
+            value = steamId,
+            onValueChange = { steamId = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = context.getString(R.string.login_steam_id_hint),
+            useLabelAsPlaceholder = true,
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // API Key 输入框
+        TextField(
+            value = apiKey,
+            onValueChange = { apiKey = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = context.getString(R.string.login_api_key_hint),
+            useLabelAsPlaceholder = true,
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // 登录按钮
+        Button(
+            onClick = {
+                if (steamId.isBlank() || apiKey.isBlank()) {
+                    Toast.makeText(context, R.string.login_empty_fields, Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+                UserPrefs.saveCredentials(context, apiKey, steamId)
+                Toast.makeText(context, R.string.login_success, Toast.LENGTH_SHORT).show()
+                onLoginSuccess()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            Text(text = context.getString(R.string.login_button))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        TextButton(
+            text = context.getString(R.string.login_help),
+            onClick = onHelpClick
+        )
     }
 }
