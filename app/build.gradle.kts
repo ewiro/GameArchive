@@ -113,4 +113,6 @@ dependencies {
     // Compose Multiplatform + MIUI X UI 组件库
     implementation("top.yukonga.miuix.kmp:miuix-ui:0.9.2")
     implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("io.coil-kt:coil-compose:2.4.0")
 }
