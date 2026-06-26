@@ -142,6 +142,7 @@ private fun MainScreen() {
 
     val scope = rememberCoroutineScope()
 
+    Surface(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         // 内容区（HorizontalPager 支持滑动切换）
         HorizontalPager(
@@ -238,7 +239,8 @@ private fun MainScreen() {
                 }
             }
         }
-    }
+    } // Close Surface
+    } // Close Column
 }
 
 // ────────── 库存页 ──────────
