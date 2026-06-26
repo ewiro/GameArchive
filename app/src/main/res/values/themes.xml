@@ -5,5 +5,7 @@
         <item name="android:windowBackground">@color/miuix_bg_light</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="colorOnSurface">@color/miuix_text_primary_light</item>
+        <item name="colorOnSurfaceVariant">@color/miuix_text_secondary_light</item>
     </style>
 </resources>

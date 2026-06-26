@@ -1,16 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- MIUI X 自有颜色属性 (格式与 Material3 保持一致以兼容合并) -->
-    <attr name="colorSurface" format="color"/>
     <attr name="colorOnSurface" format="color"/>
     <attr name="colorOnSurfaceVariant" format="color"/>
-    <attr name="colorSurfaceContainerLowest" format="color"/>
-    <attr name="colorSurfaceContainerLow" format="color"/>
-    <attr name="colorSurfaceContainer" format="color"/>
-    <attr name="colorSurfaceContainerHigh" format="color"/>
-    <attr name="colorSurfaceContainerHighest" format="color"/>
-    <attr name="colorOutline" format="color"/>
-    <attr name="colorOutlineVariant" format="color"/>
-    <attr name="colorPrimaryContainer" format="color"/>
-    <attr name="colorOnPrimaryContainer" format="color"/>
 </resources>
