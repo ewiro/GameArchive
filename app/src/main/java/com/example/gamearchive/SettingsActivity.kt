@@ -127,18 +127,21 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         item("appearance_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = 16.dp
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     // 深色模式
                     Text(
                         text = context.getString(R.string.settings_dark_mode),
                         fontSize = 14.sp,
                         color = Color.Gray
                     )
-                    Spacer(Modifier.height(12.dp))
-                    Column {
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_follow_system),
                             selected = themeMode == 2,
@@ -189,8 +192,11 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         fontSize = 14.sp,
                         color = Color.Gray
                     )
-                    Spacer(Modifier.height(12.dp))
-                    Column {
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_lang_follow_system),
                             selected = language == LocaleHelper.LANG_FOLLOW_SYSTEM,
@@ -230,10 +236,10 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         item("profile_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = 16.dp
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     SwitchRow(
                         label = context.getString(R.string.settings_show_profile),
                         checked = showProfile,
@@ -301,10 +307,10 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         item("library_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = 16.dp
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     SwitchRow(
                         label = context.getString(R.string.settings_grouping),
                         checked = grouping,
@@ -331,20 +337,20 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         fontSize = 14.sp,
                         color = Color.Gray
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { sortMode = 0; ThemeUtils.saveSortMode(context, 0) }.padding(vertical = 10.dp)) {
+                        modifier = Modifier.fillMaxWidth().clickable { sortMode = 0; ThemeUtils.saveSortMode(context, 0) }.padding(vertical = 6.dp)) {
                         RadioButton(selected = sortMode == 0, onClick = { sortMode = 0; ThemeUtils.saveSortMode(context, 0) })
-                        Spacer(Modifier.width(8.dp))
-                        Text(text = context.getString(R.string.settings_sort_playtime), fontSize = 15.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Text(text = context.getString(R.string.settings_sort_playtime), fontSize = 14.sp)
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { sortMode = 1; ThemeUtils.saveSortMode(context, 1) }.padding(vertical = 10.dp)) {
+                        modifier = Modifier.fillMaxWidth().clickable { sortMode = 1; ThemeUtils.saveSortMode(context, 1) }.padding(vertical = 6.dp)) {
                         RadioButton(selected = sortMode == 1, onClick = { sortMode = 1; ThemeUtils.saveSortMode(context, 1) })
-                        Spacer(Modifier.width(8.dp))
-                        Text(text = context.getString(R.string.settings_sort_name), fontSize = 15.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Text(text = context.getString(R.string.settings_sort_name), fontSize = 14.sp)
                     }
                 }
             }
@@ -384,7 +390,7 @@ private fun SectionHeader(text: String) {
         color = Color(0xFF3482FF),
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
-        modifier = Modifier.padding(start = 20.dp, top = 28.dp, bottom = 10.dp)
+        modifier = Modifier.padding(start = 20.dp, top = 22.dp, bottom = 8.dp)
     )
 }
 
@@ -406,11 +412,11 @@ private fun ThemeRadioButton(label: String, selected: Boolean, onClick: () -> Un
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp)
+            .padding(vertical = 6.dp)
     ) {
         RadioButton(selected = selected, onClick = onClick)
-        Spacer(Modifier.width(8.dp))
-        Text(text = label, fontSize = 15.sp)
+        Spacer(Modifier.width(6.dp))
+        Text(text = label, fontSize = 14.sp)
     }
 }
 
@@ -419,13 +425,13 @@ private fun SwitchRow(label: String, checked: Boolean, enabled: Boolean = true, 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
-            fontSize = 16.sp,
+            fontSize = 15.sp,
             modifier = Modifier.weight(1f)
         )
         Checkbox(
