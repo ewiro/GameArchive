@@ -410,13 +410,12 @@ private fun ThemeRadioButton(label: String, selected: Boolean, onClick: () -> Un
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp)
+            .padding(vertical = 6.dp, horizontal = 2.dp)
     ) {
         RadioButton(selected = selected, onClick = onClick)
-        Spacer(Modifier.width(6.dp))
-        Text(text = label, fontSize = 14.sp)
+        Spacer(Modifier.width(4.dp))
+        Text(text = label, fontSize = 13.sp)
     }
 }
 
