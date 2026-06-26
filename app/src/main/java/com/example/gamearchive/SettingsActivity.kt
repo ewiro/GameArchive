@@ -15,6 +15,10 @@ import com.google.android.material.materialswitch.MaterialSwitch
 
 class SettingsActivity : AppCompatActivity() {
 
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { LocaleHelper.setLocale(it) })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         ThemeUtils.applyTheme(this)
@@ -60,6 +64,23 @@ class SettingsActivity : AppCompatActivity() {
             2 -> findViewById<RadioButton>(R.id.rbAuto).isChecked = true
         }
 
+        // 语言设置
+        val rgLanguage = findViewById<RadioGroup>(R.id.radioGroupLanguage)
+        when (ThemeUtils.getLanguage(this)) {
+            LocaleHelper.LANG_CHINESE -> findViewById<RadioButton>(R.id.rbLangChinese).isChecked = true
+            LocaleHelper.LANG_ENGLISH -> findViewById<RadioButton>(R.id.rbLangEnglish).isChecked = true
+            else -> findViewById<RadioButton>(R.id.rbLangSystem).isChecked = true
+        }
+        rgLanguage.setOnCheckedChangeListener { _, id ->
+            val lang = when (id) {
+                R.id.rbLangChinese -> LocaleHelper.LANG_CHINESE
+                R.id.rbLangEnglish -> LocaleHelper.LANG_ENGLISH
+                else -> LocaleHelper.LANG_FOLLOW_SYSTEM
+            }
+            ThemeUtils.saveLanguage(this, lang)
+            reload()
+        }
+
         switchPureBlack.isEnabled = true
         switchPureBlack.isChecked = ThemeUtils.isPureBlackEnabled(this)
 
@@ -98,7 +119,7 @@ class SettingsActivity : AppCompatActivity() {
             UserPrefs.saveCustomBgUrl(this, bg)
             UserPrefs.saveCustomFrameUrl(this, frame)
 
-            android.widget.Toast.makeText(this, "个人资料设置已更新", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(this, R.string.settings_profile_saved, android.widget.Toast.LENGTH_SHORT).show()
             ThemeUtils.isChanged = true
         }
 

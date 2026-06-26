@@ -37,10 +37,11 @@ class SpecialsViewModel : ViewModel() {
     var sortMode = 0
 
     private var hasLoaded = false
+    private var lastLanguage: String? = null
 
-    /** 界面首次进入时调用：已经有数据就不重复加载 */
+    /** 界面首次进入时调用：已经有数据就不重复加载（语言未变时） */
     fun loadIfNeeded() {
-        if (hasLoaded) return
+        if (hasLoaded && lastLanguage == LocaleHelper.currentApiLanguage) return
         load()
     }
 
@@ -50,10 +51,11 @@ class SpecialsViewModel : ViewModel() {
             try {
                 val list = withContext(Dispatchers.IO) { fetchSpecials() }
                 _rawList.value = list
-                if (list.isEmpty()) _error.value = "未获取到数据"
+                if (list.isEmpty()) _error.value = "No data obtained"
                 hasLoaded = true
+                lastLanguage = LocaleHelper.currentApiLanguage
             } catch (e: Exception) {
-                _error.value = "加载失败: ${e.message}"
+                _error.value = "Load failed: ${e.message}"
             } finally {
                 _loading.value = false
             }
@@ -76,7 +78,7 @@ class SpecialsViewModel : ViewModel() {
                 // 这样即使某一页请求超时，也不会导致整个 App 闪退，只会少显示那一页的数据
                 try {
                     val start = pageIndex * 100
-                    val url = "${AppConfig.PROXY_URL}search/results/?query&start=$start&count=100&dynamic_data=&sort_by=_ASC&specials=1&infinite=1&l=schinese&cc=cn&category1=998"
+                    val url = "${AppConfig.PROXY_URL}search/results/?query&start=$start&count=100&dynamic_data=&sort_by=_ASC&specials=1&infinite=1&l=${LocaleHelper.currentApiLanguage}&cc=cn&category1=998"
 
                     val request = Request.Builder().url(url).build()
                     val response = client.newCall(request).execute()
@@ -114,7 +116,8 @@ class SpecialsViewModel : ViewModel() {
             "Pack", "Content", "Ticket", "Pass", "Skin", "Outfit",
             "Map", "Token", "Coin", "Wallpaper", "OST",
             "Deluxe", "Edition", "Bundle", "Collection", "Master", "Remastered",
-            "Gold", "Ultimate", "Premium", "组合包", "纪念版"
+            "Gold", "Ultimate", "Premium", "组合包", "纪念版",
+            "Annual Pass", "Starter Pack", "Booster Pack", "Add-On"
         )
 
         val rows = html.split("<a href=")

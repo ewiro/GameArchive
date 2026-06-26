@@ -16,6 +16,7 @@ object ThemeUtils {
     private const val KEY_ENABLE_GROUPING = "enable_grouping"
     private const val KEY_SORT_MODE = "sort_mode"
     private const val KEY_GROUP_RECENT = "group_recent"
+    private const val KEY_LANGUAGE = "language"
 
     // 标记设置是否发生变化，用于通知 Activity 重启
     var isChanged = false
@@ -84,4 +85,11 @@ object ThemeUtils {
         isChanged = true
     }
     fun isGroupRecentEnabled(context: Context) = getPrefs(context).getBoolean(KEY_GROUP_RECENT, false)
+
+    // 语言设置：0=跟随系统 1=中文 2=英文
+    fun saveLanguage(context: Context, lang: Int) {
+        getPrefs(context).edit().putInt(KEY_LANGUAGE, lang).apply()
+        isChanged = true
+    }
+    fun getLanguage(context: Context) = getPrefs(context).getInt(KEY_LANGUAGE, 0)
 }
