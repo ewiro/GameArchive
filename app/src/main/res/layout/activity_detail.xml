@@ -98,13 +98,15 @@
                     android:baselineAligned="false">
 
                     <!-- 左半边：价格卡片 -->
-                    <com.google.android.material.card.MaterialCardView
+                    <androidx.cardview.widget.CardView
                         android:id="@+id/cvPriceContainer"
-                        style="@style/Widget.Miuix.Card.Inset"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:layout_marginEnd="6dp">
+                        android:layout_marginEnd="6dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="@color/miuix_inset_card">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -168,15 +170,17 @@
                                     android:textColor="?attr/colorOnSurface"/>
                             </LinearLayout>
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
+                    </androidx.cardview.widget.CardView>
 
                     <!-- 右半边：评价卡片 -->
-                    <com.google.android.material.card.MaterialCardView
-                        style="@style/Widget.Miuix.Card.Inset"
+                    <androidx.cardview.widget.CardView
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:layout_marginStart="6dp">
+                        android:layout_marginStart="6dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="@color/miuix_inset_card">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -233,7 +237,7 @@
                             </LinearLayout>
 
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
+                    </androidx.cardview.widget.CardView>
                 </LinearLayout>
 
                 <!-- 开发商与日期 -->

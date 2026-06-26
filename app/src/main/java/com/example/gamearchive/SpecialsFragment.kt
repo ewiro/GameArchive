@@ -15,8 +15,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.materialswitch.MaterialSwitch
+import android.widget.Button
+import android.widget.ImageButton
+import androidx.appcompat.widget.SwitchCompat
 
 class SpecialsFragment : Fragment() {
 
@@ -25,7 +26,7 @@ class SpecialsFragment : Fragment() {
     private lateinit var rv: RecyclerView
     private lateinit var progress: ProgressBar
     private lateinit var adapter: MarketAdapter
-    private lateinit var btnSort: MaterialButton
+    private lateinit var btnSort: ImageButton
     private lateinit var topBar: View
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -43,10 +44,6 @@ class SpecialsFragment : Fragment() {
         rv.setHasFixedSize(true)
         rv.itemAnimator = null
 
-        val iconColor = android.util.TypedValue().also {
-            requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorOnSurface, it, true)
-        }.data
-        btnSort.iconTint = android.content.res.ColorStateList.valueOf(iconColor)
 
         rv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -108,11 +105,14 @@ class SpecialsFragment : Fragment() {
         dialogView.addView(titleFilter)
 
         // 开关：隐藏已拥有
-        val switchFilter = MaterialSwitch(context).apply {
+        val switchFilter = SwitchCompat(context).apply {
             text = context.getString(R.string.specials_filter_hide_owned)
             textSize = 16f
+            setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.miuix_text_primary_light))
             isChecked = viewModel.isFilteringOwned
             setPadding(64, 0, 64, 0)
+            trackTintList = androidx.core.content.ContextCompat.getColorStateList(context, R.color.sel_switch_track)
+            thumbTintList = androidx.core.content.ContextCompat.getColorStateList(context, R.color.sel_switch_thumb)
             layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
         dialogView.addView(switchFilter)
@@ -168,8 +168,11 @@ class SpecialsFragment : Fragment() {
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
 
         // 确定按钮
-        val confirmBtn = MaterialButton(context).apply {
+        val confirmBtn = Button(context).apply {
             text = context.getString(R.string.specials_confirm)
+            setBackgroundResource(R.drawable.bg_button_primary)
+            setTextColor(androidx.core.content.ContextCompat.getColor(context, android.R.color.white))
+            setPadding(72, 20, 72, 20)
             setOnClickListener {
                 viewModel.isFilteringOwned = switchFilter.isChecked
                 viewModel.sortMode = radioGroup.checkedRadioButtonId
