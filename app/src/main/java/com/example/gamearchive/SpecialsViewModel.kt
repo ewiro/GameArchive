@@ -13,6 +13,19 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
+data class MarketGame(
+    val id: Int,
+    val name: String,
+    val imgUrl: String,
+    val finalPriceStr: String,
+    val originalPriceStr: String?,
+    val discount: Int,
+    val reviewDesc: String? = null,
+    val backupImgUrl: String? = null,
+    val priceVal: Double = 0.0,
+    val reviewScore: Int = -1
+)
+
 /**
  * 特惠页的"数据管家"。
  * 负责并发抓取打折游戏、解析数据、记住排序和筛选设置。

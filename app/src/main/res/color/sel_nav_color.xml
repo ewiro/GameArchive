@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 选中：MIUIX 蓝 -->
-    <item android:color="@color/miuix_blue" android:state_checked="true" />
-    <!-- 默认：中性灰 -->
-    <item android:color="#FF9A9A9F" />
-</selector>

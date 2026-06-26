@@ -88,10 +88,6 @@ dependencies {
     // 基础界面组件
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     // 网络请求框架
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -105,10 +101,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-ktx:1.8.0")
 
-    // MVVM 架构：ViewModel（数据管家，转屏不丢数据）+ LiveData（数据变了自动通知界面）
+    // MVVM 架构：ViewModel + LiveData
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
 
     // Compose Multiplatform + MIUI X UI 组件库
     implementation("top.yukonga.miuix.kmp:miuix-ui:0.9.2")
