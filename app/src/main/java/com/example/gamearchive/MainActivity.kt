@@ -65,20 +65,40 @@ class MainActivity : ComponentActivity() {
         apiServiceGlobal = retrofit.create(SteamApiService::class.java)
         LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(this)
 
-        // 根据 ThemeUtils 设置决定 MiuixTheme 色系
-        val colorSchemeMode = when (ThemeUtils.getThemeMode(this)) {
-            0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
-            1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
-            else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
-        }
-
         setContent {
-            MiuixTheme(
-                controller = top.yukonga.miuix.kmp.theme.ThemeController(
-                    colorSchemeMode = colorSchemeMode
-                )
-            ) {
-                MainScreen()
+            // 顶层：监听设置变更，每次变更触发 key 重组（含 MiuixTheme）
+            var settingsVersion by remember { mutableIntStateOf(0) }
+            val lifecycleOwner = LocalLifecycleOwner.current
+            val context = LocalContext.current
+
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME && ThemeUtils.isChanged) {
+                        ThemeUtils.isChanged = false
+                        LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(context)
+                        settingsVersion++
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
+
+            // 读取主题模式 — 放在 key 外才能让 settingsVersion 驱动重组
+            val themeMode = ThemeUtils.getThemeMode(context)
+            val colorSchemeMode = when (themeMode) {
+                0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
+                1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
+                else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
+            }
+
+            key(settingsVersion) {
+                MiuixTheme(
+                    controller = top.yukonga.miuix.kmp.theme.ThemeController(
+                        colorSchemeMode = colorSchemeMode
+                    )
+                ) {
+                    MainScreen()
+                }
             }
         }
     }
@@ -106,22 +126,6 @@ private fun MainScreen() {
     // 监听页面变化同步选中状态
     val selectedTab = pagerState.currentPage
 
-    // 设置变更触发器：SettingsActivity 改动后返回，强制重读所有设置
-    var settingsVersion by remember { mutableIntStateOf(0) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && ThemeUtils.isChanged) {
-                ThemeUtils.isChanged = false
-                LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(context)
-                settingsVersion++
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
     // 用于从子页面接收滑动状态的共享列表状态
     val libraryListState = rememberLazyListState()
     val specialsListState = rememberLazyListState()
@@ -145,31 +149,28 @@ private fun MainScreen() {
             modifier = Modifier.weight(1f),
             userScrollEnabled = true
         ) { page ->
-            // key(settingsVersion) → 设置变更时强制重组，重新读取 SharedPrefs
-            key(settingsVersion) {
-                when (page) {
-                    0 -> LibraryScreen(
-                        listState = libraryListState,
-                        onNavigateToDetail = { appId, name, headerUrl, price ->
-                            context.startActivity(Intent(context, DetailActivity::class.java).apply {
-                                putExtra("APP_ID", appId); putExtra("APP_NAME", name)
-                                putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
-                            })
-                        },
-                        onNavigateToSettings = {
-                            context.startActivity(Intent(context, SettingsActivity::class.java))
-                        }
-                    )
-                    1 -> SpecialsScreen(
-                        listState = specialsListState,
-                        onNavigateToDetail = { appId, name, headerUrl, price ->
-                            context.startActivity(Intent(context, DetailActivity::class.java).apply {
-                                putExtra("APP_ID", appId); putExtra("APP_NAME", name)
-                                putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
-                            })
-                        }
-                    )
-                }
+            when (page) {
+                0 -> LibraryScreen(
+                    listState = libraryListState,
+                    onNavigateToDetail = { appId, name, headerUrl, price ->
+                        context.startActivity(Intent(context, DetailActivity::class.java).apply {
+                            putExtra("APP_ID", appId); putExtra("APP_NAME", name)
+                            putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
+                        })
+                    },
+                    onNavigateToSettings = {
+                        context.startActivity(Intent(context, SettingsActivity::class.java))
+                    }
+                )
+                1 -> SpecialsScreen(
+                    listState = specialsListState,
+                    onNavigateToDetail = { appId, name, headerUrl, price ->
+                        context.startActivity(Intent(context, DetailActivity::class.java).apply {
+                            putExtra("APP_ID", appId); putExtra("APP_NAME", name)
+                            putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
+                        })
+                    }
+                )
             }
         }
 
