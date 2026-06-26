@@ -11,7 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.materialswitch.MaterialSwitch
+import androidx.appcompat.widget.SwitchCompat
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -44,13 +44,13 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
 
         val rgTheme = findViewById<RadioGroup>(R.id.radioGroupTheme)
-        val switchPureBlack = findViewById<MaterialSwitch>(R.id.switchPureBlack)
-        val switchGroup = findViewById<MaterialSwitch>(R.id.switchGroup)
-        val switchGroupRecent = findViewById<MaterialSwitch>(R.id.switchGroupRecent)
+        val switchPureBlack = findViewById<SwitchCompat>(R.id.switchPureBlack)
+        val switchGroup = findViewById<SwitchCompat>(R.id.switchGroup)
+        val switchGroupRecent = findViewById<SwitchCompat>(R.id.switchGroupRecent)
         val rgSort = findViewById<RadioGroup>(R.id.rgSort)
 
         // 绑定个人资料设置控件
-        val switchShowProfile = findViewById<MaterialSwitch>(R.id.switchShowProfile)
+        val switchShowProfile = findViewById<SwitchCompat>(R.id.switchShowProfile)
         val llProfileInputs = findViewById<View>(R.id.llProfileInputs)
 
         val etAvatarUrl = findViewById<TextInputEditText>(R.id.etAvatarUrl)
