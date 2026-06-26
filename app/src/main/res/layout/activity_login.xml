@@ -71,12 +71,15 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- 登录按钮 (宽度限制为 60%) -->
-    <com.google.android.material.button.MaterialButton
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnLogin"
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:text="@string/login_button"
         android:textSize="18sp"
+        android:textColor="@color/white"
+        android:background="@drawable/bg_button_primary"
+        android:paddingHorizontal="24dp"
         android:layout_marginTop="48dp"
         app:layout_constraintWidth_percent="0.6"
         app:layout_constraintStart_toStartOf="parent"

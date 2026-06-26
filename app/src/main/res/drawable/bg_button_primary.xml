@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MIUI X 主按钮：蓝底、16dp圆角、无阴影 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/miuix_blue"/>
+    <corners android:radius="16dp"/>
+</shape>

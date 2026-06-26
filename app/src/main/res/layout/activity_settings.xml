@@ -75,10 +75,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
-            <com.google.android.material.card.MaterialCardView
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                style="@style/Widget.Miuix.Card">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHighest">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -125,12 +127,15 @@
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginVertical="12dp" android:alpha="0.5"/>
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
+                    <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switchPureBlack"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_pure_black"
-                        android:textSize="16sp"/>
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface"
+                        app:thumbTint="@color/sel_switch_thumb"
+                        app:trackTint="@color/sel_switch_track"/>
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginVertical="12dp" android:alpha="0.5"/>
 
@@ -172,7 +177,7 @@
                             android:textSize="13sp"/>
                     </RadioGroup>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </androidx.cardview.widget.CardView>
 
             <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
@@ -187,10 +192,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
-            <com.google.android.material.card.MaterialCardView
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                style="@style/Widget.Miuix.Card">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHighest">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -199,12 +206,15 @@
                     android:padding="16dp">
 
                     <!-- 1. 总开关 -->
-                    <com.google.android.material.materialswitch.MaterialSwitch
+                    <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switchShowProfile"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_show_profile"
-                        android:textSize="16sp" />
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface"
+                        app:thumbTint="@color/sel_switch_thumb"
+                        app:trackTint="@color/sel_switch_track"/>
 
                     <!-- 2. 输入框容器 (默认隐藏，代码控制显示) -->
                     <LinearLayout
@@ -273,18 +283,22 @@
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <!-- 保存按钮 -->
-                        <com.google.android.material.button.MaterialButton
+                        <androidx.appcompat.widget.AppCompatButton
                             android:id="@+id/btnSaveProfile"
-                            style="@style/Widget.Miuix.Button.Tonal"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/settings_save_profile"
+                            android:textSize="15sp"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:background="@drawable/bg_button_tonal"
+                            android:paddingHorizontal="24dp"
+                            android:paddingVertical="10dp"
                             android:layout_marginTop="20dp"
                             android:layout_gravity="center_horizontal"/>
                     </LinearLayout>
 
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </androidx.cardview.widget.CardView>
 
             <Space android:layout_width="match_parent" android:layout_height="24dp"/>
 
@@ -299,10 +313,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
-            <com.google.android.material.card.MaterialCardView
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                style="@style/Widget.Miuix.Card">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHighest">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -310,20 +326,26 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
+                    <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switchGroup"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_grouping"
-                        android:textSize="16sp" />
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface"
+                        app:thumbTint="@color/sel_switch_thumb"
+                        app:trackTint="@color/sel_switch_track"/>
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
+                    <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switchGroupRecent"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_group_recent"
                         android:textSize="16sp"
-                        android:layout_marginTop="8dp"/>
+                        android:textColor="?attr/colorOnSurface"
+                        android:layout_marginTop="8dp"
+                        app:thumbTint="@color/sel_switch_thumb"
+                        app:trackTint="@color/sel_switch_track"/>
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginVertical="12dp" android:alpha="0.5"/>
 
@@ -354,16 +376,17 @@
                             android:paddingVertical="4dp"/>
                     </RadioGroup>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </androidx.cardview.widget.CardView>
 
             <!-- 退出按钮 -->
-            <com.google.android.material.button.MaterialButton
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnLogout"
-                style="@style/Widget.Miuix.Button.Destructive"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:text="@string/settings_logout"
                 android:textSize="15sp"
+                android:textColor="@color/miuix_error"
+                android:background="@drawable/bg_button_destructive"
                 android:layout_marginTop="32dp"
                 android:layout_marginBottom="32dp"/>
 
