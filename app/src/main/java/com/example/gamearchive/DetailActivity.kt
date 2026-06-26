@@ -1,385 +1,624 @@
 package com.example.gamearchive
 
+import android.content.Context
 import android.content.Intent
-import android.graphics.Paint
 import android.os.Bundle
-import android.util.TypedValue
-import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebSettings
 import android.webkit.WebView
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.ProgressBar
-import android.widget.TextView
+import android.webkit.WebViewClient
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import coil.load
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemeController
+import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 
-class DetailActivity : AppCompatActivity() {
+class DetailActivity : ComponentActivity() {
 
-    private val mediaList = mutableListOf<MediaItem>()
-
-    data class MediaItem(val url: String, val thumbnailUrl: String, val isVideo: Boolean)
-
-    private lateinit var tvHistoryLow: TextView
-
-    override fun attachBaseContext(newBase: android.content.Context?) {
+    override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(newBase?.let { LocaleHelper.setLocale(it) })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         ThemeUtils.applyTheme(this)
-        setContentView(R.layout.activity_detail)
-
-        // 1. 获取 AppBar 和 Toolbar
-        val appBar = findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.appBar)
-        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
-
-        // 2. 手动处理状态栏高度，确保 AppBar 完整滑动
-        ViewCompat.setOnApplyWindowInsetsListener(appBar) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Toolbar 用 wrap_content + minHeight，这里加的 top padding 会撑高而不再裁切标题
-            toolbar.setPadding(0, systemBars.top, 0, 0)
-            insets
-        }
-
-        // 3. 彻底关闭 AppBar 滚动时的动态染色 (Material You 残留)
-        appBar.setLiftOnScroll(false)
-        appBar.isLiftOnScroll = false
-        appBar.setBackgroundColor(androidx.core.content.ContextCompat.getColor(this, R.color.list_page_bg))
-        appBar.outlineProvider = null
-        androidx.core.view.ViewCompat.setElevation(appBar, 0f)
+        super.onCreate(savedInstanceState)
 
         val appId = intent.getIntExtra("APP_ID", 0)
         val appName = intent.getStringExtra("APP_NAME") ?: "Unknown"
         val price = intent.getStringExtra("APP_PRICE") ?: ""
 
-        val tvName = findViewById<TextView>(R.id.tvDetailName)
-        val btnBack = findViewById<ImageButton>(R.id.btnBack)
-
-        val tvFinalPrice = findViewById<TextView>(R.id.tvFinalPrice)
-        val tvOriginalPrice = findViewById<TextView>(R.id.tvOriginalPrice)
-        val tvDiscount = findViewById<TextView>(R.id.tvDiscount)
-        tvHistoryLow = findViewById(R.id.tvHistoryLow)
-
-        val tvRelease = findViewById<TextView>(R.id.tvReleaseDate)
-        val tvDeveloper = findViewById<TextView>(R.id.tvDeveloper)
-
-        val wvDesc = findViewById<WebView>(R.id.wvDescription)
-        val progressBar = findViewById<ProgressBar>(R.id.detailProgressBar)
-        val rvScreenshots = findViewById<RecyclerView>(R.id.rvScreenshots)
-
-        val tvReviewSummary = findViewById<TextView>(R.id.tvReviewSummary)
-        val tvReviewPercent = findViewById<TextView>(R.id.tvReviewPercent)
-        val tvReviewCount = findViewById<TextView>(R.id.tvReviewCount)
-        val rvReviews = findViewById<RecyclerView>(R.id.rvReviews)
-        rvReviews.layoutManager = LinearLayoutManager(this)
-
-        tvName.text = appName
-        tvFinalPrice.text = price
-        btnBack.setOnClickListener { finish() }
-
-        wvDesc.setBackgroundColor(0)
-        wvDesc.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            loadWithOverviewMode = true
-            useWideViewPort = true
-            layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
-            mediaPlaybackRequiresUserGesture = false
+        val colorSchemeMode = when (ThemeUtils.getThemeMode(this)) {
+            0 -> ColorSchemeMode.Light
+            1 -> ColorSchemeMode.Dark
+            else -> ColorSchemeMode.System
         }
 
-        mediaList.clear()
-        setupMediaAdapter(rvScreenshots)
-
-        if (appId != 0) {
-            fetchGameDetails(appId, progressBar, wvDesc, tvRelease, rvScreenshots, tvFinalPrice, tvOriginalPrice, tvDiscount, tvDeveloper, tvName)
-            fetchGameReviews(appId, tvReviewSummary, tvReviewPercent, tvReviewCount, rvReviews)
-        }
-    }
-
-    private fun setupMediaAdapter(rv: RecyclerView) {
-        val displayMetrics = resources.displayMetrics
-        val screenWidth = displayMetrics.widthPixels
-        val gapTotal = (8 * displayMetrics.density).toInt()
-        val imageWidth = screenWidth - gapTotal
-        val targetHeight = (imageWidth * 9 / 16)
-
-        rv.layoutParams.height = targetHeight
-        rv.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-
-        val snapHelper = androidx.recyclerview.widget.PagerSnapHelper()
-        snapHelper.attachToRecyclerView(rv)
-
-        rv.setPadding(0, 0, 0, 0)
-        while (rv.itemDecorationCount > 0) rv.removeItemDecorationAt(0)
-
-        rv.adapter = ScreenshotAdapter(mediaList) { position ->
-            val intent = Intent(this, MediaViewerActivity::class.java)
-            intent.putStringArrayListExtra("URLS", ArrayList(mediaList.map { it.url }))
-            intent.putStringArrayListExtra("TYPES", ArrayList(mediaList.map { if (it.isVideo) "video" else "image" }))
-            intent.putExtra("INDEX", position)
-            startActivity(intent)
-        }
-    }
-
-    private fun fetchGameDetails(
-        appId: Int, progressBar: ProgressBar, wvDesc: WebView, tvRelease: TextView,
-        rvScreenshots: RecyclerView, tvFinalPrice: TextView, tvOriginalPrice: TextView, tvDiscount: TextView,
-        tvDeveloper: TextView, tvName: TextView
-    ) {
-        val apiService = MainActivity.apiServiceGlobal
-
-        lifecycleScope.launch {
-            try {
-                val response = apiService.getGameDetails(appId, l = LocaleHelper.currentApiLanguage)
-                val data = response[appId.toString()]?.data
-
-                if (data != null) {
-                    if (!data.name.isNullOrEmpty()) {
-                        tvName.text = data.name
-                    }
-
-                    mediaList.clear()
-
-                    if (!data.movies.isNullOrEmpty()) {
-                        data.movies.take(3).forEach { movie ->
-                            var videoUrl = movie.mp4?.max ?: movie.mp4?.p480 ?: movie.webm?.max ?: movie.webm?.p480
-                            if (videoUrl == null && movie.id != null) {
-                                videoUrl = "https://cdn.cloudflare.steamstatic.com/steam/apps/${movie.id}/movie_max.mp4"
-                            }
-                            val thumbUrl = movie.thumbnail
-                            if (videoUrl != null && thumbUrl != null) {
-                                mediaList.add(MediaItem(videoUrl, thumbUrl, true))
-                            }
-                        }
-                    }
-
-                    if (!data.screenshots.isNullOrEmpty()) {
-                        data.screenshots.take(10).forEach { shot ->
-                            val fullUrl = shot.path_full
-                            val thumbUrl = shot.path_thumbnail
-                            if (fullUrl != null && thumbUrl != null) {
-                                mediaList.add(MediaItem(fullUrl, thumbUrl, false))
-                            }
-                        }
-                    }
-
-                    rvScreenshots.adapter?.notifyDataSetChanged()
-
-                    val unknown = getString(R.string.detail_unknown)
-                    val devs = data.developers?.firstOrNull() ?: unknown
-                    tvDeveloper.text = devs
-                    tvRelease.text = "${data.release_date?.date ?: unknown}"
-
-                    val priceInfo = data.price_overview
-                    if (priceInfo != null) {
-                        if ((priceInfo.discount_percent ?: 0) > 0) {
-                            tvDiscount.visibility = View.VISIBLE
-                            tvDiscount.text = "-${priceInfo.discount_percent}%"
-
-                            tvOriginalPrice.visibility = View.VISIBLE
-                            tvOriginalPrice.text = priceInfo.initial_formatted
-                            tvOriginalPrice.paintFlags = tvOriginalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
-
-                            tvFinalPrice.text = priceInfo.final_formatted
-                            tvFinalPrice.textSize = 18f
-                        } else {
-                            tvDiscount.visibility = View.GONE
-                            tvOriginalPrice.visibility = View.GONE
-                            tvFinalPrice.text = priceInfo.final_formatted
-                            tvFinalPrice.textSize = 22f
-                        }
-                    }
-
-                    var rawDesc = data.detailed_description ?: data.short_description ?: ""
-                    rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*&nbsp;\\s*</p>"), "")
-                    rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*</p>"), "")
-
-                    val isNight = (this@DetailActivity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-                    val bodyColor = String.format("#%06X", androidx.core.content.ContextCompat.getColor(this@DetailActivity, if (isNight) R.color.miuix_text_secondary_dark else R.color.miuix_text_secondary_light) and 0xFFFFFF)
-                    val headColor = String.format("#%06X", androidx.core.content.ContextCompat.getColor(this@DetailActivity, if (isNight) R.color.miuix_text_primary_dark else R.color.miuix_text_primary_light) and 0xFFFFFF)
-                    val linkColor = String.format("#%06X", androidx.core.content.ContextCompat.getColor(this@DetailActivity, if (isNight) R.color.miuix_blue_dark else R.color.miuix_blue) and 0xFFFFFF)
-
-                    val css = """
-                        <style>
-                            * { margin: 0; padding: 0; box-sizing: border-box; max-width: 100%; }
-                            body { background-color: transparent; color: $bodyColor; font-family: sans-serif; width: 100vw; overflow-x: hidden; font-size: 15px !important; line-height: 1.6 !important; }
-                            img, video { display: block !important; max-width: 100% !important; width: auto !important; height: auto !important; border: 0 !important; margin: 0 !important; }
-                            a { color: $linkColor; text-decoration: none; font-weight: bold; }
-                            h1, h2, h3 { margin: 24px 0 12px 0 !important; font-weight: bold; line-height: 1.4 !important; color: $headColor; font-size: 18px !important; }
-                            p { margin-bottom: 12px !important; }
-                            ul, ol { margin-left: 20px !important; margin-bottom: 12px !important; }
-                        </style>
-                    """.trimIndent()
-
-                    val jsScript = """
-                        <script>
-                            document.addEventListener("DOMContentLoaded", function() {
-                                var elements = document.body.querySelectorAll('p, div, span, a, h1, h2, h3, li');
-                                for (var i = 0; i < elements.length; i++) {
-                                    var el = elements[i];
-                                    var hasImg = el.querySelector('img') || el.querySelector('video');
-                                    var textContent = el.innerText.replace(/\s/g, ''); 
-                                    var hasText = textContent.length > 0;
-                                    if (hasImg) {
-                                        if (!hasText) {
-                                            el.style.margin = '0'; el.style.padding = '0'; el.style.lineHeight = '0'; el.style.fontSize = '0'; el.style.display = 'block';
-                                        } else {
-                                            el.style.display = 'block';
-                                        }
-                                    }
-                                }
-                                var bbSpans = document.querySelectorAll('.bb_img_ctn');
-                                for (var j = 0; j < bbSpans.length; j++) { bbSpans[j].style.display = 'block'; bbSpans[j].style.lineHeight = '0'; bbSpans[j].style.margin = '0'; }
-                            });
-                        </script>
-                    """.trimIndent()
-
-                    val finalHtml = "<html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no\">$css</head><body>$rawDesc $jsScript</body></html>"
-                    wvDesc.loadDataWithBaseURL(null, finalHtml, "text/html", "utf-8", null)
-
-                    progressBar.visibility = View.GONE
-                }
-            } catch (e: Exception) {
-                progressBar.visibility = View.GONE
+        setContent {
+            MiuixTheme(controller = ThemeController(colorSchemeMode = colorSchemeMode)) {
+                DetailScreen(appId = appId, appName = appName, price = price, onBack = { finish() })
             }
         }
-    }
-
-
-    private fun fetchGameReviews(appId: Int, tvSummary: TextView, tvPercent: TextView, tvCount: TextView, rvReviews: RecyclerView) {
-        val apiService = MainActivity.apiServiceGlobal
-
-        lifecycleScope.launch {
-            try {
-                val response = apiService.getGameReviews(appId, l = LocaleHelper.currentApiLanguage, count = 50)
-                val summary = response.query_summary
-
-                if (summary != null && summary.total_reviews > 0) {
-                    val rate = (summary.total_positive.toDouble() / summary.total_reviews.toDouble() * 100).toInt()
-
-                    tvSummary.text = summary.review_score_desc ?: getString(R.string.general_no_data)
-                    tvPercent.text = "$rate%"
-                    tvCount.text = "(${summary.total_reviews})"
-
-                    val color = when {
-                        rate >= 95 -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_great)
-                        rate >= 70 -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_good)
-                        rate >= 40 -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_mixed)
-                        else -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_poor)
-                    }
-
-                    tvSummary.setTextColor(color)
-                } else {
-                    tvSummary.text = getString(R.string.general_no_data)
-                    tvPercent.text = "--%"
-                }
-
-                val reviews = response.reviews
-                if (!reviews.isNullOrEmpty()) {
-                    rvReviews.adapter = ReviewAdapter(reviews)
-                    rvReviews.visibility = View.VISIBLE
-                } else {
-                    rvReviews.visibility = View.GONE
-                }
-
-            } catch (e: Exception) {
-                tvSummary.text = getString(R.string.general_load_failed)
-            }
-        }
-    }
-
-    // 画廊适配器
-    class ScreenshotAdapter(private val items: List<MediaItem>, private val onClick: (Int) -> Unit) : RecyclerView.Adapter<ScreenshotAdapter.ViewHolder>() {
-
-        class ViewHolder(view: android.view.View) : RecyclerView.ViewHolder(view) {
-            val image: ImageView = view.findViewById(R.id.ivScreenshot)
-            val overlay: android.view.View = view.findViewById(R.id.vVideoOverlay)
-            val playIcon: ImageView = view.findViewById(R.id.ivPlayIcon)
-        }
-
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int) = ViewHolder(
-            android.view.LayoutInflater.from(parent.context).inflate(R.layout.item_screenshot, parent, false)
-        ).apply {
-            itemView.layoutParams = android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = items[position]
-            holder.image.load(item.thumbnailUrl) { crossfade(true) }
-            if (item.isVideo) {
-                holder.overlay.visibility = android.view.View.VISIBLE
-                holder.playIcon.visibility = android.view.View.VISIBLE
-            } else {
-                holder.overlay.visibility = android.view.View.GONE
-                holder.playIcon.visibility = android.view.View.GONE
-            }
-            holder.itemView.setOnClickListener { onClick(position) }
-        }
-        override fun getItemCount() = items.size
-    }
-
-    // 评论适配器
-    class ReviewAdapter(private val reviews: List<SteamReview>) : RecyclerView.Adapter<ReviewAdapter.ViewHolder>() {
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val tvVoteState: TextView = view.findViewById(R.id.tvVoteState)
-            val ivVoteIcon: ImageView = view.findViewById(R.id.ivVoteIcon)
-            val tvPlaytime: TextView = view.findViewById(R.id.tvPlaytime)
-            val tvDate: TextView = view.findViewById(R.id.tvDate)
-            val tvContent: TextView = view.findViewById(R.id.tvContent)
-            val tvHelpful: TextView = view.findViewById(R.id.tvHelpful)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = ViewHolder(
-            LayoutInflater.from(parent.context).inflate(R.layout.item_review, parent, false)
-        )
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = reviews[position]
-
-            if (item.voted_up) {
-                holder.tvVoteState.text = holder.itemView.context.getString(R.string.review_recommended)
-                holder.tvVoteState.setTextColor(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_success))
-                holder.ivVoteIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_success))
-                holder.ivVoteIcon.setImageResource(R.drawable.ic_thumb_up)
-            } else {
-                holder.tvVoteState.text = holder.itemView.context.getString(R.string.review_not_recommended)
-                holder.tvVoteState.setTextColor(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_error))
-                holder.ivVoteIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_error))
-                holder.ivVoteIcon.setImageResource(R.drawable.ic_thumb_down)
-            }
-
-            val hours = item.author.playtime_forever / 60
-            holder.tvPlaytime.text = holder.itemView.context.getString(R.string.review_playtime, hours)
-
-            val date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                .format(java.util.Date(item.timestamp_created * 1000))
-            holder.tvDate.text = date
-
-            var content = item.review.replace(Regex("\\[.*?\\]"), "")
-            holder.tvContent.text = content
-
-            if (item.votes_up > 0) {
-                holder.tvHelpful.visibility = View.VISIBLE
-                holder.tvHelpful.text = holder.itemView.context.getString(R.string.review_helpful, item.votes_up)
-            } else {
-                holder.tvHelpful.visibility = View.GONE
-            }
-        }
-        override fun getItemCount() = reviews.size
     }
 }
+
+// ── Compose 颜色常量（映射 colors.xml） ──
+private val ReviewGreat  = Color(0xFFE65100)
+private val ReviewGood   = Color(0xFF1565C0)
+private val ReviewMixed  = Color(0xFF616161)
+private val ReviewPoor   = Color(0xFFD32F2F)
+private val SuccessGreen = Color(0xFF4CAF50)
+private val ErrorRed     = Color(0xFFD32F2F)
+private val AccentBlue   = Color(0xFF3482FF)
+private val ReviewBlue   = Color(0xFF66C0F4)
+private val InsetCardBg  = Color(0xFFF4F5F7)
+private val HistoryLow   = Color(0xFFFF9800)
+
+// ── 媒体条目 ──
+private data class MediaItem(val url: String, val thumbnailUrl: String, val isVideo: Boolean)
+
+@Composable
+private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () -> Unit) {
+    val context = LocalContext.current
+
+    // 数据状态
+    var gameName by remember { mutableStateOf(appName) }
+    var finalPrice by remember { mutableStateOf(price) }
+    var originalPrice by remember { mutableStateOf("") }
+    var discountPercent by remember { mutableIntStateOf(0) }
+    var releaseDate by remember { mutableStateOf("") }
+    var developer by remember { mutableStateOf("") }
+    var descriptionHtml by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // 评价状态
+    var reviewSummary by remember { mutableStateOf("") }
+    var reviewPercent by remember { mutableIntStateOf(-1) }
+    var reviewCount by remember { mutableIntStateOf(0) }
+    var reviews by remember { mutableStateOf<List<SteamReview>>(emptyList()) }
+
+    val mediaList = remember { mutableStateListOf<MediaItem>() }
+
+    // 状态栏高度
+    val statusBarHeight = remember {
+        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+        if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
+    }
+    val statusBarDp = with(LocalDensity.current) { statusBarHeight.toDp() }
+
+    // 屏幕宽度（用于媒体画廊高度计算）
+    val screenWidth = context.resources.displayMetrics.widthPixels
+    val mediaHeight = with(LocalDensity.current) { (screenWidth * 9 / 16).toDp() }
+
+    // 加载数据
+    LaunchedEffect(appId) {
+        if (appId == 0) { isLoading = false; return@LaunchedEffect }
+        try {
+            val api = MainActivity.apiServiceGlobal
+            val l = LocaleHelper.currentApiLanguage
+
+            val detailsResp = try { api.getGameDetails(appId, l = l) } catch (_: Exception) { null }
+            val reviewsResp = try { api.getGameReviews(appId, l = l, count = 50) } catch (_: Exception) { null }
+
+            val data = detailsResp?.get(appId.toString())?.data
+            if (data != null) {
+                if (!data.name.isNullOrEmpty()) gameName = data.name
+
+                // 媒体
+                data.movies?.take(3)?.forEach { movie ->
+                    val videoUrl = movie.mp4?.max ?: movie.mp4?.p480
+                        ?: movie.webm?.max ?: movie.webm?.p480
+                        ?: if (movie.id != null) "https://cdn.cloudflare.steamstatic.com/steam/apps/${movie.id}/movie_max.mp4" else null
+                    val thumb = movie.thumbnail
+                    if (videoUrl != null && thumb != null)
+                        mediaList.add(MediaItem(videoUrl, thumb, true))
+                }
+                data.screenshots?.take(10)?.forEach { shot ->
+                    val full = shot.path_full
+                    val thumb = shot.path_thumbnail
+                    if (full != null && thumb != null)
+                        mediaList.add(MediaItem(full, thumb, false))
+                }
+
+                // 开发商 / 日期
+                releaseDate = data.release_date?.date ?: context.getString(R.string.detail_unknown)
+                developer = data.developers?.firstOrNull() ?: context.getString(R.string.detail_unknown)
+
+                // 价格
+                val pi = data.price_overview
+                if (pi != null) {
+                    finalPrice = pi.final_formatted ?: finalPrice
+                    if ((pi.discount_percent ?: 0) > 0) {
+                        discountPercent = pi.discount_percent!!
+                        originalPrice = pi.initial_formatted ?: ""
+                    }
+                }
+
+                // 描述 HTML
+                var rawDesc = data.detailed_description ?: data.short_description ?: ""
+                rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*&nbsp;\\s*</p>"), "")
+                rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*</p>"), "")
+
+                val isNight = (context.resources.configuration.uiMode and
+                        android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                        android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+                val bodyColor = String.format("#%06X", (if (isNight) 0xFF9A9A9F.toInt() else 0xFF8A8A8F.toInt()) and 0xFFFFFF)
+                val headColor = String.format("#%06X", (if (isNight) 0xFFF2F2F2.toInt() else 0xFF000000.toInt()) and 0xFFFFFF)
+                val linkColor = String.format("#%06X", (if (isNight) 0xFF5E9BFF.toInt() else 0xFF3482FF.toInt()) and 0xFFFFFF)
+
+                val css = """
+                    <style>
+                        * { margin:0;padding:0;box-sizing:border-box;max-width:100%; }
+                        body { background:transparent;color:$bodyColor;font-family:sans-serif;width:100vw;overflow-x:hidden;font-size:15px;line-height:1.6; }
+                        img,video { display:block!important;max-width:100%!important;width:auto!important;height:auto!important;border:0!important;margin:0!important; }
+                        a { color:$linkColor;text-decoration:none;font-weight:bold; }
+                        h1,h2,h3 { margin:24px 0 12px 0!important;font-weight:bold;line-height:1.4!important;color:$headColor;font-size:18px!important; }
+                        p { margin-bottom:12px!important; }
+                        ul,ol { margin-left:20px!important;margin-bottom:12px!important; }
+                    </style>
+                """.trimIndent()
+
+                val jsScript = """
+                    <script>
+                        document.addEventListener("DOMContentLoaded",function(){
+                            var els=document.body.querySelectorAll('p,div,span,a,h1,h2,h3,li');
+                            for(var i=0;i<els.length;i++){
+                                var el=els[i];
+                                var hasImg=el.querySelector('img')||el.querySelector('video');
+                                var hasText=el.innerText.replace(/\s/g,'').length>0;
+                                if(hasImg&&!hasText){el.style.margin='0';el.style.padding='0';el.style.lineHeight='0';el.style.fontSize='0';el.style.display='block';}
+                                else if(hasImg){el.style.display='block';}
+                            }
+                            var bb=document.querySelectorAll('.bb_img_ctn');
+                            for(var j=0;j<bb.length;j++){bb[j].style.display='block';bb[j].style.lineHeight='0';bb[j].style.margin='0';}
+                        });
+                    </script>
+                """.trimIndent()
+
+                descriptionHtml = "<html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no\">$css</head><body>$rawDesc $jsScript</body></html>"
+            }
+
+            // 评价
+            val summary = reviewsResp?.query_summary
+            if (summary != null && summary.total_reviews > 0) {
+                reviewSummary = summary.review_score_desc ?: context.getString(R.string.general_no_data)
+                reviewPercent = (summary.total_positive.toDouble() / summary.total_reviews.toDouble() * 100).toInt()
+                reviewCount = summary.total_reviews
+                reviews = reviewsResp.reviews ?: emptyList()
+            } else {
+                reviewSummary = context.getString(R.string.general_no_data)
+            }
+        } catch (_: Exception) { }
+        isLoading = false
+    }
+
+    // ── UI ──
+    val scrollState = rememberScrollState()
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 顶栏
+        Surface(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, end = 8.dp)
+                    .padding(top = statusBarDp + 4.dp)
+                    .height(52.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_back),
+                        contentDescription = "Back",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Text(
+                    text = gameName,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(end = 48.dp)
+                )
+            }
+        }
+
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                InfiniteProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(bottom = 48.dp)
+            ) {
+                // ── 媒体画廊 ──
+                if (mediaList.isNotEmpty()) {
+                    val pagerState = rememberPagerState(pageCount = { mediaList.size })
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(mediaHeight)
+                            .padding(top = 8.dp)
+                    ) { page ->
+                        val item = mediaList[page]
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black)
+                                .clickable {
+                                    val intent = Intent(context, MediaViewerActivity::class.java)
+                                    intent.putStringArrayListExtra("URLS", ArrayList(mediaList.map { it.url }))
+                                    intent.putStringArrayListExtra("TYPES", ArrayList(mediaList.map { if (it.isVideo) "video" else "image" }))
+                                    intent.putExtra("INDEX", page)
+                                    context.startActivity(intent)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(item.thumbnailUrl).crossfade(true).build(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            if (item.isVideo) {
+                                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
+                                Image(
+                                    painter = painterResource(android.R.drawable.ic_media_play),
+                                    contentDescription = "Play",
+                                    modifier = Modifier.size(48.dp),
+                                    colorFilter = ColorFilter.tint(Color.White)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── 价格 + 评价卡片 ──
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // 价格卡片
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        cornerRadius = 16.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (discountPercent > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(DiscountGreen, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 8.dp, vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "-$discountPercent%",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF000400)
+                                    )
+                                }
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 4.dp),
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                if (originalPrice.isNotEmpty()) {
+                                    Text(
+                                        text = originalPrice,
+                                        fontSize = 10.sp,
+                                        color = Color.Gray,
+                                        textDecoration = TextDecoration.LineThrough
+                                    )
+                                }
+                                Text(
+                                    text = finalPrice,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = if (discountPercent > 0) 18.sp else 22.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // 评价卡片
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        cornerRadius = 16.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = reviewSummary.ifEmpty { context.getString(R.string.detail_loading_review) },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = when {
+                                    reviewPercent >= 95 -> ReviewGreat
+                                    reviewPercent >= 70 -> ReviewGood
+                                    reviewPercent >= 40 -> ReviewMixed
+                                    reviewPercent >= 0 -> ReviewPoor
+                                    else -> ReviewBlue
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (reviewPercent >= 0) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "$reviewPercent%", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(
+                                        text = context.getString(R.string.detail_positive),
+                                        fontSize = 10.sp,
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(start = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "($reviewCount)",
+                                    fontSize = 10.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── 开发商 + 日期 ──
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp)
+                ) {
+                    // 开发商
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(
+                                painter = painterResource(R.drawable.ic_business),
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                colorFilter = ColorFilter.tint(Color.Gray)
+                            )
+                            Text(
+                                text = context.getString(R.string.detail_developer),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                        Text(
+                            text = developer,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = AccentBlue,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    // 日期
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = context.getString(R.string.detail_release_date),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Image(
+                                painter = painterResource(R.drawable.ic_calendar),
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                colorFilter = ColorFilter.tint(Color.Gray)
+                            )
+                        }
+                        Text(
+                            text = releaseDate,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+
+                // 分割线
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(1.dp)
+                        .background(Color.Gray.copy(alpha = 0.2f))
+                )
+
+                // ── 简介标题 ──
+                Text(
+                    text = context.getString(R.string.detail_about),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
+                )
+
+                // ── 简介 WebView ──
+                if (descriptionHtml.isNotEmpty()) {
+                    AndroidView(
+                        factory = { ctx ->
+                            WebView(ctx).apply {
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                                setBackgroundColor(0)
+                                isVerticalScrollBarEnabled = false
+                                settings.apply {
+                                    javaScriptEnabled = true
+                                    domStorageEnabled = true
+                                    loadWithOverviewMode = true
+                                    useWideViewPort = true
+                                    layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
+                                    mediaPlaybackRequiresUserGesture = false
+                                }
+                                webViewClient = object : WebViewClient() {
+                                    override fun onPageFinished(view: WebView?, url: String?) {
+                                        super.onPageFinished(view, url)
+                                        // 注入 JS 后请求重新布局
+                                        view?.evaluateJavascript("document.body.scrollHeight") { }
+                                    }
+                                }
+                                loadDataWithBaseURL(null, descriptionHtml, "text/html", "utf-8", null)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .defaultMinSize(minHeight = 200.dp)
+                    )
+                }
+
+                // ── 评价标题 ──
+                if (reviews.isNotEmpty()) {
+                    Text(
+                        text = context.getString(R.string.detail_reviews_title),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 12.dp)
+                    )
+
+                    // ── 评价列表 ──
+                    reviews.forEach { review ->
+                        ReviewItem(review = review)
+                    }
+                }
+
+                // 底部间距
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewItem(review: SteamReview) {
+    val context = LocalContext.current
+    val hours = review.author.playtime_forever / 60
+    val date = remember(review.timestamp_created) {
+        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date(review.timestamp_created * 1000))
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        cornerRadius = 16.dp
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // 头部
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(
+                                if (review.voted_up) R.drawable.ic_thumb_up else R.drawable.ic_thumb_down
+                            ),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            colorFilter = ColorFilter.tint(
+                                if (review.voted_up) SuccessGreen else ErrorRed
+                            )
+                        )
+                        Text(
+                            text = context.getString(
+                                if (review.voted_up) R.string.review_recommended else R.string.review_not_recommended
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(start = 4.dp),
+                            color = if (review.voted_up) SuccessGreen else ErrorRed
+                        )
+                    }
+                    Text(
+                        text = context.getString(R.string.review_playtime, hours),
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+                Text(text = date, fontSize = 11.sp, color = Color.Gray)
+            }
+
+            // 分割线
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .padding(vertical = 8.dp)
+                    .background(Color.Gray.copy(alpha = 0.3f))
+            )
+
+            // 内容
+            Text(
+                text = review.review.replace(Regex("\\[.*?\\]"), ""),
+                fontSize = 14.sp,
+                lineHeight = 20.sp
+            )
+
+            // 点赞数
+            if (review.votes_up > 0) {
+                Text(
+                    text = context.getString(R.string.review_helpful, review.votes_up),
+                    fontSize = 10.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+private val DiscountGreen = Color(0xFFA1CD44)

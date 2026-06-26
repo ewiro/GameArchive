@@ -42,12 +42,10 @@
         <!-- 详情页 -->
         <activity
             android:name=".DetailActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar"/>
+            android:exported="false" />
 
         <activity
-            android:name=".MediaViewerActivity"
-            android:theme="@style/Theme.AppCompat.NoActionBar"/>
+            android:name=".MediaViewerActivity" />
 
     </application>
 

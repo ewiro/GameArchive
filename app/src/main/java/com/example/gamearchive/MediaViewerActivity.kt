@@ -1,90 +1,161 @@
 package com.example.gamearchive
 
+import android.content.Context
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.MediaController
-import android.widget.ProgressBar
 import android.widget.VideoView
-import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
-import coil.load
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
 
-class MediaViewerActivity : AppCompatActivity() {
+class MediaViewerActivity : ComponentActivity() {
 
-    override fun attachBaseContext(newBase: android.content.Context?) {
+    override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(newBase?.let { LocaleHelper.setLocale(it) })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_media_viewer)
 
-        // 获取传递过来的媒体数据
         val urls = intent.getStringArrayListExtra("URLS") ?: arrayListOf()
         val types = intent.getStringArrayListExtra("TYPES") ?: arrayListOf()
         val startIndex = intent.getIntExtra("INDEX", 0)
 
-        val viewPager = findViewById<ViewPager2>(R.id.viewPager)
-        val btnClose = findViewById<View>(R.id.btnClose)
-
-        // 设置适配器并跳转到用户点击的位置
-        viewPager.adapter = MediaPagerAdapter(urls, types)
-        viewPager.setCurrentItem(startIndex, false)
-
-        btnClose.setOnClickListener { finish() }
+        setContent {
+            MediaViewerScreen(
+                urls = urls,
+                types = types,
+                startIndex = startIndex,
+                onClose = { finish() }
+            )
+        }
     }
+}
 
-    // 媒体翻页适配器，支持图片和视频
-    class MediaPagerAdapter(private val urls: List<String>, private val types: List<String>) :
-        RecyclerView.Adapter<MediaPagerAdapter.ViewHolder>() {
+@Composable
+private fun MediaViewerScreen(
+    urls: List<String>,
+    types: List<String>,
+    startIndex: Int,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+    val pagerState = rememberPagerState(pageCount = { urls.size }, initialPage = startIndex)
 
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val ivImage: ImageView = view.findViewById(R.id.ivFullImage)
-            val videoView: VideoView = view.findViewById(R.id.videoView)
-            val progressBar: ProgressBar = view.findViewById(R.id.progressBar)
-        }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        // 媒体翻页
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1
+        ) { page ->
+            val url = urls[page]
+            val type = types.getOrElse(page) { "image" }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_media_page, parent, false))
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val url = urls[position]
-            val type = types[position]
-
-            if (type == "image") {
-                // 图片模式：显示ImageView，隐藏VideoView
-                holder.ivImage.visibility = View.VISIBLE
-                holder.videoView.visibility = View.GONE
-                holder.progressBar.visibility = View.GONE
-                holder.ivImage.load(url)
-            } else {
-                // 视频模式：显示VideoView，加载时显示进度条
-                holder.ivImage.visibility = View.GONE
-                holder.videoView.visibility = View.VISIBLE
-                holder.progressBar.visibility = View.VISIBLE
-
-                val mediaController = MediaController(holder.itemView.context)
-                mediaController.setAnchorView(holder.videoView)
-                holder.videoView.setMediaController(mediaController)
-                holder.videoView.setVideoURI(Uri.parse(url))
-
-                holder.videoView.setOnPreparedListener { mp ->
-                    holder.progressBar.visibility = View.GONE
-                    mp.start() // 准备就绪后自动播放
-                }
-                holder.videoView.setOnErrorListener { _, _, _ ->
-                    holder.progressBar.visibility = View.GONE
-                    false
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (type == "image") {
+                    // 图片：AsyncImage 填满屏幕
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    // 视频：AndroidView 包装 VideoView
+                    MediaVideoPlayer(url = url)
                 }
             }
         }
 
-        override fun getItemCount() = urls.size
+        // 关闭按钮
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(24.dp)
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(onClick = onClose),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(android.R.drawable.ic_menu_close_clear_cancel),
+                contentDescription = "Close",
+                modifier = Modifier.size(28.dp),
+                colorFilter = ColorFilter.tint(Color.White)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MediaVideoPlayer(url: String) {
+    var isLoading by remember { mutableStateOf(true) }
+    var videoViewRef by remember { mutableStateOf<VideoView?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        AndroidView(
+            factory = { ctx ->
+                VideoView(ctx).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    setVideoURI(Uri.parse(url))
+                    setOnPreparedListener { mp: MediaPlayer ->
+                        isLoading = false
+                        mp.start()
+                    }
+                    setOnErrorListener { _, _, _ ->
+                        isLoading = false
+                        false
+                    }
+                    videoViewRef = this
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        if (isLoading) {
+            top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = Color.White
+            )
+        }
+    }
+
+    // 离开页面时停止播放
+    DisposableEffect(Unit) {
+        onDispose {
+            videoViewRef?.stopPlayback()
+        }
     }
 }
