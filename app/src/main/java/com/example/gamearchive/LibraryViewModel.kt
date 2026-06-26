@@ -39,17 +39,19 @@ class LibraryViewModel : ViewModel() {
 
     // 数据是否已经加载过（避免重复联网）
     private var hasLoaded = false
+    // 上次加载时使用的语言，切换语言时强制重新抓取
+    private var lastLanguage: String? = null
 
-    /** 界面首次进入时调用：已经有数据就不重复加载 */
+    /** 界面首次进入时调用：已经有数据就不重复加载（语言未变时） */
     fun loadIfNeeded(apiKey: String, steamId: String) {
-        if (hasLoaded) return
+        if (hasLoaded && lastLanguage == LocaleHelper.currentApiLanguage) return
         refresh(apiKey, steamId)
     }
 
     /** 下拉刷新或首次加载 */
     fun refresh(apiKey: String, steamId: String) {
         if (apiKey.isEmpty() || steamId.isEmpty()) {
-            _error.value = "请先登录"
+            _error.value = "Please login first"
             return
         }
 
@@ -91,8 +93,9 @@ class LibraryViewModel : ViewModel() {
                 _player.value = playerInfo
                 _level.value = playerLevel
                 hasLoaded = true
+                lastLanguage = LocaleHelper.currentApiLanguage
             } catch (e: Exception) {
-                _error.value = "加载失败: ${e.message}"
+                _error.value = "Load failed: ${e.message}"
                 e.printStackTrace()
             } finally {
                 _loading.value = false
@@ -104,14 +107,14 @@ class LibraryViewModel : ViewModel() {
         if (games.isEmpty()) return
         try {
             val ids = games.joinToString(",") { it.appid.toString() }
-            val response = MainActivity.apiServiceGlobal.getGamePrices(ids)
+            val response = MainActivity.apiServiceGlobal.getGamePrices(ids, l = LocaleHelper.currentApiLanguage)
 
             for ((idStr, details) in response) {
                 val id = idStr.toInt()
                 if (details.success && details.data?.price_overview != null) {
                     priceMap[id] = details.data.price_overview.final_formatted ?: "¥ --"
                 } else {
-                    priceMap[id] = "免费/未知"
+                    priceMap[id] = "Free/Unknown"
                 }
             }
         } catch (e: Exception) { }

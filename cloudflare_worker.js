@@ -12,9 +12,12 @@ export default {
         url.pathname.includes('/search/results')) {
 
       url.hostname = "store.steampowered.com";
-      // 强制国区中文
+      // 保留客户端传入的语言参数；未指定时默认中文
+      if (!url.searchParams.has("l")) {
+        url.searchParams.set("l", "schinese");
+      }
+      // 强制国区以保持人民币价格
       url.searchParams.set("cc", "cn");
-      url.searchParams.set("l", "schinese");
     } else {
       // 其他请求 (如 IPlayerService) 转发到 api.steampowered.com
       url.hostname = "api.steampowered.com";

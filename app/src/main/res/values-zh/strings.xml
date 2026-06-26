@@ -1,0 +1,101 @@
+<resources>
+    <string name="app_name">Game Archive</string>
+
+    <!-- Login -->
+    <string name="login_title">Game Archive</string>
+    <string name="login_subtitle">请输入您的 Steam 信息</string>
+    <string name="login_steam_id_hint">Steam ID</string>
+    <string name="login_api_key_hint">Web API Key</string>
+    <string name="login_button">登 录</string>
+    <string name="login_help">如何获取这些信息？</string>
+    <string name="login_empty_fields">请填写完整信息</string>
+    <string name="login_success">登录成功</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_library">库存</string>
+    <string name="nav_specials">特惠</string>
+
+    <!-- Library -->
+    <string name="library_title">库存</string>
+    <string name="library_group_recent">近期活跃 (%d)</string>
+    <string name="library_group_played">已玩游戏 (%d)</string>
+    <string name="library_group_unplayed">堆积库存 (%d)</string>
+
+    <!-- Specials -->
+    <string name="specials_title">特惠</string>
+    <string name="specials_filter_title">筛选内容</string>
+    <string name="specials_filter_hide_owned">隐藏已在库中的游戏</string>
+    <string name="specials_sort_title">排序方式</string>
+    <string name="specials_sort_sales">销量 (默认)</string>
+    <string name="specials_sort_price_asc">现价 (低 → 高)</string>
+    <string name="specials_sort_price_desc">现价 (高 → 低)</string>
+    <string name="specials_sort_discount">折扣 (高 → 低)</string>
+    <string name="specials_sort_rating">好评率 (高 → 低)</string>
+    <string name="specials_confirm">确定</string>
+    <string name="specials_no_data">暂无数据</string>
+
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="settings_appearance">外观设置</string>
+    <string name="settings_dark_mode">深色模式</string>
+    <string name="settings_follow_system">跟随系统</string>
+    <string name="settings_light">浅色</string>
+    <string name="settings_dark">深色</string>
+    <string name="settings_pure_black">纯黑背景 (AMOLED)</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_lang_follow_system">跟随系统</string>
+    <string name="settings_lang_chinese">中文</string>
+    <string name="settings_lang_english">English</string>
+    <string name="settings_profile">个人资料</string>
+    <string name="settings_show_profile">显示个人资料卡片</string>
+    <string name="settings_avatar_url">自定义头像 URL</string>
+    <string name="settings_avatar_hint">支持 GIF，留空则使用官方头像</string>
+    <string name="settings_bg_url">背景图片 URL</string>
+    <string name="settings_bg_hint">留空则显示纯色主题背景</string>
+    <string name="settings_frame_url">头像挂件 URL</string>
+    <string name="settings_frame_hint">必须为 PNG 格式，留空隐藏</string>
+    <string name="settings_save_profile">保存链接设置</string>
+    <string name="settings_profile_saved">个人资料设置已更新</string>
+    <string name="settings_library">库存列表设置</string>
+    <string name="settings_grouping">开启状态分组</string>
+    <string name="settings_group_recent">单独显示 \'近期活跃\' 分组</string>
+    <string name="settings_sort_mode">默认排序方式</string>
+    <string name="settings_sort_playtime">按游戏时长 (从高到低)</string>
+    <string name="settings_sort_name">按名称 (A-Z)</string>
+    <string name="settings_logout">退出登录 / 切换账号</string>
+
+    <!-- Detail -->
+    <string name="detail_about">ABOUT THIS GAME</string>
+    <string name="detail_reviews_title">玩家评测</string>
+    <string name="detail_loading_review">评价加载中…</string>
+    <string name="detail_positive"> 好评</string>
+    <string name="detail_developer">开发商</string>
+    <string name="detail_release_date">发行日期</string>
+    <string name="detail_history_low">史低</string>
+    <string name="detail_unknown">未知</string>
+
+    <!-- Reviews -->
+    <string name="review_recommended">推荐</string>
+    <string name="review_not_recommended">不推荐</string>
+    <string name="review_playtime">总时数 %d 小时</string>
+    <string name="review_helpful">%d 人觉得有用</string>
+
+    <!-- Price -->
+    <string name="price_free">免费/未知</string>
+
+    <!-- Profile Header -->
+    <string name="profile_online">● 在线</string>
+    <string name="profile_offline">● 离线</string>
+    <string name="profile_playing">正在游戏</string>
+    <string name="profile_playtime_label">游戏时长</string>
+    <string name="profile_count_label">库存数量</string>
+
+    <!-- Review Score Format -->
+    <string name="review_score_format">%d%% 好评</string>
+
+    <!-- General -->
+    <string name="general_load_failed">加载失败</string>
+    <string name="general_error">错误: %s</string>
+    <string name="general_no_data">未获取到数据</string>
+    <string name="general_please_login">请先登录</string>
+</resources>

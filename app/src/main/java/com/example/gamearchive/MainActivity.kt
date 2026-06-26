@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,10 @@ class MainActivity : AppCompatActivity() {
         lateinit var apiServiceGlobal: SteamApiService
     }
 
+    override fun attachBaseContext(newBase: Context?) {
+        super.attachBaseContext(newBase?.let { LocaleHelper.setLocale(it) })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeUtils.applyTheme(this)
         super.onCreate(savedInstanceState)
@@ -33,6 +38,9 @@ class MainActivity : AppCompatActivity() {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         apiServiceGlobal = retrofit.create(SteamApiService::class.java)
+
+        // 初始化 API 语言参数（供 ViewModel 等无 Context 的地方使用）
+        LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(this)
 
         val viewPager = findViewById<ViewPager2>(R.id.viewPager)
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)

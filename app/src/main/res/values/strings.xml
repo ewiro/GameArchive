@@ -1,3 +1,101 @@
 <resources>
     <string name="app_name">Game Archive</string>
+
+    <!-- Login -->
+    <string name="login_title">Game Archive</string>
+    <string name="login_subtitle">Enter your Steam information</string>
+    <string name="login_steam_id_hint">Steam ID</string>
+    <string name="login_api_key_hint">Web API Key</string>
+    <string name="login_button">LOG IN</string>
+    <string name="login_help">How to get this info?</string>
+    <string name="login_empty_fields">Please fill in all fields</string>
+    <string name="login_success">Login successful</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_library">Library</string>
+    <string name="nav_specials">Specials</string>
+
+    <!-- Library -->
+    <string name="library_title">Library</string>
+    <string name="library_group_recent">Recently Active (%d)</string>
+    <string name="library_group_played">Played (%d)</string>
+    <string name="library_group_unplayed">Backlog (%d)</string>
+
+    <!-- Specials -->
+    <string name="specials_title">Specials</string>
+    <string name="specials_filter_title">Filter</string>
+    <string name="specials_filter_hide_owned">Hide owned games</string>
+    <string name="specials_sort_title">Sort by</string>
+    <string name="specials_sort_sales">Sales (Default)</string>
+    <string name="specials_sort_price_asc">Price (Low → High)</string>
+    <string name="specials_sort_price_desc">Price (High → Low)</string>
+    <string name="specials_sort_discount">Discount (High → Low)</string>
+    <string name="specials_sort_rating">Rating (High → Low)</string>
+    <string name="specials_confirm">OK</string>
+    <string name="specials_no_data">No data</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_dark_mode">Dark Mode</string>
+    <string name="settings_follow_system">Follow System</string>
+    <string name="settings_light">Light</string>
+    <string name="settings_dark">Dark</string>
+    <string name="settings_pure_black">Pure Black (AMOLED)</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_lang_follow_system">Follow System</string>
+    <string name="settings_lang_chinese">中文</string>
+    <string name="settings_lang_english">English</string>
+    <string name="settings_profile">Profile</string>
+    <string name="settings_show_profile">Show profile card</string>
+    <string name="settings_avatar_url">Custom Avatar URL</string>
+    <string name="settings_avatar_hint">Supports GIF, empty for official avatar</string>
+    <string name="settings_bg_url">Background Image URL</string>
+    <string name="settings_bg_hint">Empty for solid color background</string>
+    <string name="settings_frame_url">Avatar Frame URL</string>
+    <string name="settings_frame_hint">Must be PNG, empty to hide</string>
+    <string name="settings_save_profile">Save Profile Settings</string>
+    <string name="settings_profile_saved">Profile settings saved</string>
+    <string name="settings_library">Library Settings</string>
+    <string name="settings_grouping">Enable status grouping</string>
+    <string name="settings_group_recent">Show \'Recently Active\' group</string>
+    <string name="settings_sort_mode">Default Sort Mode</string>
+    <string name="settings_sort_playtime">By Playtime (High to Low)</string>
+    <string name="settings_sort_name">By Name (A-Z)</string>
+    <string name="settings_logout">Sign Out / Switch Account</string>
+
+    <!-- Detail -->
+    <string name="detail_about">ABOUT THIS GAME</string>
+    <string name="detail_reviews_title">PLAYER REVIEWS</string>
+    <string name="detail_loading_review">Loading reviews…</string>
+    <string name="detail_positive"> Positive</string>
+    <string name="detail_developer">Developer</string>
+    <string name="detail_release_date">Release Date</string>
+    <string name="detail_history_low">Historical Low</string>
+    <string name="detail_unknown">Unknown</string>
+
+    <!-- Reviews -->
+    <string name="review_recommended">Recommended</string>
+    <string name="review_not_recommended">Not Recommended</string>
+    <string name="review_playtime">Total playtime: %d hours</string>
+    <string name="review_helpful">%d people found helpful</string>
+
+    <!-- Price -->
+    <string name="price_free">Free / Unknown</string>
+
+    <!-- Profile Header -->
+    <string name="profile_online">● Online</string>
+    <string name="profile_offline">● Offline</string>
+    <string name="profile_playing">Playing</string>
+    <string name="profile_playtime_label">Playtime</string>
+    <string name="profile_count_label">Games</string>
+
+    <!-- Review Score Format -->
+    <string name="review_score_format">%d%% Positive</string>
+
+    <!-- General -->
+    <string name="general_load_failed">Load failed</string>
+    <string name="general_error">Error: %s</string>
+    <string name="general_no_data">No data obtained</string>
+    <string name="general_please_login">Please login first</string>
 </resources>
