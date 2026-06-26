@@ -23,12 +23,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.Observer
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -103,13 +106,20 @@ private fun MainScreen() {
     // 监听页面变化同步选中状态
     val selectedTab = pagerState.currentPage
 
-    // 主题变更监听
-    LaunchedEffect(Unit) {
-        if (ThemeUtils.isChanged) {
-            ThemeUtils.isChanged = false
-            LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(context)
-            (context as? android.app.Activity)?.recreate()
+    // 设置变更触发器：SettingsActivity 改动后返回，强制重读所有设置
+    var settingsVersion by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && ThemeUtils.isChanged) {
+                ThemeUtils.isChanged = false
+                LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(context)
+                settingsVersion++
+            }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // 用于从子页面接收滑动状态的共享列表状态
@@ -135,28 +145,31 @@ private fun MainScreen() {
             modifier = Modifier.weight(1f),
             userScrollEnabled = true
         ) { page ->
-            when (page) {
-                0 -> LibraryScreen(
-                    listState = libraryListState,
-                    onNavigateToDetail = { appId, name, headerUrl, price ->
-                        context.startActivity(Intent(context, DetailActivity::class.java).apply {
-                            putExtra("APP_ID", appId); putExtra("APP_NAME", name)
-                            putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
-                        })
-                    },
-                    onNavigateToSettings = {
-                        context.startActivity(Intent(context, SettingsActivity::class.java))
-                    }
-                )
-                1 -> SpecialsScreen(
-                    listState = specialsListState,
-                    onNavigateToDetail = { appId, name, headerUrl, price ->
-                        context.startActivity(Intent(context, DetailActivity::class.java).apply {
-                            putExtra("APP_ID", appId); putExtra("APP_NAME", name)
-                            putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
-                        })
-                    }
-                )
+            // key(settingsVersion) → 设置变更时强制重组，重新读取 SharedPrefs
+            key(settingsVersion) {
+                when (page) {
+                    0 -> LibraryScreen(
+                        listState = libraryListState,
+                        onNavigateToDetail = { appId, name, headerUrl, price ->
+                            context.startActivity(Intent(context, DetailActivity::class.java).apply {
+                                putExtra("APP_ID", appId); putExtra("APP_NAME", name)
+                                putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
+                            })
+                        },
+                        onNavigateToSettings = {
+                            context.startActivity(Intent(context, SettingsActivity::class.java))
+                        }
+                    )
+                    1 -> SpecialsScreen(
+                        listState = specialsListState,
+                        onNavigateToDetail = { appId, name, headerUrl, price ->
+                            context.startActivity(Intent(context, DetailActivity::class.java).apply {
+                                putExtra("APP_ID", appId); putExtra("APP_NAME", name)
+                                putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
+                            })
+                        }
+                    )
+                }
             }
         }
 
@@ -500,7 +513,7 @@ private fun SpecialsScreen(
                 )
                 IconButton(onClick = { showSortDialog = true }) {
                     Image(
-                        painter = painterResource(R.drawable.ic_arrow_right),
+                        painter = painterResource(R.drawable.ic_sort),
                         contentDescription = "Sort",
                         modifier = Modifier.size(24.dp)
                     )
