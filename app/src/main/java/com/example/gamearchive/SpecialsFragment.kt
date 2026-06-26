@@ -47,12 +47,10 @@ class SpecialsFragment : Fragment() {
 
         rv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                val mainActivity = activity as? MainActivity ?: return
+                // TODO: Compose 迁移后底栏显隐由 LazyListState 控制
                 if (dy > 10) {
-                    mainActivity.setBottomNavVisibility(false)
                     animateTopBar(false)
                 } else if (dy < -10) {
-                    mainActivity.setBottomNavVisibility(true)
                     animateTopBar(true)
                 }
             }
