@@ -62,8 +62,19 @@ class MainActivity : ComponentActivity() {
         apiServiceGlobal = retrofit.create(SteamApiService::class.java)
         LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(this)
 
+        // 根据 ThemeUtils 设置决定 MiuixTheme 色系
+        val colorSchemeMode = when (ThemeUtils.getThemeMode(this)) {
+            0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
+            1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
+            else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
+        }
+
         setContent {
-            MiuixTheme {
+            MiuixTheme(
+                controller = top.yukonga.miuix.kmp.theme.ThemeController(
+                    colorSchemeMode = colorSchemeMode
+                )
+            ) {
                 MainScreen()
             }
         }

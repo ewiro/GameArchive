@@ -48,8 +48,18 @@ class LoginActivity : ComponentActivity() {
             return
         }
 
+        val colorSchemeMode = when (ThemeUtils.getThemeMode(this)) {
+            0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
+            1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
+            else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
+        }
+
         setContent {
-            MiuixTheme {
+            MiuixTheme(
+                controller = top.yukonga.miuix.kmp.theme.ThemeController(
+                    colorSchemeMode = colorSchemeMode
+                )
+            ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
