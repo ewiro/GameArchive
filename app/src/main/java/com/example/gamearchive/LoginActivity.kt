@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -13,6 +14,10 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.textfield.TextInputEditText
 
 class LoginActivity : AppCompatActivity() {
+
+    override fun attachBaseContext(newBase: Context?) {
+        super.attachBaseContext(newBase?.let { LocaleHelper.setLocale(it) })
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 应用应用主题配置
@@ -47,13 +52,13 @@ class LoginActivity : AppCompatActivity() {
 
             // 校验输入内容是否为空
             if (steamId.isEmpty() || apiKey.isEmpty()) {
-                Toast.makeText(this, "请填写完整信息", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.login_empty_fields, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             // 保存用户凭证到本地存储
             UserPrefs.saveCredentials(this, apiKey, steamId)
-            Toast.makeText(this, "登录成功", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.login_success, Toast.LENGTH_SHORT).show()
             startMainActivity()
         }
 

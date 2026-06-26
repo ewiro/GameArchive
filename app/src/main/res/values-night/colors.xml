@@ -3,4 +3,6 @@
     <!-- 列表页深色底 / 详情页内嵌卡 (深色) -->
     <color name="list_page_bg">#FF101013</color>
     <color name="miuix_inset_card">#FF1C1C1E</color>
+    <color name="miuix_destructive_bg">#1AFF453A</color>
+    <color name="miuix_switch_track_off">#FF48484C</color>
 </resources>

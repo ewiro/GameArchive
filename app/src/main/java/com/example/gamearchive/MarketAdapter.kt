@@ -87,13 +87,13 @@ class MarketAdapter(private var items: List<MarketGame>) : RecyclerView.Adapter<
         // 3. 显示好评率 (使用固定颜色值避免解析错误)
         if (game.reviewScore >= 0) {
             holder.tvReview.visibility = View.VISIBLE
-            holder.tvReview.text = "${game.reviewScore}% 好评"
+            holder.tvReview.text = holder.itemView.context.getString(R.string.review_score_format, game.reviewScore)
 
             val color = when {
-                game.reviewScore >= 95 -> 0xFFE65100.toInt() // 好评如潮
-                game.reviewScore >= 70 -> 0xFF1565C0.toInt() // 特别好评
-                game.reviewScore >= 40 -> 0xFF616161.toInt() // 褒贬不一
-                else -> 0xFFD32F2F.toInt()                   // 差评
+                game.reviewScore >= 95 -> androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_review_tier_great)
+                game.reviewScore >= 70 -> androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_review_tier_good)
+                game.reviewScore >= 40 -> androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_review_tier_mixed)
+                else -> androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_review_tier_poor)
             }
             holder.tvReview.setTextColor(color)
 

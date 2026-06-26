@@ -31,6 +31,10 @@ class DetailActivity : AppCompatActivity() {
 
     private lateinit var tvHistoryLow: TextView
 
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { LocaleHelper.setLocale(it) })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -138,7 +142,7 @@ class DetailActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val response = apiService.getGameDetails(appId)
+                val response = apiService.getGameDetails(appId, l = LocaleHelper.currentApiLanguage)
                 val data = response[appId.toString()]?.data
 
                 if (data != null) {
@@ -173,9 +177,10 @@ class DetailActivity : AppCompatActivity() {
 
                     rvScreenshots.adapter?.notifyDataSetChanged()
 
-                    val devs = data.developers?.firstOrNull() ?: "未知"
+                    val unknown = getString(R.string.detail_unknown)
+                    val devs = data.developers?.firstOrNull() ?: unknown
                     tvDeveloper.text = devs
-                    tvRelease.text = "${data.release_date?.date ?: "未知"}"
+                    tvRelease.text = "${data.release_date?.date ?: unknown}"
 
                     val priceInfo = data.price_overview
                     if (priceInfo != null) {
@@ -201,10 +206,10 @@ class DetailActivity : AppCompatActivity() {
                     rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*&nbsp;\\s*</p>"), "")
                     rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*</p>"), "")
 
-                    val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-                    val bodyColor = if (isNight) "#D8D8D8" else "#333333"
-                    val headColor = if (isNight) "#F2F2F2" else "#000000"
-                    val linkColor = if (isNight) "#5E9BFF" else "#3482FF"
+                    val isNight = (this@DetailActivity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    val bodyColor = String.format("#%06X", androidx.core.content.ContextCompat.getColor(this@DetailActivity, if (isNight) R.color.miuix_text_secondary_dark else R.color.miuix_text_secondary_light) and 0xFFFFFF)
+                    val headColor = String.format("#%06X", androidx.core.content.ContextCompat.getColor(this@DetailActivity, if (isNight) R.color.miuix_text_primary_dark else R.color.miuix_text_primary_light) and 0xFFFFFF)
+                    val linkColor = String.format("#%06X", androidx.core.content.ContextCompat.getColor(this@DetailActivity, if (isNight) R.color.miuix_blue_dark else R.color.miuix_blue) and 0xFFFFFF)
 
                     val css = """
                         <style>
@@ -258,24 +263,26 @@ class DetailActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val response = apiService.getGameReviews(appId,count = 50)
+                val response = apiService.getGameReviews(appId, l = LocaleHelper.currentApiLanguage, count = 50)
                 val summary = response.query_summary
 
                 if (summary != null && summary.total_reviews > 0) {
                     val rate = (summary.total_positive.toDouble() / summary.total_reviews.toDouble() * 100).toInt()
 
-                    tvSummary.text = summary.review_score_desc ?: "暂无评价"
+                    tvSummary.text = summary.review_score_desc ?: getString(R.string.general_no_data)
                     tvPercent.text = "$rate%"
-                    tvCount.text = "(${summary.total_reviews} 篇)"
+                    tvCount.text = "(${summary.total_reviews})"
 
-                    val color = if (rate >= 95) 0xFFE65100.toInt()
-                    else if (rate >= 70) 0xFF1565C0.toInt()
-                    else if (rate >= 40) 0xFF616161.toInt()
-                    else 0xFFD32F2F.toInt()
+                    val color = when {
+                        rate >= 95 -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_great)
+                        rate >= 70 -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_good)
+                        rate >= 40 -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_mixed)
+                        else -> androidx.core.content.ContextCompat.getColor(this@DetailActivity, R.color.miuix_review_tier_poor)
+                    }
 
                     tvSummary.setTextColor(color)
                 } else {
-                    tvSummary.text = "暂无数据"
+                    tvSummary.text = getString(R.string.general_no_data)
                     tvPercent.text = "--%"
                 }
 
@@ -288,7 +295,7 @@ class DetailActivity : AppCompatActivity() {
                 }
 
             } catch (e: Exception) {
-                tvSummary.text = "加载失败"
+                tvSummary.text = getString(R.string.general_load_failed)
             }
         }
     }
@@ -345,19 +352,19 @@ class DetailActivity : AppCompatActivity() {
             val item = reviews[position]
 
             if (item.voted_up) {
-                holder.tvVoteState.text = "推荐"
-                holder.tvVoteState.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
-                holder.ivVoteIcon.setColorFilter(android.graphics.Color.parseColor("#4CAF50"))
+                holder.tvVoteState.text = holder.itemView.context.getString(R.string.review_recommended)
+                holder.tvVoteState.setTextColor(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_success))
+                holder.ivVoteIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_success))
                 holder.ivVoteIcon.setImageResource(R.drawable.ic_thumb_up)
             } else {
-                holder.tvVoteState.text = "不推荐"
-                holder.tvVoteState.setTextColor(android.graphics.Color.parseColor("#D32F2F"))
-                holder.ivVoteIcon.setColorFilter(android.graphics.Color.parseColor("#D32F2F"))
+                holder.tvVoteState.text = holder.itemView.context.getString(R.string.review_not_recommended)
+                holder.tvVoteState.setTextColor(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_error))
+                holder.ivVoteIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(holder.itemView.context, R.color.miuix_error))
                 holder.ivVoteIcon.setImageResource(R.drawable.ic_thumb_down)
             }
 
             val hours = item.author.playtime_forever / 60
-            holder.tvPlaytime.text = "总时数 $hours 小时"
+            holder.tvPlaytime.text = holder.itemView.context.getString(R.string.review_playtime, hours)
 
             val date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
                 .format(java.util.Date(item.timestamp_created * 1000))
@@ -368,7 +375,7 @@ class DetailActivity : AppCompatActivity() {
 
             if (item.votes_up > 0) {
                 holder.tvHelpful.visibility = View.VISIBLE
-                holder.tvHelpful.text = "${item.votes_up} 人觉得有用"
+                holder.tvHelpful.text = holder.itemView.context.getString(R.string.review_helpful, item.votes_up)
             } else {
                 holder.tvHelpful.visibility = View.GONE
             }

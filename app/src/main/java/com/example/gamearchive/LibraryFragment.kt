@@ -128,6 +128,8 @@ class LibraryFragment : Fragment() {
         super.onResume()
         if (ThemeUtils.isChanged) {
             ThemeUtils.isChanged = false
+            // 必须在 recreate 之前更新 API 语言，确保 recreate 后数据抓取用新语言
+            LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(requireContext())
             requireActivity().recreate()
         }
     }
@@ -152,7 +154,7 @@ class LibraryFragment : Fragment() {
 
         // 只有当 开关打开 且 数据不为空 时，才添加头部
         if (showProfile && playerInfo != null) {
-            val totalHours = rawGameList.sumOf { it.playtime_forever } / 60
+            val totalHours = rawGameList.sumOf { it.playtime_forever } / 60.0
             adapters.add(ProfileHeaderAdapter(playerInfo, rawGameList.size, totalHours, playerLevel, gifLoader))
         }
 
@@ -165,7 +167,7 @@ class LibraryFragment : Fragment() {
                 val rawRecent = remaining.filter { (it.playtime_2weeks ?: 0) > 0 }
                 val recent = rawRecent.sortedByDescending { it.playtime_2weeks }
                 if (recent.isNotEmpty()) {
-                    val title = "近期活跃 (${recent.size})"
+                    val title = context.getString(R.string.library_group_recent, recent.size)
                     adapters.add(createHeader(title))
                     if (!collapsedGroups.contains(title)) adapters.add(GameAdapter(recent, priceMap))
                     remaining = remaining.filter { !recent.map { r->r.appid }.contains(it.appid) }
@@ -173,13 +175,13 @@ class LibraryFragment : Fragment() {
             }
             val played = sortGames(remaining.filter { it.playtime_forever > 0 })
             if (played.isNotEmpty()) {
-                val title = "已玩游戏 (${played.size})"
+                val title = context.getString(R.string.library_group_played, played.size)
                 adapters.add(createHeader(title))
                 if (!collapsedGroups.contains(title)) adapters.add(GameAdapter(played, priceMap))
             }
             val unplayed = sortGames(remaining.filter { it.playtime_forever == 0 })
             if (unplayed.isNotEmpty()) {
-                val title = "堆积库存 (${unplayed.size})"
+                val title = context.getString(R.string.library_group_unplayed, unplayed.size)
                 adapters.add(createHeader(title))
                 if (!collapsedGroups.contains(title)) adapters.add(GameAdapter(unplayed, priceMap))
             }
@@ -228,22 +230,23 @@ class LibraryFragment : Fragment() {
                 val intent = Intent(holder.itemView.context, DetailActivity::class.java)
                 intent.putExtra("APP_ID", game.appid); intent.putExtra("APP_NAME", game.name)
                 intent.putExtra("HEADER_URL", "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg")
-                intent.putExtra("APP_PRICE", priceMap[game.appid] ?: "免费/未知")
+                intent.putExtra("APP_PRICE", priceMap[game.appid] ?: "Free / Unknown")
                 holder.itemView.context.startActivity(intent)
             }
 
             // 游戏时长
-            val totalHours = (game.playtime_forever / 60.0).toInt()
-            holder.tvPlayTime.text = "${totalHours}h"
+            val totalHours = game.playtime_forever / 60.0
+            holder.tvPlayTime.text = if (totalHours < 0.05) "0h" else String.format("%.1fh", totalHours)
 
             // 根据时长设置颜色 (中国传统色)
+            val ctx = holder.itemView.context
             val badgeColor = when {
-                game.playtime_forever == 0 -> 0xFFCCCCD6.toInt() // 远山紫
-                totalHours >= 200 -> 0xFFD42517.toInt()          // 鹤顶红
-                totalHours >= 100 -> 0xFFFB8B05.toInt()          // 万寿菊黄
-                totalHours >= 50 -> 0xFF7E1671.toInt()           // 魏紫
-                totalHours >= 20 -> 0xFF1772B4.toInt()           // 群青
-                else -> 0xFF20894D.toInt()                       // 宫殿绿
+                game.playtime_forever == 0 -> androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_badge_zero)
+                totalHours >= 200 -> androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_badge_200plus)
+                totalHours >= 100 -> androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_badge_100plus)
+                totalHours >= 50 -> androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_badge_50plus)
+                totalHours >= 20 -> androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_badge_20plus)
+                else -> androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_badge_default)
             }
 
             holder.llTimeBadge.setBackgroundColor(badgeColor)
@@ -282,7 +285,7 @@ class LibraryFragment : Fragment() {
                         if (cachedHeader != null) return@listener
                         (ctx as? androidx.lifecycle.LifecycleOwner)?.lifecycleScope?.launch {
                             try {
-                                val resp = MainActivity.apiServiceGlobal.getGameDetails(game.appid)
+                                val resp = MainActivity.apiServiceGlobal.getGameDetails(game.appid, l = LocaleHelper.currentApiLanguage)
                                 val realUrl = resp[game.appid.toString()]?.data?.header_image
                                 if (!realUrl.isNullOrEmpty()) {
                                     headerCache.edit().putString("header_${game.appid}", realUrl).apply()
@@ -302,15 +305,15 @@ class LibraryFragment : Fragment() {
             // 好评率显示
             val context = holder.itemView.context
             val prefs = context.getSharedPreferences("steam_reviews_cache", Context.MODE_PRIVATE)
-            val cachedReview = prefs.getString("review_${game.appid}", null)
+            val cachedReview = prefs.getString("review_${game.appid}_${LocaleHelper.currentApiLanguage}", null)
 
             // 评价颜色逻辑
             fun getReviewColor(score: Int): Int {
                 return when {
-                    score >= 95 -> 0xFFE65100.toInt()
-                    score >= 70 -> 0xFF1565C0.toInt()
-                    score >= 40 -> 0xFF616161.toInt()
-                    else -> 0xFFD32F2F.toInt()
+                    score >= 95 -> androidx.core.content.ContextCompat.getColor(context, R.color.miuix_review_tier_great)
+                    score >= 70 -> androidx.core.content.ContextCompat.getColor(context, R.color.miuix_review_tier_good)
+                    score >= 40 -> androidx.core.content.ContextCompat.getColor(context, R.color.miuix_review_tier_mixed)
+                    else -> androidx.core.content.ContextCompat.getColor(context, R.color.miuix_review_tier_poor)
                 }
             }
 
@@ -325,15 +328,15 @@ class LibraryFragment : Fragment() {
                 (context as? androidx.lifecycle.LifecycleOwner)?.lifecycleScope?.launch {
                     try {
                         delay(100 + (position % 5) * 50L)
-                        val response = MainActivity.apiServiceGlobal.getGameReviews(game.appid)
+                        val response = MainActivity.apiServiceGlobal.getGameReviews(game.appid, l = LocaleHelper.currentApiLanguage)
                         val summary = response.query_summary
                         if (summary != null && summary.total_reviews > 0) {
                             val rate = (summary.total_positive.toDouble() / summary.total_reviews.toDouble() * 100).toInt()
-                            val reviewText = "$rate% 好评"
+                            val reviewText = context.getString(R.string.review_score_format, rate)
                             holder.tvReviewRate.text = reviewText
                             holder.tvReviewRate.visibility = View.VISIBLE
                             holder.tvReviewRate.setTextColor(getReviewColor(rate))
-                            prefs.edit().putString("review_${game.appid}", reviewText).apply()
+                            prefs.edit().putString("review_${game.appid}_${LocaleHelper.currentApiLanguage}", reviewText).apply()
                         }
                     } catch (e: Exception) { }
                 }
@@ -343,7 +346,7 @@ class LibraryFragment : Fragment() {
     }
 
     // 个人资料头部适配器
-    class ProfileHeaderAdapter(val player: PlayerInfo, val count: Int, val hours: Int, val level: Int, val gifLoader: ImageLoader) : RecyclerView.Adapter<ProfileHeaderAdapter.ViewHolder>() {
+    class ProfileHeaderAdapter(val player: PlayerInfo, val count: Int, val hours: Double, val level: Int, val gifLoader: ImageLoader) : RecyclerView.Adapter<ProfileHeaderAdapter.ViewHolder>() {
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val ivAvatar: ImageView = view.findViewById(R.id.ivAvatar)
             val ivAvatarFrame: ImageView = view.findViewById(R.id.ivAvatarFrame)
@@ -358,7 +361,7 @@ class LibraryFragment : Fragment() {
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_profile_header, parent, false))
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.tvName.text = player.personaname; holder.tvCount.text = count.toString(); holder.tvHours.text = "$hours h"
+            holder.tvName.text = player.personaname; holder.tvCount.text = count.toString(); holder.tvHours.text = if (hours < 0.05) "0h" else String.format("%.1fh", hours)
             holder.tvLevel.text = "Lv. $level"
 
             // 获取自定义URL
@@ -394,16 +397,17 @@ class LibraryFragment : Fragment() {
             }
 
             // 4. 在线状态逻辑
+            val ctx = holder.itemView.context
             if (player.gameextrainfo != null) {
-                holder.tvStatus.text = "正在游戏"
-                holder.tvStatus.setTextColor(Color.parseColor("#A3CF06"))
+                holder.tvStatus.text = ctx.getString(R.string.profile_playing)
+                holder.tvStatus.setTextColor(androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_status_ingame))
                 holder.tvGameStatus.text = player.gameextrainfo
                 holder.tvGameStatus.visibility = View.VISIBLE
                 holder.tvGameStatus.isSelected = true
             } else {
                 holder.tvGameStatus.visibility = View.GONE
-                holder.tvStatus.text = if (player.personastate == 0) "● 离线" else "● 在线"
-                holder.tvStatus.setTextColor(if (player.personastate == 0) Color.parseColor("#E0E0E0") else Color.parseColor("#B3E5FC"))
+                holder.tvStatus.text = if (player.personastate == 0) ctx.getString(R.string.profile_offline) else ctx.getString(R.string.profile_online)
+                holder.tvStatus.setTextColor(if (player.personastate == 0) androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_status_offline) else androidx.core.content.ContextCompat.getColor(ctx, R.color.miuix_status_online))
             }
         }
         override fun getItemCount() = 1

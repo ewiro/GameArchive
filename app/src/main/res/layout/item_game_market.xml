@@ -50,7 +50,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="4dp"
-            app:cardBackgroundColor="#FFA1CD44"
+            app:cardBackgroundColor="@color/miuix_discount_bg"
             app:cardCornerRadius="7dp"
             app:cardElevation="0dp"
             android:visibility="gone"
@@ -64,7 +64,7 @@
                 android:text="-50%"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#FF000400"/>
+                android:textColor="@color/miuix_discount_text"/>
         </androidx.cardview.widget.CardView>
 
         <!-- 具体价格 -->

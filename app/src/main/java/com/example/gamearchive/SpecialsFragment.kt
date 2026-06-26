@@ -4,14 +4,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -100,9 +99,9 @@ class SpecialsFragment : Fragment() {
 
         // 标题：筛选
         val titleFilter = TextView(context).apply {
-            text = "筛选内容"
+            text = context.getString(R.string.specials_filter_title)
             textSize = 14f
-            setTextColor(android.graphics.Color.parseColor("#3482FF"))
+            setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.miuix_blue))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setPadding(64, 0, 64, 16)
         }
@@ -110,7 +109,7 @@ class SpecialsFragment : Fragment() {
 
         // 开关：隐藏已拥有
         val switchFilter = MaterialSwitch(context).apply {
-            text = "隐藏已在库中的游戏"
+            text = context.getString(R.string.specials_filter_hide_owned)
             textSize = 16f
             isChecked = viewModel.isFilteringOwned
             setPadding(64, 0, 64, 0)
@@ -123,22 +122,28 @@ class SpecialsFragment : Fragment() {
             layoutParams = LinearLayout.LayoutParams(-1, 2).apply {
                 setMargins(0, 32, 0, 32)
             }
-            setBackgroundColor(android.graphics.Color.parseColor("#10000000"))
+            setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.miuix_dialog_divider))
         }
         dialogView.addView(divider)
 
         // 标题：排序
         val titleSort = TextView(context).apply {
-            text = "排序方式"
+            text = context.getString(R.string.specials_sort_title)
             textSize = 14f
-            setTextColor(android.graphics.Color.parseColor("#3482FF"))
+            setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.miuix_blue))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setPadding(64, 0, 64, 16)
         }
         dialogView.addView(titleSort)
 
         // 排序选项
-        val sortOptions = arrayOf("销量 (默认)", "现价 (低 → 高)", "现价 (高 → 低)", "折扣 (高 → 低)", "好评率 (高 → 低)")
+        val sortOptions = arrayOf(
+            context.getString(R.string.specials_sort_sales),
+            context.getString(R.string.specials_sort_price_asc),
+            context.getString(R.string.specials_sort_price_desc),
+            context.getString(R.string.specials_sort_discount),
+            context.getString(R.string.specials_sort_rating)
+        )
         val radioGroup = RadioGroup(context).apply {
             setPadding(48, 0, 48, 0)
         }
@@ -156,17 +161,15 @@ class SpecialsFragment : Fragment() {
         }
         dialogView.addView(radioGroup)
 
-        val dialog = AlertDialog.Builder(context)
+        val dialog = MaterialAlertDialogBuilder(context)
             .setView(dialogView)
             .create()
 
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
 
         // 确定按钮
-        val confirmBtn = Button(context).apply {
-            text = "确定"
-            background = null
-            setTextColor(android.graphics.Color.parseColor("#3482FF"))
+        val confirmBtn = MaterialButton(context).apply {
+            text = context.getString(R.string.specials_confirm)
             setOnClickListener {
                 viewModel.isFilteringOwned = switchFilter.isChecked
                 viewModel.sortMode = radioGroup.checkedRadioButtonId

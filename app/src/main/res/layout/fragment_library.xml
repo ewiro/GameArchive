@@ -39,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="24dp"
-            android:text="Library"
+            android:text="@string/library_title"
             android:textSize="26sp"
             android:textStyle="bold"
             android:textColor="?attr/colorOnSurface"

@@ -100,14 +100,11 @@
                     <!-- 左半边：价格卡片 -->
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/cvPriceContainer"
+                        style="@style/Widget.Miuix.Card.Inset"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:layout_marginEnd="6dp"
-                        app:cardBackgroundColor="@color/miuix_inset_card"
-                        app:cardCornerRadius="16dp"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp">
+                        android:layout_marginEnd="6dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -125,8 +122,8 @@
                                 android:textSize="18sp"
                                 android:textStyle="bold"
                                 android:fontFamily="sans-serif-black"
-                                android:background="#FFA1CD44"
-                                android:textColor="#FF000400"
+                                android:background="@color/miuix_discount_bg"
+                                android:textColor="@color/miuix_discount_text"
                                 android:gravity="center"
                                 android:paddingHorizontal="10dp"
                                 android:visibility="gone"/>
@@ -144,9 +141,9 @@
                                     android:id="@+id/tvHistoryLow"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="史低"
+                                    android:text="@string/detail_history_low"
                                     android:textSize="9sp"
-                                    android:textColor="#FF9800"
+                                    android:textColor="@color/miuix_history_low"
                                     android:textStyle="bold"
                                     android:visibility="gone"
                                     tools:visibility="visible"/>
@@ -157,7 +154,7 @@
                                     android:layout_height="wrap_content"
                                     android:text="¥ 00"
                                     android:textSize="10sp"
-                                    android:textColor="#888888"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
                                     android:visibility="gone"
                                     tools:visibility="visible"/>
 
@@ -175,14 +172,11 @@
 
                     <!-- 右半边：评价卡片 -->
                     <com.google.android.material.card.MaterialCardView
+                        style="@style/Widget.Miuix.Card.Inset"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        app:cardBackgroundColor="@color/miuix_inset_card"
-                        app:cardCornerRadius="16dp"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp">
+                        android:layout_marginStart="6dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -195,10 +189,10 @@
                                 android:id="@+id/tvReviewSummary"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="评价加载中"
+                                android:text="@string/detail_loading_review"
                                 android:textSize="12sp"
                                 android:textStyle="bold"
-                                android:textColor="#66C0F4"
+                                android:textColor="@color/miuix_review_blue"
                                 android:singleLine="true"
                                 android:ellipsize="marquee"
                                 android:marqueeRepeatLimit="marquee_forever"
@@ -221,9 +215,9 @@
                                     android:textColor="?attr/colorOnSurface"/>
 
                                 <TextView
-                                    android:text=" 好评"
+                                    android:text="@string/detail_positive"
                                     android:textSize="10sp"
-                                    android:textColor="#888888"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
                                     android:layout_marginStart="2dp"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"/>
@@ -234,7 +228,7 @@
                                     android:layout_height="wrap_content"
                                     android:text="(0)"
                                     android:textSize="10sp"
-                                    android:textColor="#666666"
+                                    android:textColor="?attr/colorOutline"
                                     android:layout_marginStart="4dp"/>
                             </LinearLayout>
 
@@ -270,7 +264,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="开发商"
+                                android:text="@string/detail_developer"
                                 android:textSize="11sp"
                                 android:textStyle="bold"
                                 android:textColor="?attr/colorOnSurface"
@@ -305,7 +299,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="发行日期"
+                                android:text="@string/detail_release_date"
                                 android:textSize="11sp"
                                 android:textStyle="bold"
                                 android:textColor="?attr/colorOnSurface"
@@ -340,7 +334,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="ABOUT THIS GAME"
+                android:text="@string/detail_about"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
@@ -360,7 +354,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="PLAYER REVIEWS"
+                android:text="@string/detail_reviews_title"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
