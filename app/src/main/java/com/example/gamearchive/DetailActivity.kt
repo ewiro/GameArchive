@@ -23,8 +23,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -84,8 +88,6 @@ private val SuccessGreen = Color(0xFF4CAF50)
 private val ErrorRed     = Color(0xFFD32F2F)
 private val AccentBlue   = Color(0xFF3482FF)
 private val ReviewBlue   = Color(0xFF66C0F4)
-private val InsetCardBg  = Color(0xFFF4F5F7)
-private val HistoryLow   = Color(0xFFFF9800)
 
 // ── 媒体条目 ──
 private data class MediaItem(val url: String, val thumbnailUrl: String, val isVideo: Boolean)
@@ -229,34 +231,28 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     // ── UI ──
     val scrollState = rememberScrollState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // 顶栏
-        Surface(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp, end = 8.dp)
-                    .padding(top = statusBarDp + 4.dp)
-                    .height(52.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_back),
-                        contentDescription = "Back",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Text(
-                    text = gameName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(end = 48.dp)
-                )
-            }
+    // 顶栏滑动显隐
+    var topBarVisible by remember { mutableStateOf(true) }
+    val lastScrollY = remember { mutableStateOf(0f) }
+    LaunchedEffect(scrollState.value) {
+        val currentY = scrollState.value.toFloat()
+        if (currentY > lastScrollY.value + 20f && currentY > 100f) {
+            topBarVisible = false
+        } else if (currentY < lastScrollY.value - 20f) {
+            topBarVisible = true
         }
+        lastScrollY.value = currentY
+    }
+
+    val topBarHeightDp = 52.dp + statusBarDp + 4.dp
+    val density = LocalDensity.current
+    val topBarOffsetY by animateDpAsState(
+        targetValue = if (topBarVisible) 0.dp else -topBarHeightDp,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+    )
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -267,7 +263,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(bottom = 48.dp)
+                    .padding(top = topBarHeightDp + 4.dp, bottom = 48.dp)
             ) {
                 // ── 媒体画廊 ──
                 if (mediaList.isNotEmpty()) {
@@ -353,7 +349,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                     Text(
                                         text = originalPrice,
                                         fontSize = 10.sp,
-                                        color = Color.Gray,
+                                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                         textDecoration = TextDecoration.LineThrough
                                     )
                                 }
@@ -395,14 +391,14 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                     Text(
                                         text = context.getString(R.string.detail_positive),
                                         fontSize = 10.sp,
-                                        color = Color.Gray,
+                                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                         modifier = Modifier.padding(start = 2.dp)
                                     )
                                 }
                                 Text(
                                     text = "($reviewCount)",
                                     fontSize = 10.sp,
-                                    color = Color.Gray
+                                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
                         }
@@ -423,13 +419,13 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 painter = painterResource(R.drawable.ic_business),
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
-                                colorFilter = ColorFilter.tint(Color.Gray)
+                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             )
                             Text(
                                 text = context.getString(R.string.detail_developer),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Gray,
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 modifier = Modifier.padding(start = 4.dp)
                             )
                         }
@@ -450,14 +446,14 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 text = context.getString(R.string.detail_release_date),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Gray,
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                             Image(
                                 painter = painterResource(R.drawable.ic_calendar),
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
-                                colorFilter = ColorFilter.tint(Color.Gray)
+                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             )
                         }
                         Text(
@@ -474,7 +470,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .height(1.dp)
-                        .background(Color.Gray.copy(alpha = 0.2f))
+                        .background(MiuixTheme.colorScheme.outline)
                 )
 
                 // ── 简介标题 ──
@@ -540,7 +536,45 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 Spacer(Modifier.height(32.dp))
             }
         }
-    }
+
+        // ── 顶栏叠加层（滑动自动显隐） ──
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationY = with(density) { topBarOffsetY.toPx() }
+                    alpha = 0.999f
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, end = 8.dp)
+                    .padding(top = statusBarDp + 4.dp)
+                    .height(52.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_back),
+                        contentDescription = "Back",
+                        modifier = Modifier.size(24.dp),
+                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                    )
+                }
+                Text(
+                    text = gameName,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(end = 48.dp)
+                )
+            }
+        }
+    } // close Box
+    } // close Surface
 }
 
 @Composable
@@ -586,10 +620,10 @@ private fun ReviewItem(review: SteamReview) {
                     Text(
                         text = context.getString(R.string.review_playtime, hours),
                         fontSize = 11.sp,
-                        color = Color.Gray
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
-                Text(text = date, fontSize = 11.sp, color = Color.Gray)
+                Text(text = date, fontSize = 11.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             }
 
             // 分割线
@@ -598,7 +632,7 @@ private fun ReviewItem(review: SteamReview) {
                     .fillMaxWidth()
                     .height(1.dp)
                     .padding(vertical = 8.dp)
-                    .background(Color.Gray.copy(alpha = 0.3f))
+                    .background(MiuixTheme.colorScheme.outline)
             )
 
             // 内容
@@ -613,7 +647,7 @@ private fun ReviewItem(review: SteamReview) {
                 Text(
                     text = context.getString(R.string.review_helpful, review.votes_up),
                     fontSize = 10.sp,
-                    color = Color.Gray,
+                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }

@@ -41,7 +41,7 @@
     <string name="settings_follow_system">跟随系统</string>
     <string name="settings_light">浅色</string>
     <string name="settings_dark">深色</string>
-    <string name="settings_pure_black">纯黑背景 (AMOLED)</string>
+
     <string name="settings_language">语言</string>
     <string name="settings_lang_follow_system">跟随系统</string>
     <string name="settings_lang_chinese">中文</string>
@@ -54,7 +54,7 @@
     <string name="settings_bg_hint">留空则显示纯色主题背景</string>
     <string name="settings_frame_url">头像挂件 URL</string>
     <string name="settings_frame_hint">必须为 PNG 格式，留空隐藏</string>
-    <string name="settings_save_profile">保存链接设置</string>
+    <string name="settings_save_profile">保存</string>
     <string name="settings_profile_saved">个人资料设置已更新</string>
     <string name="settings_library">库存列表设置</string>
     <string name="settings_grouping">开启状态分组</string>

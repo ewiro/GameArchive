@@ -74,7 +74,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
     // ── 外观设置状态 ──
     var themeMode by remember { mutableIntStateOf(ThemeUtils.getThemeMode(context)) }
-    var pureBlack by remember { mutableStateOf(ThemeUtils.isPureBlackEnabled(context)) }
     var language by remember { mutableIntStateOf(ThemeUtils.getLanguage(context)) }
 
     // ── 个人资料状态 ──
@@ -88,6 +87,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var groupingRecent by remember { mutableStateOf(ThemeUtils.isGroupRecentEnabled(context)) }
     var sortMode by remember { mutableIntStateOf(ThemeUtils.getSortMode(context)) }
 
+    Surface(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 48.dp)
@@ -107,7 +107,8 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         Image(
                             painter = painterResource(R.drawable.ic_back),
                             contentDescription = "Back",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
                     }
                     Text(
@@ -135,7 +136,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     Text(
                         text = context.getString(R.string.settings_dark_mode),
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(
@@ -173,24 +174,11 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
                     DividerLine()
 
-                    // 纯黑模式
-                    SwitchRow(
-                        label = context.getString(R.string.settings_pure_black),
-                        checked = pureBlack,
-                        onCheckedChange = {
-                            pureBlack = it
-                            ThemeUtils.savePureBlack(context, it)
-                            onRecreate()
-                        }
-                    )
-
-                    DividerLine()
-
                     // 语言设置
                     Text(
                         text = context.getString(R.string.settings_language),
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(
@@ -292,7 +280,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 },
                                 modifier = Modifier.height(44.dp)
                             ) {
-                                Text(text = context.getString(R.string.settings_save_profile))
+                                Text(text = context.getString(R.string.settings_save_profile), fontSize = 14.sp)
                             }
                         }
                     }
@@ -320,22 +308,23 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         }
                     )
 
-                    SwitchRow(
-                        label = context.getString(R.string.settings_group_recent),
-                        checked = groupingRecent,
-                        enabled = grouping,
-                        onCheckedChange = {
-                            groupingRecent = it
-                            ThemeUtils.saveGroupRecent(context, it)
-                        }
-                    )
+                    if (grouping) {
+                        SwitchRow(
+                            label = context.getString(R.string.settings_group_recent),
+                            checked = groupingRecent,
+                            onCheckedChange = {
+                                groupingRecent = it
+                                ThemeUtils.saveGroupRecent(context, it)
+                            }
+                        )
+                    }
 
                     DividerLine()
 
                     Text(
                         text = context.getString(R.string.settings_sort_mode),
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Spacer(Modifier.height(10.dp))
 
@@ -379,6 +368,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             }
         }
     }
+    } // close Surface
 }
 
 // ── 复用组件 ──
@@ -401,7 +391,7 @@ private fun DividerLine() {
             .fillMaxWidth()
             .height(1.dp)
             .padding(vertical = 12.dp)
-            .background(Color.Gray.copy(alpha = 0.2f))
+            .background(MiuixTheme.colorScheme.outline)
     )
 }
 
@@ -443,7 +433,7 @@ private fun SwitchRow(label: String, checked: Boolean, enabled: Boolean = true, 
 @Composable
 private fun LabeledTextField(label: String, value: String, onValueChange: (String) -> Unit, hint: String) {
     Column {
-        Text(text = label, fontSize = 13.sp, color = Color.Gray)
+        Text(text = label, fontSize = 13.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
         Spacer(Modifier.height(4.dp))
         TextField(
             value = value,
