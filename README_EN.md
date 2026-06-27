@@ -12,7 +12,7 @@
 
 # Game Archive 
 
-> A modern Steam library management and special offers query tool designed based on Material Design 3.
+> A modern Steam library management and special offers query tool built with Compose and MIUI X theme.
 
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Language](https://img.shields.io/badge/Language-Kotlin-orange.svg)
@@ -34,7 +34,7 @@
 ##  Core Features 
 
 ###  My Library
-*   **Visuals**: Fully adapted to **Material You**, with UI colors dynamically changing based on the wallpaper. Supports Dark/Pure Black modes.
+*   **Visuals**: Built on **MIUI X** theme, supporting dark/light/follow-system modes.
 *   **Statistics**: Displays avatar, level, total game count, and total playtime at the top.
 *   **Cards**: List card colors are dynamically graded based on playtime (from light to dark), intuitively showing your "dedication."
 
@@ -53,7 +53,7 @@
 ###  Customization
 *   Supports custom profile backgrounds, avatars, and **avatar frames** (GIF supported).
 *   Library grouping (recent / played / backlog) with multiple sort options.
-*   Light / Dark / Follow-system themes, with an optional pure-black mode in dark.
+*   Light / Dark / Follow-system themes, with status bar auto-adapting to theme.
 
 
 ---
@@ -91,10 +91,10 @@ For absolute data security and faster speeds, **it is strongly recommended that 
 This project is built using modern Android development standards:
 
 *   **Language**: [Kotlin](https://kotlinlang.org/)
-*   **Architecture**: MVVM (Fragment + ViewPager2 + ViewModel + LiveData)
+*   **Architecture**: MVVM (Compose + HorizontalPager + ViewModel + LiveData)
 *   **Network**: [Retrofit](https://square.github.io/retrofit/) + [OkHttp](https://square.github.io/okhttp/) + [GSON](https://github.com/google/gson)
 *   **Image Loading**: [Coil](https://coil-kt.github.io/coil/) (optimized for GIF animations and memory caching)
-*   **UI Components**: Material Design 3, ConstraintLayout, CoordinatorLayout
+*   **UI Components**: Compose Multiplatform + MIUI X (miuix-ui 0.9.2)
 *   **Asynchronous Processing**: Kotlin Coroutines (Async/Await concurrent requests)
 *   **Backend/Proxy**: Cloudflare Worker (request forwarding & anti-scraping)
 ---
