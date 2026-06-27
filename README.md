@@ -12,7 +12,7 @@
 
 # Game Archive 
 
-> 一个基于 Material Design 3 设计的现代化 Steam 库存管理与特惠查询工具。
+> 基于 MIUI X 主题的现代化 Steam 库存管理与特惠查询工具，由 Compose 构建。
 
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
 ![Language](https://img.shields.io/badge/Language-Kotlin-orange.svg)
@@ -34,7 +34,7 @@
 ##  核心功能 
 
 ###  个人库存
-*   **视觉**：完全适配 **Material You**，UI 颜色随壁纸动态变化。支持深色/纯黑模式。
+*   **视觉**：基于 **MIUI X** 主题，支持深色/浅色/跟随系统。
 *   **统计**：顶部展示个人头像、等级、游戏总数及总时长。
 *   **卡片**：列表卡片颜色根据游玩时长动态分级（由浅入深），直观展示你的“肝度”。
 
@@ -53,7 +53,7 @@
 ###  个性化
 *   支持自定义个人资料背景图、头像及**头像挂件**（支持 GIF 动图）。
 *   库存支持分组显示（近期活跃 / 已玩 / 堆积库存）与多种排序方式。
-*   主题支持浅色 / 深色 / 跟随系统，深色下可开启纯黑模式。
+*   主题支持浅色 / 深色 / 跟随系统，状态栏颜色自动适配。
 
 
 ---
@@ -91,10 +91,10 @@
 本项目采用现代 Android 开发标准构建：
 
 *   **语言**: [Kotlin](https://kotlinlang.org/)
-*   **架构**: MVVM (Fragment + ViewPager2 + ViewModel + LiveData，配置变化不丢数据)
+*   **架构**: MVVM (Compose + HorizontalPager + ViewModel + LiveData)
 *   **网络**: [Retrofit](https://square.github.io/retrofit/) + [OkHttp](https://square.github.io/okhttp/) + [GSON](https://github.com/google/gson)
 *   **图片加载**: [Coil](https://coil-kt.github.io/coil/) (针对 GIF 动图及内存缓存优化)
-*   **UI 组件**: Material Design 3, ConstraintLayout, CoordinatorLayout
+*   **UI 组件**: Compose Multiplatform + MIUI X (miuix-ui 0.9.2)
 *   **异步处理**: Kotlin Coroutines (Async/Await 并发请求)
 *   **后端/代理**: Cloudflare Worker (反爬虫伪装 + CORS 跨域处理)
 
