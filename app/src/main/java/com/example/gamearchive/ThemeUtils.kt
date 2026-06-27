@@ -3,8 +3,9 @@ package com.example.gamearchive
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.Color
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 object ThemeUtils {
     // SharedPreferences 文件名
@@ -12,7 +13,6 @@ object ThemeUtils {
 
     // 设置项键名定义
     private const val KEY_THEME_MODE = "theme_mode"
-    private const val KEY_PURE_BLACK = "pure_black"
     private const val KEY_ENABLE_GROUPING = "enable_grouping"
     private const val KEY_SORT_MODE = "sort_mode"
     private const val KEY_GROUP_RECENT = "group_recent"
@@ -37,11 +37,26 @@ object ThemeUtils {
         }
         AppCompatDelegate.setDefaultNightMode(nightMode)
 
-        // 2. 纯黑模式 (仅在深色模式下生效)
-        val isPureBlack = prefs.getBoolean(KEY_PURE_BLACK, false)
-        val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-        if (isPureBlack && isNight) {
-            activity.window.decorView.setBackgroundColor(Color.BLACK)
+        // 2. 设置状态栏图标颜色
+        applyStatusBarAppearance(activity, mode)
+    }
+
+    /** 仅更新状态栏图标颜色（用于 onResume 等不再走 onCreate 的场景） */
+    fun applyStatusBarAppearance(activity: Activity) {
+        val mode = getPrefs(activity).getInt(KEY_THEME_MODE, 2)
+        applyStatusBarAppearance(activity, mode)
+    }
+
+    private fun applyStatusBarAppearance(activity: Activity, themeMode: Int) {
+        val insetsController = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+        insetsController.isAppearanceLightStatusBars = when (themeMode) {
+            0 -> true   // 浅色模式：深色状态栏图标
+            1 -> false  // 深色模式：浅色状态栏图标
+            else -> {   // 跟随系统：检测当前系统是否深色
+                val nightModeFlags = activity.resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                nightModeFlags != android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
         }
     }
 
@@ -57,13 +72,6 @@ object ThemeUtils {
         isChanged = true
     }
     fun getThemeMode(context: Context) = getPrefs(context).getInt(KEY_THEME_MODE, 2)
-
-    // 保存纯黑模式开关
-    fun savePureBlack(context: Context, enable: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_PURE_BLACK, enable).apply()
-        isChanged = true
-    }
-    fun isPureBlackEnabled(context: Context) = getPrefs(context).getBoolean(KEY_PURE_BLACK, false)
 
     // 保存分组开关 (用于库存列表)
     fun saveGrouping(context: Context, enable: Boolean) {
