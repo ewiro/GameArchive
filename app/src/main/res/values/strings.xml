@@ -41,7 +41,7 @@
     <string name="settings_follow_system">Follow System</string>
     <string name="settings_light">Light</string>
     <string name="settings_dark">Dark</string>
-    <string name="settings_pure_black">Pure Black (AMOLED)</string>
+
     <string name="settings_language">Language</string>
     <string name="settings_lang_follow_system">Follow System</string>
     <string name="settings_lang_chinese">中文</string>
@@ -54,7 +54,7 @@
     <string name="settings_bg_hint">Empty for solid color background</string>
     <string name="settings_frame_url">Avatar Frame URL</string>
     <string name="settings_frame_hint">Must be PNG, empty to hide</string>
-    <string name="settings_save_profile">Save Profile Settings</string>
+    <string name="settings_save_profile">Save</string>
     <string name="settings_profile_saved">Profile settings saved</string>
     <string name="settings_library">Library Settings</string>
     <string name="settings_grouping">Enable status grouping</string>
