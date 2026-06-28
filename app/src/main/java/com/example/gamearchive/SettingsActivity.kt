@@ -7,19 +7,26 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,6 +94,12 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var groupingRecent by remember { mutableStateOf(ThemeUtils.isGroupRecentEnabled(context)) }
     var sortMode by remember { mutableIntStateOf(ThemeUtils.getSortMode(context)) }
 
+    // ── 标签管理状态 ──
+    var showTagDialog by remember { mutableStateOf(false) }
+    var newTagName by remember { mutableStateOf("") }
+    var tagListRefresh by remember { mutableIntStateOf(0) }
+    val allTags = remember(tagListRefresh) { GameTags.getAllTags(context) }
+
     Surface(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -107,14 +120,14 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         Image(
                             painter = painterResource(R.drawable.ic_back),
                             contentDescription = "Back",
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
                     }
                     Text(
                         text = context.getString(R.string.settings_title),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = DesignTokens.TextTitle.sp,
                         modifier = Modifier.weight(1f).padding(end = 48.dp)
                     )
                 }
@@ -129,46 +142,37 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         item("appearance_card") {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                cornerRadius = 16.dp
+                cornerRadius = DesignTokens.CornerLarge
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     // 深色模式
                     Text(
                         text = context.getString(R.string.settings_dark_mode),
-                        fontSize = 14.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge),
+                        horizontalArrangement = Arrangement.Start
                     ) {
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_follow_system),
                             selected = themeMode == 2,
-                            onClick = {
-                                themeMode = 2
-                                ThemeUtils.saveThemeMode(context, 2)
-                                onRecreate()
-                            }
+                            onClick = { themeMode = 2; ThemeUtils.saveThemeMode(context, 2); onRecreate() },
+                            modifier = Modifier.weight(1f)
                         )
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_light),
                             selected = themeMode == 0,
-                            onClick = {
-                                themeMode = 0
-                                ThemeUtils.saveThemeMode(context, 0)
-                                onRecreate()
-                            }
+                            onClick = { themeMode = 0; ThemeUtils.saveThemeMode(context, 0); onRecreate() },
+                            modifier = Modifier.weight(1f)
                         )
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_dark),
                             selected = themeMode == 1,
-                            onClick = {
-                                themeMode = 1
-                                ThemeUtils.saveThemeMode(context, 1)
-                                onRecreate()
-                            }
+                            onClick = { themeMode = 1; ThemeUtils.saveThemeMode(context, 1); onRecreate() },
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
@@ -177,40 +181,31 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     // 语言设置
                     Text(
                         text = context.getString(R.string.settings_language),
-                        fontSize = 14.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge),
+                        horizontalArrangement = Arrangement.Start
                     ) {
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_lang_follow_system),
                             selected = language == LocaleHelper.LANG_FOLLOW_SYSTEM,
-                            onClick = {
-                                language = LocaleHelper.LANG_FOLLOW_SYSTEM
-                                ThemeUtils.saveLanguage(context, language)
-                                onRecreate()
-                            }
+                            onClick = { language = LocaleHelper.LANG_FOLLOW_SYSTEM; ThemeUtils.saveLanguage(context, language); onRecreate() },
+                            modifier = Modifier.weight(1f)
                         )
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_lang_chinese),
                             selected = language == LocaleHelper.LANG_CHINESE,
-                            onClick = {
-                                language = LocaleHelper.LANG_CHINESE
-                                ThemeUtils.saveLanguage(context, language)
-                                onRecreate()
-                            }
+                            onClick = { language = LocaleHelper.LANG_CHINESE; ThemeUtils.saveLanguage(context, language); onRecreate() },
+                            modifier = Modifier.weight(1f)
                         )
                         ThemeRadioButton(
                             label = context.getString(R.string.settings_lang_english),
                             selected = language == LocaleHelper.LANG_ENGLISH,
-                            onClick = {
-                                language = LocaleHelper.LANG_ENGLISH
-                                ThemeUtils.saveLanguage(context, language)
-                                onRecreate()
-                            }
+                            onClick = { language = LocaleHelper.LANG_ENGLISH; ThemeUtils.saveLanguage(context, language); onRecreate() },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -225,7 +220,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         item("profile_card") {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                cornerRadius = 16.dp
+                cornerRadius = DesignTokens.CornerLarge
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     SwitchRow(
@@ -238,49 +233,74 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         }
                     )
 
-                    if (showProfile) {
-                        DividerLine()
+                    AnimatedVisibility(
+                        visible = showProfile,
+                        enter = expandVertically(
+                            animationSpec = tween(durationMillis = DesignTokens.AnimDuration),
+                            expandFrom = Alignment.Top
+                        ) + fadeIn(animationSpec = tween(durationMillis = DesignTokens.AnimDuration)),
+                        exit = shrinkVertically(
+                            animationSpec = tween(durationMillis = DesignTokens.AnimDuration),
+                            shrinkTowards = Alignment.Top
+                        ) + fadeOut(animationSpec = tween(durationMillis = DesignTokens.AnimDuration))
+                    ) {
+                        Column {
+                            DividerLine()
 
-                        // 头像 URL
-                        LabeledTextField(
-                            label = context.getString(R.string.settings_avatar_url),
-                            value = avatarUrl,
-                            onValueChange = { avatarUrl = it },
-                            hint = context.getString(R.string.settings_avatar_hint)
-                        )
-                        Spacer(Modifier.height(12.dp))
+                            // 头像 URL
+                            LabeledTextField(
+                                label = context.getString(R.string.settings_avatar_url),
+                                value = avatarUrl,
+                                onValueChange = { avatarUrl = it },
+                                hint = context.getString(R.string.settings_avatar_hint)
+                            )
+                            Spacer(Modifier.height(12.dp))
 
-                        // 背景 URL
-                        LabeledTextField(
-                            label = context.getString(R.string.settings_bg_url),
-                            value = bgUrl,
-                            onValueChange = { bgUrl = it },
-                            hint = context.getString(R.string.settings_bg_hint)
-                        )
-                        Spacer(Modifier.height(12.dp))
+                            // 背景 URL
+                            LabeledTextField(
+                                label = context.getString(R.string.settings_bg_url),
+                                value = bgUrl,
+                                onValueChange = { bgUrl = it },
+                                hint = context.getString(R.string.settings_bg_hint)
+                            )
+                            Spacer(Modifier.height(12.dp))
 
-                        // 挂件 URL
-                        LabeledTextField(
-                            label = context.getString(R.string.settings_frame_url),
-                            value = frameUrl,
-                            onValueChange = { frameUrl = it },
-                            hint = context.getString(R.string.settings_frame_hint)
-                        )
-                        Spacer(Modifier.height(16.dp))
+                            // 挂件 URL
+                            LabeledTextField(
+                                label = context.getString(R.string.settings_frame_url),
+                                value = frameUrl,
+                                onValueChange = { frameUrl = it },
+                                hint = context.getString(R.string.settings_frame_hint)
+                            )
+                            Spacer(Modifier.height(16.dp))
 
-                        // 保存按钮
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Button(
-                                onClick = {
-                                    UserPrefs.saveCustomAvatarUrl(context, avatarUrl)
-                                    UserPrefs.saveCustomBgUrl(context, bgUrl)
-                                    UserPrefs.saveCustomFrameUrl(context, frameUrl)
-                                    Toast.makeText(context, R.string.settings_profile_saved, Toast.LENGTH_SHORT).show()
-                                    ThemeUtils.isChanged = true
-                                },
-                                modifier = Modifier.height(44.dp)
+                            // 保存按钮 — 浅色蓝底 / 深色灰底
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(text = context.getString(R.string.settings_save_profile), fontSize = 14.sp)
+                                Box(
+                                    modifier = Modifier
+                                        .height(DesignTokens.ButtonHeight)
+                                        .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                        .background(buttonBgColor())
+                                        .clickable {
+                                            UserPrefs.saveCustomAvatarUrl(context, avatarUrl)
+                                            UserPrefs.saveCustomBgUrl(context, bgUrl)
+                                            UserPrefs.saveCustomFrameUrl(context, frameUrl)
+                                            Toast.makeText(context, R.string.settings_profile_saved, Toast.LENGTH_SHORT).show()
+                                            ThemeUtils.isChanged = true
+                                        }
+                                        .padding(horizontal = 28.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = context.getString(R.string.settings_save_profile),
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
@@ -296,12 +316,20 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         item("library_card") {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                cornerRadius = 16.dp
+                cornerRadius = DesignTokens.CornerLarge
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = context.getString(R.string.settings_group_status),
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    )
+                    Spacer(Modifier.height(10.dp))
+
                     SwitchRow(
                         label = context.getString(R.string.settings_grouping),
                         checked = grouping,
+                        modifier = Modifier.padding(start = 24.dp),
                         onCheckedChange = {
                             grouping = it
                             ThemeUtils.saveGrouping(context, it)
@@ -312,6 +340,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         SwitchRow(
                             label = context.getString(R.string.settings_group_recent),
                             checked = groupingRecent,
+                            modifier = Modifier.padding(start = 24.dp),
                             onCheckedChange = {
                                 groupingRecent = it
                                 ThemeUtils.saveGroupRecent(context, it)
@@ -319,27 +348,69 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         )
                     }
 
+                    Spacer(Modifier.height(DesignTokens.SpaceLg))
                     DividerLine()
+                    Spacer(Modifier.height(DesignTokens.SpaceLg))
 
                     Text(
                         text = context.getString(R.string.settings_sort_mode),
-                        fontSize = 14.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.height(10.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { sortMode = 0; ThemeUtils.saveSortMode(context, 0) }.padding(vertical = 6.dp)) {
-                        RadioButton(selected = sortMode == 0, onClick = { sortMode = 0; ThemeUtils.saveSortMode(context, 0) })
+                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge).clickable { sortMode = 0; ThemeUtils.saveSortMode(context, 0) }.padding(vertical = 6.dp)) {
+                        SelectableIndicator(selected = sortMode == 0)
                         Spacer(Modifier.width(6.dp))
-                        Text(text = context.getString(R.string.settings_sort_playtime), fontSize = 14.sp)
+                        Text(text = context.getString(R.string.settings_sort_playtime), fontSize = DesignTokens.TextBody1.sp)
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { sortMode = 1; ThemeUtils.saveSortMode(context, 1) }.padding(vertical = 6.dp)) {
-                        RadioButton(selected = sortMode == 1, onClick = { sortMode = 1; ThemeUtils.saveSortMode(context, 1) })
+                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge).clickable { sortMode = 1; ThemeUtils.saveSortMode(context, 1) }.padding(vertical = 6.dp)) {
+                        SelectableIndicator(selected = sortMode == 1)
                         Spacer(Modifier.width(6.dp))
-                        Text(text = context.getString(R.string.settings_sort_name), fontSize = 14.sp)
+                        Text(text = context.getString(R.string.settings_sort_name), fontSize = DesignTokens.TextBody1.sp)
+                    }
+                }
+            }
+        }
+
+        // ── 标签管理 ──
+        item("tags_header") {
+            SectionHeader(text = context.getString(R.string.tag_manage))
+        }
+        item("tags_card") {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                cornerRadius = DesignTokens.CornerLarge
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "${context.getString(R.string.tag_manage)} (${GameTags.getAllTags(context).size})",
+                        fontSize = DesignTokens.TextBody1.sp
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .height(DesignTokens.ButtonHeight)
+                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                .background(buttonBgColor())
+                                .clickable { showTagDialog = true }
+                                .padding(horizontal = 28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = context.getString(R.string.tag_manage),
+                                fontSize = DesignTokens.TextBody1.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -348,26 +419,138 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         // ── 退出登录 ──
         item("logout") {
             Box(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Button(
-                    onClick = {
-                        UserPrefs.logout(context)
-                        val intent = Intent(context, LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        context.startActivity(intent)
-                        (context as? android.app.Activity)?.finish()
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                Box(
+                    modifier = Modifier
+                        .height(DesignTokens.ButtonHeight)
+                        .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                        .background(buttonBgColor(lightColor = DesignTokens.ErrorRed))
+                        .clickable {
+                            UserPrefs.logout(context)
+                            val intent = Intent(context, LoginActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            context.startActivity(intent)
+                            (context as? android.app.Activity)?.finish()
+                        }
+                        .padding(horizontal = 28.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = context.getString(R.string.settings_logout),
-                        color = Color(0xFFD32F2F)
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
     }
+
+        // ── 标签管理弹窗 ──
+        if (showTagDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .clickable { showTagDialog = false },
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp)
+                        .clickable(enabled = false, onClick = {})
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = context.getString(R.string.tag_manage),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        // 现有标签列表
+                        if (allTags.isEmpty()) {
+                            Text(
+                                text = context.getString(R.string.general_no_data),
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint),
+                                fontSize = DesignTokens.TextBody1.sp
+                            )
+                        } else {
+                            allTags.forEach { tag ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = tag,
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = "✕",
+                                        fontSize = DesignTokens.TextSubtitle.sp,
+                                        color = DesignTokens.ErrorRed,
+                                        modifier = Modifier
+                                            .clickable {
+                                                GameTags.deleteTag(context, tag)
+                                                tagListRefresh++
+                                            }
+                                            .padding(8.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        // 新建标签输入
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextField(
+                                value = newTagName,
+                                onValueChange = { newTagName = it },
+                                modifier = Modifier.weight(1f),
+                                label = context.getString(R.string.tag_hint),
+                                useLabelAsPlaceholder = true,
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .background(if (newTagName.trim().isNotEmpty()) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
+                                    .then(if (newTagName.trim().isNotEmpty()) Modifier.clickable {
+                                        val trimmed = newTagName.trim()
+                                        if (trimmed.isNotEmpty() && !allTags.contains(trimmed)) {
+                                            GameTags.addTag(context, trimmed)
+                                            newTagName = ""
+                                            tagListRefresh++
+                                        }
+                                    } else Modifier)
+                                    .padding(horizontal = DesignTokens.SpaceXl, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = context.getString(R.string.tag_new), fontSize = DesignTokens.TextBody2.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(DesignTokens.ButtonHeightSmall)
+                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                .background(buttonBgColor())
+                                .clickable { showTagDialog = false },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = context.getString(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
+                        }
+                    }
+                }
+            }
+        }
     } // close Surface
 }
 
@@ -377,9 +560,9 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 private fun SectionHeader(text: String) {
     Text(
         text = text,
-        color = Color(0xFF3482FF),
+        color = DesignTokens.AccentBlue,
         fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
+        fontSize = DesignTokens.TextBody1.sp,
         modifier = Modifier.padding(start = 20.dp, top = 22.dp, bottom = 8.dp)
     )
 }
@@ -389,51 +572,45 @@ private fun DividerLine() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(1.dp)
+            .height(DesignTokens.DividerHeight)
             .padding(vertical = 12.dp)
             .background(MiuixTheme.colorScheme.outline)
     )
 }
 
 @Composable
-private fun ThemeRadioButton(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun ThemeRadioButton(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .clickable(onClick = onClick)
             .padding(vertical = 6.dp, horizontal = 2.dp)
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        SelectableIndicator(selected = selected)
         Spacer(Modifier.width(4.dp))
-        Text(text = label, fontSize = 13.sp)
+        Text(text = label, fontSize = DesignTokens.TextBody2.sp)
     }
 }
 
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit) {
+private fun SwitchRow(label: String, checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .clickable { if (enabled) onCheckedChange(!checked) }
             .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            fontSize = 15.sp,
-            modifier = Modifier.weight(1f)
-        )
-        Checkbox(
-            state = if (checked) ToggleableState.On else ToggleableState.Off,
-            onClick = { if (enabled) onCheckedChange(!checked) }
-        )
+        SelectableIndicator(selected = checked, enabled = enabled)
+        Spacer(Modifier.width(8.dp))
+        Text(text = label, fontSize = DesignTokens.TextBody1.sp)
     }
 }
 
 @Composable
 private fun LabeledTextField(label: String, value: String, onValueChange: (String) -> Unit, hint: String) {
     Column {
-        Text(text = label, fontSize = 13.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        Text(text = label, fontSize = DesignTokens.TextBody2.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
         Spacer(Modifier.height(4.dp))
         TextField(
             value = value,

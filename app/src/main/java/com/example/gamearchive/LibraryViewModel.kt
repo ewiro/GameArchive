@@ -59,11 +59,11 @@ class LibraryViewModel : ViewModel() {
             _loading.value = true
             try {
                 // 三个请求并发发出
-                val gameDeferred = async { MainActivity.apiServiceGlobal.getOwnedGames(apiKey, steamId) }
-                val userDeferred = async { MainActivity.apiServiceGlobal.getPlayerSummaries(apiKey, steamId) }
+                val gameDeferred = async { GameArchiveApp.apiService.getOwnedGames(apiKey, steamId) }
+                val userDeferred = async { GameArchiveApp.apiService.getPlayerSummaries(apiKey, steamId) }
                 val levelDeferred = async {
                     try {
-                        MainActivity.apiServiceGlobal.getSteamLevel(apiKey, steamId)
+                        GameArchiveApp.apiService.getSteamLevel(apiKey, steamId)
                     } catch (e: Exception) { null } // 等级失败不影响其他
                 }
 
@@ -107,7 +107,7 @@ class LibraryViewModel : ViewModel() {
         if (games.isEmpty()) return
         try {
             val ids = games.joinToString(",") { it.appid.toString() }
-            val response = MainActivity.apiServiceGlobal.getGamePrices(ids, l = LocaleHelper.currentApiLanguage)
+            val response = GameArchiveApp.apiService.getGamePrices(ids, l = LocaleHelper.currentApiLanguage)
 
             for ((idStr, details) in response) {
                 val id = idStr.toInt()
