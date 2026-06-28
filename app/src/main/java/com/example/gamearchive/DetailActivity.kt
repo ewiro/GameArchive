@@ -12,8 +12,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -41,7 +43,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Surface
@@ -49,6 +54,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import androidx.compose.ui.state.ToggleableState
 
 class DetailActivity : ComponentActivity() {
 
@@ -79,15 +85,7 @@ class DetailActivity : ComponentActivity() {
     }
 }
 
-// ── Compose 颜色常量（映射 colors.xml） ──
-private val ReviewGreat  = Color(0xFFE65100)
-private val ReviewGood   = Color(0xFF1565C0)
-private val ReviewMixed  = Color(0xFF616161)
-private val ReviewPoor   = Color(0xFFD32F2F)
-private val SuccessGreen = Color(0xFF4CAF50)
-private val ErrorRed     = Color(0xFFD32F2F)
-private val AccentBlue   = Color(0xFF3482FF)
-private val ReviewBlue   = Color(0xFF66C0F4)
+// ── 颜色 → DesignTokens
 
 // ── 媒体条目 ──
 private data class MediaItem(val url: String, val thumbnailUrl: String, val isVideo: Boolean)
@@ -105,6 +103,15 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     var developer by remember { mutableStateOf("") }
     var descriptionHtml by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
+
+    // 标记状态
+    var currentMark by remember { mutableIntStateOf(GameMarks.getMark(context, appId)) }
+    var showMarkSheet by remember { mutableStateOf(false) }
+
+    // 标签状态
+    var gameTags by remember { mutableStateOf(GameTags.getTagsForGame(context, appId)) }
+    var showTagSheet by remember { mutableStateOf(false) }
+    val allTags = remember { GameTags.getAllTags(context) }
 
     // 评价状态
     var reviewSummary by remember { mutableStateOf("") }
@@ -129,11 +136,15 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     LaunchedEffect(appId) {
         if (appId == 0) { isLoading = false; return@LaunchedEffect }
         try {
-            val api = MainActivity.apiServiceGlobal
-            val l = LocaleHelper.currentApiLanguage
+            try {
+                val api = GameArchiveApp.apiService
+            val l = LocaleHelper.getApiLanguage(context)
 
-            val detailsResp = try { api.getGameDetails(appId, l = l) } catch (_: Exception) { null }
-            val reviewsResp = try { api.getGameReviews(appId, l = l, count = 50) } catch (_: Exception) { null }
+            val (detailsResp, reviewsResp) = coroutineScope {
+                val d = async { try { api.getGameDetails(appId, l = l) } catch (_: Exception) { null } }
+                val r = async { try { api.getGameReviews(appId, l = l, count = 50) } catch (_: Exception) { null } }
+                Pair(d.await(), r.await())
+            }
 
             val data = detailsResp?.get(appId.toString())?.data
             if (data != null) {
@@ -178,7 +189,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                         android.content.res.Configuration.UI_MODE_NIGHT_YES
 
-                val bodyColor = String.format("#%06X", (if (isNight) 0xFF9A9A9F.toInt() else 0xFF8A8A8F.toInt()) and 0xFFFFFF)
+                val bodyColor = String.format("#%06X", (if (isNight) 0xFFB0B0B5.toInt() else 0xFF6A6A6F.toInt()) and 0xFFFFFF)
                 val headColor = String.format("#%06X", (if (isNight) 0xFFF2F2F2.toInt() else 0xFF000000.toInt()) and 0xFFFFFF)
                 val linkColor = String.format("#%06X", (if (isNight) 0xFF5E9BFF.toInt() else 0xFF3482FF.toInt()) and 0xFFFFFF)
 
@@ -224,8 +235,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
             } else {
                 reviewSummary = context.getString(R.string.general_no_data)
             }
-        } catch (_: Exception) { }
-        isLoading = false
+            } catch (_: Exception) { }
+        } finally {
+            isLoading = false
+        }
     }
 
     // ── UI ──
@@ -248,7 +261,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     val density = LocalDensity.current
     val topBarOffsetY by animateDpAsState(
         targetValue = if (topBarVisible) 0.dp else -topBarHeightDp,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+        animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
     )
 
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -280,7 +293,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 4.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                                 .background(Color.Black)
                                 .clickable {
                                     val intent = Intent(context, MediaViewerActivity::class.java)
@@ -302,7 +315,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 Image(
                                     painter = painterResource(android.R.drawable.ic_media_play),
                                     contentDescription = "Play",
-                                    modifier = Modifier.size(48.dp),
+                                    modifier = Modifier.size(DesignTokens.IconPlay),
                                     colorFilter = ColorFilter.tint(Color.White)
                                 )
                             }
@@ -310,95 +323,90 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     }
                 }
 
-                // ── 价格 + 评价卡片 ──
-                Row(
+                // ── 价格 + 评价 —— 单卡片竖线分割 ──
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    cornerRadius = DesignTokens.CornerLarge
                 ) {
-                    // 价格卡片
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        cornerRadius = 16.dp
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // 价格区
                         Row(
-                            modifier = Modifier.padding(4.dp),
+                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (discountPercent > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .background(DiscountGreen, RoundedCornerShape(8.dp))
-                                        .padding(horizontal = 8.dp, vertical = 12.dp),
+                                        .background(DesignTokens.DiscountGreen, RoundedCornerShape(DesignTokens.CornerMedium))
+                                        .padding(horizontal = 6.dp, vertical = 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = "-$discountPercent%",
                                         fontWeight = FontWeight.Black,
-                                        fontSize = 16.sp,
-                                        color = Color(0xFF000400)
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        color = DesignTokens.DiscountGreenText
                                     )
                                 }
+                                Spacer(Modifier.width(6.dp))
                             }
-                            Column(
-                                modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 4.dp),
-                                horizontalAlignment = Alignment.End
-                            ) {
-                                if (originalPrice.isNotEmpty()) {
-                                    Text(
-                                        text = originalPrice,
-                                        fontSize = 10.sp,
-                                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                        textDecoration = TextDecoration.LineThrough
-                                    )
-                                }
+                            if (originalPrice.isNotEmpty()) {
                                 Text(
-                                    text = finalPrice,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = if (discountPercent > 0) 18.sp else 22.sp
+                                    text = originalPrice,
+                                    fontSize = DesignTokens.TextCaption.sp,
+                                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                                    textDecoration = TextDecoration.LineThrough
                                 )
+                                Spacer(Modifier.width(4.dp))
                             }
+                            Text(
+                                text = finalPrice,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = DesignTokens.TextSubtitle.sp,
+                                maxLines = 1
+                            )
                         }
-                    }
 
-                    // 评价卡片
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        cornerRadius = 16.dp
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        // 竖线
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(36.dp)
+                                .background(MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled))
+                        )
+
+                        // 评价区
+                        Row(
+                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
                             Text(
                                 text = reviewSummary.ifEmpty { context.getString(R.string.detail_loading_review) },
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
+                                fontSize = DesignTokens.TextBody2.sp,
                                 color = when {
-                                    reviewPercent >= 95 -> ReviewGreat
-                                    reviewPercent >= 70 -> ReviewGood
-                                    reviewPercent >= 40 -> ReviewMixed
-                                    reviewPercent >= 0 -> ReviewPoor
-                                    else -> ReviewBlue
+                                    reviewPercent >= 95 -> DesignTokens.ReviewGreat
+                                    reviewPercent >= 70 -> DesignTokens.ReviewGood
+                                    reviewPercent >= 40 -> DesignTokens.ReviewMixed
+                                    reviewPercent >= 0 -> DesignTokens.ReviewPoor
+                                    else -> DesignTokens.ReviewDefault
                                 },
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
                             if (reviewPercent >= 0) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(text = "$reviewPercent%", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text(
-                                        text = context.getString(R.string.detail_positive),
-                                        fontSize = 10.sp,
-                                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                        modifier = Modifier.padding(start = 2.dp)
-                                    )
-                                }
                                 Text(
-                                    text = "($reviewCount)",
-                                    fontSize = 10.sp,
-                                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    text = "$reviewPercent%",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = DesignTokens.TextBody2.sp,
+                                    modifier = Modifier.padding(start = 4.dp)
                                 )
                             }
                         }
@@ -418,22 +426,22 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             Image(
                                 painter = painterResource(R.drawable.ic_business),
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                modifier = Modifier.size(DesignTokens.IconMd),
+                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
                             )
                             Text(
                                 text = context.getString(R.string.detail_developer),
-                                fontSize = 11.sp,
+                                fontSize = DesignTokens.TextCaption.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                                 modifier = Modifier.padding(start = 4.dp)
                             )
                         }
                         Text(
                             text = developer,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = AccentBlue,
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = DesignTokens.AccentBlue,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 2.dp)
@@ -444,32 +452,108 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = context.getString(R.string.detail_release_date),
-                                fontSize = 11.sp,
+                                fontSize = DesignTokens.TextCaption.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                             Image(
                                 painter = painterResource(R.drawable.ic_calendar),
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                modifier = Modifier.size(DesignTokens.IconMd),
+                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
                             )
                         }
                         Text(
                             text = releaseDate,
-                            fontSize = 14.sp,
+                            fontSize = DesignTokens.TextBody1.sp,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                 }
 
                 // 分割线
+                // ── 游玩标记选择器 ──
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showMarkSheet = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = if (currentMark in GameMarks.markResIds) {
+                                context.getString(currentMark)
+                            } else {
+                                context.getString(R.string.mark_select_status)
+                            },
+                            fontSize = DesignTokens.TextBody1.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (currentMark in GameMarks.markResIds) {
+                                Color(GameMarks.statusColorMap[currentMark]!!)
+                            } else {
+                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                            }
+                        )
+                    }
+                    Image(
+                        painter = painterResource(R.drawable.ic_arrow_right),
+                        contentDescription = null,
+                        modifier = Modifier.size(DesignTokens.IconLg),
+                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint))
+                    )
+                }
+
+                // ── 标签选择器 ──
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showTagSheet = true }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    if (gameTags.isEmpty()) {
+                        Text(
+                            text = context.getString(R.string.tag_edit),
+                            fontSize = DesignTokens.TextBody2.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive),
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            gameTags.forEach { tag ->
+                                Text(
+                                    text = tag,
+                                    fontSize = DesignTokens.TextBody1.sp,
+                                    color = Color.White,
+                                    modifier = Modifier
+                                        .background(tagBgColor(), RoundedCornerShape(DesignTokens.CornerSmall))
+                                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = "+",
+                        fontSize = DesignTokens.TextHeadline.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(DesignTokens.SpaceMassive))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .height(1.dp)
+                        .height(DesignTokens.DividerHeight)
                         .background(MiuixTheme.colorScheme.outline)
                 )
 
@@ -477,7 +561,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 Text(
                     text = context.getString(R.string.detail_about),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
+                    fontSize = DesignTokens.TextBody2.sp,
                     modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
                 )
 
@@ -522,7 +606,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Text(
                         text = context.getString(R.string.detail_reviews_title),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
+                        fontSize = DesignTokens.TextBody2.sp,
                         modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 12.dp)
                     )
 
@@ -559,14 +643,14 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Image(
                         painter = painterResource(R.drawable.ic_back),
                         contentDescription = "Back",
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                     )
                 }
                 Text(
                     text = gameName,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = DesignTokens.TextTitle.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(end = 48.dp)
@@ -574,6 +658,214 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
             }
         }
     } // close Box
+
+        // ── 标记选择底部弹窗 ──
+        if (showMarkSheet) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .clickable { showMarkSheet = false },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = false, onClick = {})  // 阻止事件穿透
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = context.getString(R.string.mark_select_status),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        // 清除标记
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    GameMarks.setMark(context, appId, -1)
+                                    currentMark = -1
+                                    showMarkSheet = false
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(DesignTokens.IconSm)
+                                    .background(
+                                        if (currentMark == -1) DesignTokens.AccentBlue else Color.Transparent,
+                                        RoundedCornerShape(DesignTokens.CornerMedium)
+                                    )
+                                    .then(
+                                        if (currentMark != -1) Modifier.border(
+                                            1.5.dp,
+                                            MiuixTheme.colorScheme.outline,
+                                            RoundedCornerShape(DesignTokens.CornerMedium)
+                                        )
+                                        else Modifier
+                                    )
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = context.getString(R.string.mark_clear),
+                                fontSize = DesignTokens.TextBody1.sp,
+                                color = if (currentMark == -1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        // 7 种状态
+                        GameMarks.markResIds.forEach { resId ->
+                            val markColor = Color(GameMarks.statusColorMap[resId]!!)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        GameMarks.setMark(context, appId, resId)
+                                        currentMark = resId
+                                        showMarkSheet = false
+                                    }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(DesignTokens.IconSm)
+                                        .background(
+                                            if (currentMark == resId) markColor else Color.Transparent,
+                                            RoundedCornerShape(DesignTokens.CornerMedium)
+                                        )
+                                        .then(
+                                            if (currentMark != resId) Modifier.border(
+                                                DesignTokens.BorderThick, markColor, RoundedCornerShape(DesignTokens.CornerMedium)
+                                            )
+                                            else Modifier
+                                        )
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = context.getString(resId),
+                                    fontSize = DesignTokens.TextBody1.sp,
+                                    fontWeight = if (currentMark == resId) FontWeight.Bold else FontWeight.Normal,
+                                    color = markColor
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 标签选择底部弹窗 ──
+        if (showTagSheet) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .clickable { showTagSheet = false },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = false, onClick = {})
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = context.getString(R.string.tag_select),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        // ── 新建标签 ──
+                        var newTagInput by remember { mutableStateOf("") }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            top.yukonga.miuix.kmp.basic.TextField(
+                                value = newTagInput,
+                                onValueChange = { newTagInput = it },
+                                modifier = Modifier.weight(1f),
+                                label = context.getString(R.string.tag_hint),
+                                useLabelAsPlaceholder = true,
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .background(if (newTagInput.trim().isNotEmpty()) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
+                                    .then(if (newTagInput.trim().isNotEmpty()) Modifier.clickable {
+                                        val trimmed = newTagInput.trim()
+                                        if (trimmed.isNotEmpty() && !allTags.contains(trimmed)) {
+                                            GameTags.addTag(context, trimmed)
+                                            gameTags = gameTags + trimmed
+                                            GameTags.setTagsForGame(context, appId, gameTags)
+                                            newTagInput = ""
+                                        }
+                                    } else Modifier)
+                                    .padding(horizontal = DesignTokens.SpaceXl, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = context.getString(R.string.tag_new), fontSize = DesignTokens.TextBody2.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        // ── 标签池 ──
+                        if (allTags.isEmpty()) {
+                            Text(
+                                text = context.getString(R.string.general_no_data),
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint),
+                                fontSize = DesignTokens.TextBody1.sp,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+                        } else {
+                            allTags.forEach { tag ->
+                                val checked = gameTags.contains(tag)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            gameTags = if (checked) {
+                                                gameTags.filter { it != tag }
+                                            } else {
+                                                gameTags + tag
+                                            }
+                                            GameTags.setTagsForGame(context, appId, gameTags)
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        state = if (checked) ToggleableState.On else ToggleableState.Off,
+                                        onClick = {
+                                            gameTags = if (checked) gameTags.filter { it != tag }
+                                            else gameTags + tag
+                                            GameTags.setTagsForGame(context, appId, gameTags)
+                                        }
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(text = tag, fontSize = DesignTokens.TextBody1.sp)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(DesignTokens.ButtonHeightSmall)
+                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                .background(buttonBgColor())
+                                .clickable { showTagSheet = false },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = context.getString(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
+                        }
+                    }
+                }
+            }
+        }
     } // close Surface
 }
 
@@ -590,7 +882,7 @@ private fun ReviewItem(review: SteamReview) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp),
-        cornerRadius = 16.dp
+        cornerRadius = DesignTokens.CornerLarge
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // 头部
@@ -602,9 +894,9 @@ private fun ReviewItem(review: SteamReview) {
                                 if (review.voted_up) R.drawable.ic_thumb_up else R.drawable.ic_thumb_down
                             ),
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(DesignTokens.IconMd),
                             colorFilter = ColorFilter.tint(
-                                if (review.voted_up) SuccessGreen else ErrorRed
+                                if (review.voted_up) DesignTokens.SuccessGreen else DesignTokens.ErrorRed
                             )
                         )
                         Text(
@@ -612,25 +904,25 @@ private fun ReviewItem(review: SteamReview) {
                                 if (review.voted_up) R.string.review_recommended else R.string.review_not_recommended
                             ),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = DesignTokens.TextBody2.sp,
                             modifier = Modifier.padding(start = 4.dp),
-                            color = if (review.voted_up) SuccessGreen else ErrorRed
+                            color = if (review.voted_up) DesignTokens.SuccessGreen else DesignTokens.ErrorRed
                         )
                     }
                     Text(
                         text = context.getString(R.string.review_playtime, hours),
-                        fontSize = 11.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        fontSize = DesignTokens.TextCaption.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                 }
-                Text(text = date, fontSize = 11.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Text(text = date, fontSize = DesignTokens.TextCaption.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
             }
 
             // 分割线
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(1.dp)
+                    .height(DesignTokens.DividerHeight)
                     .padding(vertical = 8.dp)
                     .background(MiuixTheme.colorScheme.outline)
             )
@@ -638,7 +930,7 @@ private fun ReviewItem(review: SteamReview) {
             // 内容
             Text(
                 text = review.review.replace(Regex("\\[.*?\\]"), ""),
-                fontSize = 14.sp,
+                fontSize = DesignTokens.TextBody1.sp,
                 lineHeight = 20.sp
             )
 
@@ -646,8 +938,8 @@ private fun ReviewItem(review: SteamReview) {
             if (review.votes_up > 0) {
                 Text(
                     text = context.getString(R.string.review_helpful, review.votes_up),
-                    fontSize = 10.sp,
-                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    fontSize = DesignTokens.TextCaption.sp,
+                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -655,4 +947,3 @@ private fun ReviewItem(review: SteamReview) {
     }
 }
 
-private val DiscountGreen = Color(0xFFA1CD44)

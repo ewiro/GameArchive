@@ -12,7 +12,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,7 +22,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,8 +49,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -54,7 +56,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         val ownedGameIds = mutableSetOf<Int>()
-        lateinit var apiServiceGlobal: SteamApiService
     }
 
     override fun attachBaseContext(newBase: Context?) {
@@ -66,11 +67,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val retrofit = Retrofit.Builder()
-            .baseUrl(AppConfig.PROXY_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-        apiServiceGlobal = retrofit.create(SteamApiService::class.java)
         LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(this)
 
         setContent {
@@ -87,6 +83,13 @@ class MainActivity : ComponentActivity() {
                             ThemeUtils.applyStatusBarAppearance(it)
                         }
                         if (ThemeUtils.isChanged) {
+                            // 语言变更 → 重建 Activity 让 attachBaseContext 重跑
+                            if (ThemeUtils.hasLanguageChanged(context)) {
+                                ThemeUtils.markLanguageApplied(context)
+                                ThemeUtils.isChanged = false
+                                (context as? android.app.Activity)?.recreate()
+                                return@LifecycleEventObserver
+                            }
                             ThemeUtils.isChanged = false
                             LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(context)
                             settingsVersion++
@@ -178,11 +181,11 @@ private fun MainScreen() {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val topBarOffsetY by animateDpAsState(
         targetValue = if (topBarVisible) 0.dp else -topBarHeightDp,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+        animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
     )
     val bottomBarOffsetY by animateDpAsState(
         targetValue = if (bottomBarVisible) 0.dp else 60.dp,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+        animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
     )
 
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -209,8 +212,6 @@ private fun MainScreen() {
                 )
                 1 -> SpecialsScreen(
                     listState = specialsListState,
-                    showSortDialog = showSortDialog,
-                    onDismissSortDialog = { showSortDialog = false },
                     onNavigateToDetail = { appId, name, headerUrl, price ->
                         context.startActivity(Intent(context, DetailActivity::class.java).apply {
                             putExtra("APP_ID", appId); putExtra("APP_NAME", name)
@@ -242,7 +243,7 @@ private fun MainScreen() {
                 Text(
                     text = context.getString(if (selectedTab == 0) R.string.nav_library else R.string.nav_specials),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = DesignTokens.TextTitle.sp,
                     modifier = Modifier.weight(1f)
                 )
                 if (selectedTab == 0) {
@@ -252,7 +253,7 @@ private fun MainScreen() {
                         Image(
                             painter = painterResource(R.drawable.ic_settings),
                             contentDescription = context.getString(R.string.settings_title),
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
                     }
@@ -261,7 +262,7 @@ private fun MainScreen() {
                         Image(
                             painter = painterResource(R.drawable.ic_sort),
                             contentDescription = "Sort",
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
                     }
@@ -282,7 +283,7 @@ private fun MainScreen() {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(DesignTokens.BottomBarHeight)
                     .padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
@@ -297,11 +298,11 @@ private fun MainScreen() {
                     Image(
                         painter = painterResource(if (selectedTab == 0) R.drawable.ic_lib_filled else R.drawable.ic_lib_outlined),
                         contentDescription = context.getString(R.string.nav_library),
-                        modifier = Modifier.size(24.dp),
-                        colorFilter = ColorFilter.tint(if (selectedTab == 0) Color(0xFF3482FF) else MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        modifier = Modifier.size(DesignTokens.IconXl),
+                        colorFilter = ColorFilter.tint(if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                     )
-                    Text(text = context.getString(R.string.nav_library), fontSize = 10.sp,
-                        color = if (selectedTab == 0) Color(0xFF3482FF) else MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(text = context.getString(R.string.nav_library), fontSize = DesignTokens.TextCaption.sp,
+                        color = if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
                 // 特惠 Tab
                 Column(
@@ -313,13 +314,23 @@ private fun MainScreen() {
                     Image(
                         painter = painterResource(if (selectedTab == 1) R.drawable.ic_sale_filled else R.drawable.ic_sale_outlined),
                         contentDescription = context.getString(R.string.nav_specials),
-                        modifier = Modifier.size(24.dp),
-                        colorFilter = ColorFilter.tint(if (selectedTab == 1) Color(0xFF3482FF) else MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        modifier = Modifier.size(DesignTokens.IconXl),
+                        colorFilter = ColorFilter.tint(if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                     )
-                    Text(text = context.getString(R.string.nav_specials), fontSize = 10.sp,
-                        color = if (selectedTab == 1) Color(0xFF3482FF) else MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(text = context.getString(R.string.nav_specials), fontSize = DesignTokens.TextCaption.sp,
+                        color = if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
             }
+        }
+        if (showSortDialog) {
+            val specialsVm = viewModel<SpecialsViewModel>()
+            SortDialog(
+                currentSort = specialsVm.sortMode,
+                isFilteringOwned = specialsVm.isFilteringOwned,
+                onSortSelected = { specialsVm.sortMode = it; showSortDialog = false },
+                onFilterToggle = { specialsVm.isFilteringOwned = !specialsVm.isFilteringOwned },
+                onDismiss = { showSortDialog = false }
+            )
         }
     } // Box
     } // Surface
@@ -358,6 +369,17 @@ private fun LibraryScreen(
     val showProfile = UserPrefs.isShowProfile(context)
     val gameList = games ?: emptyList()
 
+    // 从详情页/设置页返回时刷新标记和标签显示
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var listRefreshTrigger by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) listRefreshTrigger++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // 分组折叠状态
     var recentExpanded by remember { mutableStateOf(true) }
     var playedExpanded by remember { mutableStateOf(false) }
@@ -377,6 +399,16 @@ private fun LibraryScreen(
         else gameList.sortedBy { it.name }
     }
 
+    // 标记筛选状态（-1 = 全部）
+    var markFilter by remember { mutableIntStateOf(-1) }
+
+    // 应用标记筛选
+    val filteredGames = remember(sortedGames, markFilter, listRefreshTrigger) {
+        var list = sortedGames
+        if (markFilter != -1) list = list.filter { GameMarks.getMark(context, it.appid) == markFilter }
+        list
+    }
+
     // 顶栏叠加层占位高度
     val statusBarHeight = remember {
         val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
@@ -391,8 +423,15 @@ private fun LibraryScreen(
     } else {
         PullToRefresh(
             isRefreshing = loading == true,
-            onRefresh = { viewModel.refresh(apiKey, steamId) },
+            onRefresh = { viewModel.refresh(apiKey, steamId); listRefreshTrigger++ },
             modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = topBarInsetDp),
+            refreshTexts = listOf(
+                context.getString(R.string.general_pull_down),
+                context.getString(R.string.general_release),
+                context.getString(R.string.general_refreshing),
+                context.getString(R.string.general_refreshed)
+            ),
         ) {
         LazyColumn(
             state = listState,
@@ -405,18 +444,49 @@ private fun LibraryScreen(
                 }
             }
 
+            // 标记筛选横条
+            item("mark_filter") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // "全部" 按钮
+                    MarkFilterChip(
+                        label = context.getString(R.string.mark_filter_all),
+                        selected = markFilter == -1,
+                        color = null,
+                        onClick = { markFilter = -1 }
+                    )
+                    GameMarks.markResIds.forEach { resId ->
+                        MarkFilterChip(
+                            label = context.getString(resId),
+                            selected = markFilter == resId,
+                            color = androidx.compose.ui.graphics.Color(
+                                GameMarks.statusColorMap[resId]!!
+                            ),
+                            onClick = {
+                                markFilter = if (markFilter == resId) -1 else resId
+                            }
+                        )
+                    }
+                }
+            }
+
             if (!isGrouping) {
-                items(sortedGames, key = { "g_${it.appid}" }) { game ->
-                    GameItem(game, priceMap[game.appid] ?: "", onClick = {
+                items(filteredGames, key = { "g_${it.appid}" }) { game ->
+                    GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger, onClick = {
                         onNavigateToDetail(game.appid, game.name,
                             "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
                             priceMap[game.appid] ?: "Free / Unknown")
                     })
                 }
             } else {
-                val recent = sortedGames.filter { (it.playtime_2weeks ?: 0) > 0 }
-                val played = sortedGames.filter { it.playtime_forever > 0 && !recent.any { r -> r.appid == it.appid } }
-                val unplayed = sortedGames.filter { it.playtime_forever == 0 }
+                val recent = filteredGames.filter { (it.playtime_2weeks ?: 0) > 0 }
+                val played = filteredGames.filter { it.playtime_forever > 0 && !recent.any { r -> r.appid == it.appid } }
+                val unplayed = filteredGames.filter { it.playtime_forever == 0 }
 
                 if (recent.isNotEmpty()) {
                     item("hdr_recent") {
@@ -428,7 +498,7 @@ private fun LibraryScreen(
                     }
                     if (recentExpanded) {
                         items(recent, key = { "r_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "") { onNavigateToDetail(game.appid, game.name,
+                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name,
                                 "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
                                 priceMap[game.appid] ?: "Free / Unknown") }
                         }
@@ -444,7 +514,7 @@ private fun LibraryScreen(
                     }
                     if (playedExpanded) {
                         items(played, key = { "p_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "") { onNavigateToDetail(game.appid, game.name,
+                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name,
                                 "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
                                 priceMap[game.appid] ?: "Free / Unknown") }
                         }
@@ -460,7 +530,7 @@ private fun LibraryScreen(
                     }
                     if (unplayedExpanded) {
                         items(unplayed, key = { "u_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "") { onNavigateToDetail(game.appid, game.name,
+                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name,
                                 "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
                                 priceMap[game.appid] ?: "Free / Unknown") }
                         }
@@ -472,20 +542,8 @@ private fun LibraryScreen(
     }
 }
 
-// ── 游玩时长徽章颜色映射 ──
-private val BadgeColors = mapOf(
-    0   to Color(0xFFCCCCD6), // 0h — 灰色
-    200 to Color(0xFFD42517), // 200h+ — 红色
-    100 to Color(0xFFFB8B05), // 100h+ — 橙色
-    50  to Color(0xFF7E1671), // 50h+ — 紫色
-    20  to Color(0xFF1772B4), // 20h+ — 蓝色
-)
-private val BadgeDefaultColor = Color(0xFF20894D) // 默认 — 绿色
-
-// ── 状态颜色 ──
-private val StatusOnlineColor = Color(0xFFB3E5FC)
-private val StatusOfflineColor = Color(0xFFE0E0E0)
-private val StatusInGameColor = Color(0xFFA3CF06)
+// ── 游玩时长徽章颜色 → DesignTokens.badgeColor() / badgeColorMap
+// ── 状态颜色 → DesignTokens.Status*
 
 @Composable
 private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double, level: Int) {
@@ -494,15 +552,15 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
     val customFrameUrl = UserPrefs.getCustomFrameUrl(context)
     val customAvatar = UserPrefs.getCustomAvatarUrl(context)
     val textShadow = androidx.compose.ui.graphics.Shadow(
-        color = Color(0x80000000), offset = androidx.compose.ui.geometry.Offset(1f, 1f), blurRadius = 2f
+        color = DesignTokens.TextShadowColor, offset = androidx.compose.ui.geometry.Offset(1f, 1f), blurRadius = 2f
     )
 
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 6.dp)
-            .background(Color(0xFF3482FF), RoundedCornerShape(22.dp))
-            .clip(RoundedCornerShape(22.dp))
+            .background(DesignTokens.AccentBlue, RoundedCornerShape(DesignTokens.CornerXLarge))
+            .clip(RoundedCornerShape(DesignTokens.CornerXLarge))
     ) {
         androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth()) {
             // 自定义背景图 + 半透明遮罩
@@ -513,7 +571,7 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                     modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Crop
                 )
-                Box(modifier = Modifier.matchParentSize().background(Color(0x40000000)))
+                Box(modifier = Modifier.matchParentSize().background(DesignTokens.ProfileOverlay))
             }
 
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -523,12 +581,12 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                     verticalAlignment = Alignment.Top
                 ) {
                     // 头像 + 挂件框 — 挂件为外框，头像居中在内
-                    Box(modifier = Modifier.size(70.dp)) {
-                        // 头像 68dp 居中，与挂件边框贴合
+                    Box(modifier = Modifier.size(DesignTokens.AvatarOuter)) {           // ← 外框大小
                         AsyncImage(
                             model = if (customAvatar.isNotEmpty()) customAvatar else player.avatarfull,
                             contentDescription = null,
-                            modifier = Modifier.size(64.dp).align(Alignment.Center),
+                            modifier = Modifier.size(DesignTokens.AvatarInner)          // ← 头像大小（需 < 外框，差值=边框厚度）
+                                .align(Alignment.Center),
                             contentScale = ContentScale.Crop
                         )
                         // 挂件铺满外框，叠在头像上方
@@ -548,15 +606,15 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                             text = player.personaname,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
+                            fontSize = DesignTokens.TextHeadline.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                         )
                         Text(
                             text = "Lv. $level",
-                            color = Color(0xFFDDDDDD),
-                            fontSize = 12.sp,
+                            color = DesignTokens.ProfileTextDim2,
+                            fontSize = DesignTokens.TextBody2.sp,
                             fontWeight = FontWeight.Bold,
                             style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                         )
@@ -564,16 +622,16 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                         // 在线状态
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             val (statusText, statusColor) = if (player.gameextrainfo != null) {
-                                context.getString(R.string.profile_playing) to StatusInGameColor
+                                context.getString(R.string.profile_playing) to DesignTokens.StatusInGame
                             } else if (player.personastate == 0) {
-                                context.getString(R.string.profile_offline) to StatusOfflineColor
+                                context.getString(R.string.profile_offline) to DesignTokens.StatusOffline
                             } else {
-                                context.getString(R.string.profile_online) to StatusOnlineColor
+                                context.getString(R.string.profile_online) to DesignTokens.StatusOnline
                             }
                             Text(
                                 text = statusText,
                                 color = statusColor,
-                                fontSize = 12.sp,
+                                fontSize = DesignTokens.TextBody2.sp,
                                 fontWeight = FontWeight.Bold,
                                 style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                             )
@@ -582,8 +640,8 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                             if (gameName != null) {
                                 Text(
                                     text = gameName,
-                                    color = StatusInGameColor,
-                                    fontSize = 12.sp,
+                                    color = DesignTokens.StatusInGame,
+                                    fontSize = DesignTokens.TextBody2.sp,
                                     maxLines = 1,
                                     softWrap = false,
                                     modifier = Modifier.padding(start = 6.dp),
@@ -604,13 +662,13 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                             text = if (totalHours < 0.05) "0h" else String.format("%.1fh", totalHours),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = DesignTokens.TextSubtitle.sp,
                             style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                         )
                         Text(
                             text = context.getString(R.string.profile_playtime_label),
-                            color = Color(0xFFCCCCCC),
-                            fontSize = 11.sp,
+                            color = DesignTokens.ProfileTextDim1,
+                            fontSize = DesignTokens.TextCaption.sp,
                             style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                         )
                     }
@@ -621,13 +679,13 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                             text = "$gameCount",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = DesignTokens.TextSubtitle.sp,
                             style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                         )
                         Text(
                             text = context.getString(R.string.profile_count_label),
-                            color = Color(0xFFCCCCCC),
-                            fontSize = 11.sp,
+                            color = DesignTokens.ProfileTextDim1,
+                            fontSize = DesignTokens.TextCaption.sp,
                             style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                         )
                     }
@@ -637,10 +695,14 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
     }
 }
 
-// ── 分组标题（可折叠） ──
+// ── 分组标题（可折叠，chevron 箭头） ──
 @Composable
 private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
-    val rotation by animateFloatAsState(targetValue = if (expanded) 90f else 0f)
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing),
+        label = "arrowRotation"
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -648,45 +710,92 @@ private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
             .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_arrow_right),
-            contentDescription = if (expanded) "Collapse" else "Expand",
-            modifier = Modifier
-                .size(20.dp)
-                .graphicsLayer { rotationZ = rotation },
-            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+        Text(
+            text = "<",
+            fontSize = DesignTokens.TextSubtitle.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityEmphasis),
+            modifier = Modifier.graphicsLayer { rotationZ = rotation }
         )
         Spacer(Modifier.width(8.dp))
         Text(
             text = title,
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp
+            fontSize = DesignTokens.TextSubtitle.sp
         )
     }
 }
 
-// ── 封面 URL 构建（含 BF6 + 缓存回退） ──
+// ── 标记筛选胶囊 ──
+@Composable
+private fun MarkFilterChip(label: String, selected: Boolean, color: Color?, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+            .background(
+                if (selected && color != null) color.copy(alpha = DesignTokens.OpacityChipBg)
+                else MiuixTheme.colorScheme.surface.copy(alpha = DesignTokens.OpacityInactive)
+            )
+            .then(
+                if (selected && color != null) Modifier.border(DesignTokens.BorderThick, color, RoundedCornerShape(DesignTokens.CornerLarge))
+                else Modifier.border(DesignTokens.BorderThin, MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled), RoundedCornerShape(DesignTokens.CornerLarge))
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = DesignTokens.TextBody2.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected && color != null) color else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityEmphasis)
+        )
+    }
+}
+
+// ── 封面 URL 构建（含 BF6 + 缓存回退 + 90天过期） ──
 private const val BF6_APPID = 2807960
+private const val HEADER_CACHE_TTL_MS = 90L * 24 * 3600 * 1000  // 90 天
 
 private fun buildHeaderUrl(context: Context, appId: Int): Any {
     if (appId == BF6_APPID) return R.drawable.bf6_header
     val cache = context.getSharedPreferences("steam_header_cache", Context.MODE_PRIVATE)
-    return cache.getString("header_$appId", null)
-        ?: "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
+    val entry = cache.getString("header_$appId", null) ?: return "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
+    // 格式: "url|timestamp"
+    val parts = entry.split("|", limit = 2)
+    if (parts.size < 2) {
+        // 旧格式（无时间戳），视为过期，清理后返回默认 URL
+        cache.edit().remove("header_$appId").apply()
+        return "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
+    }
+    val ts = parts[1].toLongOrNull() ?: 0L
+    if (System.currentTimeMillis() - ts > HEADER_CACHE_TTL_MS) {
+        cache.edit().remove("header_$appId").apply()
+        return "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
+    }
+    return parts[0]
+}
+
+// 通用缓存读取（含过期检查）。格式 "value|timestamp"，过期返回 null
+private fun readCacheWithExpiry(prefs: android.content.SharedPreferences, key: String, ttlMs: Long): String? {
+    val entry = prefs.getString(key, null) ?: return null
+    val parts = entry.split("|", limit = 2)
+    if (parts.size < 2) {
+        prefs.edit().remove(key).apply()
+        return null
+    }
+    val ts = parts[1].toLongOrNull() ?: 0L
+    if (System.currentTimeMillis() - ts > ttlMs) {
+        prefs.edit().remove(key).apply()
+        return null
+    }
+    return parts[0]
 }
 
 // ── 游戏卡片（库存） ──
 @Composable
-private fun GameItem(game: GameInfo, price: String, onClick: () -> Unit) {
+private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onClick: () -> Unit) {
     val h = game.playtime_forever / 60.0
-    val badgeColor = when {
-        h >= 200 -> BadgeColors[200]!!
-        h >= 100 -> BadgeColors[100]!!
-        h >= 50  -> BadgeColors[50]!!
-        h >= 20  -> BadgeColors[20]!!
-        h >  0   -> BadgeDefaultColor
-        else     -> BadgeColors[0]!!
-    }
+    val badgeColor = DesignTokens.badgeColor(h)
     val context = LocalContext.current
 
     Column(
@@ -711,12 +820,15 @@ private fun GameItem(game: GameInfo, price: String, onClick: () -> Unit) {
                         // 异步查 Steam API 获取真实封面 URL
                         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                             try {
-                                val resp = MainActivity.apiServiceGlobal.getGameDetails(
+                                val resp = GameArchiveApp.apiService.getGameDetails(
                                     game.appid, l = LocaleHelper.currentApiLanguage
                                 )
                                 val realUrl = resp[game.appid.toString()]?.data?.header_image
                                 if (!realUrl.isNullOrEmpty()) {
-                                    cache.edit().putString("header_${game.appid}", realUrl).apply()
+                                    cache.edit().putString(
+                                        "header_${game.appid}",
+                                        "$realUrl|${System.currentTimeMillis()}"
+                                    ).apply()
                                 }
                             } catch (_: Exception) {}
                         }
@@ -725,12 +837,12 @@ private fun GameItem(game: GameInfo, price: String, onClick: () -> Unit) {
                 .build(),
             contentDescription = null,
             modifier = Modifier
-                .width(130.dp).height(61.dp)
-                .clip(RoundedCornerShape(6.dp)),
+                .width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight)
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium)),
             contentScale = ContentScale.Crop
         )
         Column(
-            modifier = Modifier.weight(1f).padding(start = 14.dp).height(61.dp)
+            modifier = Modifier.weight(1f).padding(start = 12.dp).heightIn(min = DesignTokens.CoverHeight)
         ) {
             // 第一行：游戏名 + 时长徽章（近期时长在徽章下方）
             Row(verticalAlignment = Alignment.Top) {
@@ -739,27 +851,27 @@ private fun GameItem(game: GameInfo, price: String, onClick: () -> Unit) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = DesignTokens.TextBody1.sp,
                     modifier = Modifier.weight(1f).padding(end = 8.dp)
                 )
                 Column(horizontalAlignment = Alignment.End) {
                     // 时长胶囊徽章
                     Row(
                         modifier = Modifier
-                            .background(badgeColor, RoundedCornerShape(9.dp))
+                            .background(badgeColor, RoundedCornerShape(DesignTokens.CornerMedium))
                             .padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Image(
                             painter = painterResource(R.drawable.ic_time),
                             contentDescription = null,
-                            modifier = Modifier.size(10.dp),
+                            modifier = Modifier.size(DesignTokens.IconSm),
                             colorFilter = ColorFilter.tint(Color.White)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = if (h < 0.05) "0h" else String.format("%.1fh", h),
-                            fontSize = 11.sp,
+                            fontSize = DesignTokens.TextCaption.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -768,25 +880,26 @@ private fun GameItem(game: GameInfo, price: String, onClick: () -> Unit) {
                     if (game.playtime_2weeks != null && game.playtime_2weeks > 0) {
                         Text(
                             text = "+${String.format("%.1f", game.playtime_2weeks / 60.0)}h",
-                            fontSize = 10.sp,
+                            fontSize = DesignTokens.TextCaption.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF3482FF),
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                 }
             }
             Spacer(Modifier.weight(1f))
-            // 好评率 — 置底对齐封面底部
+            // 游玩标记 + 好评率 — 底部同行，左标右评
+            val REVIEW_CACHE_TTL_MS = 30L * 24 * 3600 * 1000
             val reviewCache = context.getSharedPreferences("steam_reviews_cache", Context.MODE_PRIVATE)
             var reviewText by remember { mutableStateOf(
-                reviewCache.getString("review_${game.appid}_${LocaleHelper.currentApiLanguage}", null)
+                readCacheWithExpiry(reviewCache, "review_${game.appid}_${LocaleHelper.currentApiLanguage}", REVIEW_CACHE_TTL_MS)
             ) }
             LaunchedEffect(game.appid) {
                 if (reviewText != null) return@LaunchedEffect
                 try {
                     kotlinx.coroutines.delay(100L)
-                    val resp = MainActivity.apiServiceGlobal.getGameReviews(
+                    val resp = GameArchiveApp.apiService.getGameReviews(
                         game.appid, l = LocaleHelper.currentApiLanguage
                     )
                     val summary = resp.query_summary
@@ -794,41 +907,64 @@ private fun GameItem(game: GameInfo, price: String, onClick: () -> Unit) {
                         val rate = (summary.total_positive.toDouble() / summary.total_reviews * 100).toInt()
                         val text = context.getString(R.string.review_score_format, rate)
                         reviewText = text
-                        reviewCache.edit().putString("review_${game.appid}_${LocaleHelper.currentApiLanguage}", text).apply()
+                        reviewCache.edit().putString(
+                            "review_${game.appid}_${LocaleHelper.currentApiLanguage}",
+                            "$text|${System.currentTimeMillis()}"
+                        ).apply()
                     }
                 } catch (_: Exception) {}
             }
-            ReviewScore(reviewText)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ReviewScore(reviewText)
+                Spacer(Modifier.weight(1f))
+                val markRes = GameMarks.getMark(context, game.appid)
+                if (markRes in GameMarks.markResIds) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(Color(GameMarks.statusColorMap[markRes]!!), CircleShape)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = context.getString(markRes),
+                            fontSize = DesignTokens.TextBody2.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                        )
+                    }
+                }
+            }
         }
         } // close Row
         // 价格 — 在封面行下方
         if (price.isNotEmpty()) {
             Text(
                 text = price,
-                fontSize = 12.sp,
-                color = Color(0xFFFF6600),
+                fontSize = DesignTokens.TextBody2.sp,
+                color = DesignTokens.PriceOrange,
                 modifier = Modifier.padding(start = 14.dp + 130.dp, top = 2.dp)
             )
         }
+        // 卡片间分割线 — 微调：改 height 调粗细，改 alpha 调深浅，改 top 调上间距
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .height(DesignTokens.DividerHeight)
+                .background(MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled))
+        )
     } // close outer Column
 }
 
-// ── 好评率文字 ──
+// ── 好评率文字（弱化灰色） ──
 @Composable
 private fun ReviewScore(text: String?) {
     if (text == null) return
-    val score = try { text.filter { it.isDigit() }.toInt() } catch (_: Exception) { -1 }
-    val color = when {
-        score >= 95 -> Color(0xFFE65100)
-        score >= 70 -> Color(0xFF1565C0)
-        score >= 40 -> Color(0xFF616161)
-        else        -> Color(0xFFD32F2F)
-    }
     Text(
         text = text,
-        fontSize = 11.sp,
+        fontSize = DesignTokens.TextCaption.sp,
         fontWeight = FontWeight.Bold,
-        color = color,
+        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
         modifier = Modifier.padding(top = 2.dp)
     )
 }
@@ -838,8 +974,6 @@ private fun ReviewScore(text: String?) {
 @Composable
 private fun SpecialsScreen(
     listState: LazyListState,
-    showSortDialog: Boolean,
-    onDismissSortDialog: () -> Unit,
     onNavigateToDetail: (Int, String, String, String) -> Unit,
     viewModel: SpecialsViewModel = viewModel()
 ) {
@@ -878,6 +1012,7 @@ private fun SpecialsScreen(
     }
     val topBarInsetDp = 48.dp + (statusBarHeight / context.resources.displayMetrics.density).dp + 4.dp
 
+    Box(modifier = Modifier.fillMaxSize()) {
     if (loading == true && filteredList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             InfiniteProgressIndicator()
@@ -896,14 +1031,6 @@ private fun SpecialsScreen(
         }
     }
 
-    if (showSortDialog) {
-        SortDialog(
-            currentSort = viewModel.sortMode,
-            isFilteringOwned = viewModel.isFilteringOwned,
-            onSortSelected = { viewModel.sortMode = it; onDismissSortDialog() },
-            onFilterToggle = { viewModel.isFilteringOwned = !viewModel.isFilteringOwned },
-            onDismiss = onDismissSortDialog
-        )
     }
 }
 
@@ -925,7 +1052,10 @@ private fun SortDialog(
     )
 
     Box(
-        modifier = Modifier.fillMaxSize().clickable(onClick = onDismiss),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DesignTokens.ScrimDark)
+            .clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center
     ) {
         Card(modifier = Modifier.padding(32.dp)) {
@@ -940,7 +1070,7 @@ private fun SortDialog(
                         modifier = Modifier.fillMaxWidth().clickable { onSortSelected(i) }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(selected = currentSort == i, onClick = { onSortSelected(i) })
+                        SelectableIndicator(selected = currentSort == i)
                         Spacer(Modifier.width(8.dp))
                         Text(text = context.getString(labelRes))
                     }
@@ -950,11 +1080,7 @@ private fun SortDialog(
                     modifier = Modifier.fillMaxWidth().clickable { onFilterToggle() }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(
-                        state = if (isFilteringOwned) androidx.compose.ui.state.ToggleableState.On
-                                else androidx.compose.ui.state.ToggleableState.Off,
-                        onClick = { onFilterToggle() }
-                    )
+                    SelectableIndicator(selected = isFilteringOwned)
                     Spacer(Modifier.width(8.dp))
                     Text(text = context.getString(R.string.specials_filter_hide_owned))
                 }
@@ -988,8 +1114,8 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
                 .build(),
             contentDescription = null,
             modifier = Modifier
-                .width(130.dp).height(61.dp)
-                .clip(RoundedCornerShape(6.dp)),
+                .width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight)
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium)),
             contentScale = ContentScale.Crop
         )
         // 游戏名 + 好评率（中间区域，高度对齐封面 61dp）
@@ -1001,20 +1127,20 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
+                fontSize = DesignTokens.TextBody1.sp
             )
             Spacer(Modifier.weight(1f))
             // 好评率 — 置底对齐封面底部
             if (game.reviewScore > 0) {
                 val color = when {
-                    game.reviewScore >= 95 -> Color(0xFFE65100)
-                    game.reviewScore >= 70 -> Color(0xFF1565C0)
-                    game.reviewScore >= 40 -> Color(0xFF616161)
-                    else -> Color(0xFFD32F2F)
+                    game.reviewScore >= 95 -> DesignTokens.ReviewGreat
+                    game.reviewScore >= 70 -> DesignTokens.ReviewGood
+                    game.reviewScore >= 40 -> DesignTokens.ReviewMixed
+                    else -> DesignTokens.ReviewPoor
                 }
                 Text(
                     text = "${game.reviewScore}% " + context.getString(R.string.detail_positive).trim(),
-                    fontSize = 11.sp,
+                    fontSize = DesignTokens.TextCaption.sp,
                     fontWeight = FontWeight.Bold,
                     color = color,
                     modifier = Modifier.padding(top = 2.dp)
@@ -1027,14 +1153,14 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
                 // 折扣胶囊 — 绿底黑字
                 Box(
                     modifier = Modifier
-                        .background(Color(0xFFA1CD44), RoundedCornerShape(7.dp))
+                        .background(DesignTokens.DiscountGreen, RoundedCornerShape(DesignTokens.CornerMedium))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "-${game.discount}%",
-                        fontSize = 11.sp,
+                        fontSize = DesignTokens.TextCaption.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF000400)
+                        color = DesignTokens.DiscountGreenText
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -1043,8 +1169,8 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
             if (!game.originalPriceStr.isNullOrEmpty() && game.discount > 0) {
                 Text(
                     text = game.originalPriceStr,
-                    fontSize = 10.sp,
-                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    fontSize = DesignTokens.TextCaption.sp,
+                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive),
                     style = androidx.compose.ui.text.TextStyle(
                         textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                     )
@@ -1053,7 +1179,7 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
             // 现价
             Text(
                 text = game.finalPriceStr,
-                fontSize = 15.sp,
+                fontSize = DesignTokens.TextBody1.sp,
                 fontWeight = FontWeight.Bold
             )
         }

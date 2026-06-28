@@ -28,5 +28,8 @@ steamtracker_key
 # 内部开发档案,不公开
 /docs/
 
+# 本地开发脚本
+install.sh
+
 # IDE 临时文件
 /.idea/

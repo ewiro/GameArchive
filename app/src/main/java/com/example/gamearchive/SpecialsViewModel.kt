@@ -1,5 +1,9 @@
 package com.example.gamearchive
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -45,9 +49,9 @@ class SpecialsViewModel : ViewModel() {
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
-    // 用户的筛选与排序设置（转屏后保留）
-    var isFilteringOwned = false
-    var sortMode = 0
+    // 用户的筛选与排序设置（Compose State，转屏后保留）
+    var isFilteringOwned by mutableStateOf(false)
+    var sortMode by mutableIntStateOf(0)
 
     private var hasLoaded = false
     private var lastLanguage: String? = null

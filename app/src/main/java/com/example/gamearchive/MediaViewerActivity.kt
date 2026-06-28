@@ -100,7 +100,7 @@ private fun MediaViewerScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(24.dp)
-                .size(48.dp)
+                .size(DesignTokens.IconPlay)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.5f))
                 .clickable(onClick = onClose),
@@ -109,7 +109,7 @@ private fun MediaViewerScreen(
             Image(
                 painter = painterResource(android.R.drawable.ic_menu_close_clear_cancel),
                 contentDescription = "Close",
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(DesignTokens.IconHuge),
                 colorFilter = ColorFilter.tint(Color.White)
             )
         }
@@ -146,7 +146,7 @@ private fun MediaVideoPlayer(url: String) {
 
         if (isLoading) {
             top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(DesignTokens.IconPlay),
                 color = Color.White
             )
         }
