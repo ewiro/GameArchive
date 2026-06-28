@@ -21,9 +21,6 @@ object ThemeUtils {
     // 标记设置是否发生变化，用于通知 Activity 重启
     var isChanged = false
 
-    // MIUIX 经典蓝 (强调色，用于 SwipeRefresh 等需要代码取色的场景)
-    const val ACCENT_BLUE = 0xFF3482FF.toInt()
-
     // 将用户设置的主题应用到 Activity
     fun applyTheme(activity: Activity) {
         val prefs = getPrefs(activity)
@@ -100,4 +97,17 @@ object ThemeUtils {
         isChanged = true
     }
     fun getLanguage(context: Context) = getPrefs(context).getInt(KEY_LANGUAGE, 0)
+
+    /** 检测语言是否在上次应用后发生了变化（用于触发 Activity 重建） */
+    fun hasLanguageChanged(context: Context): Boolean {
+        val prefs = getPrefs(context)
+        val current = getLanguage(context)
+        val lastApplied = prefs.getInt("last_applied_language", -1)
+        return current != lastApplied
+    }
+
+    /** 标记当前语言已应用（调用后 hasLanguageChanged 返回 false） */
+    fun markLanguageApplied(context: Context) {
+        getPrefs(context).edit().putInt("last_applied_language", getLanguage(context)).apply()
+    }
 }

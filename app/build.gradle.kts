@@ -33,7 +33,7 @@ android {
 
                 include("armeabi-v7a", "arm64-v8a")
 
-                // 是否生成一个包含所有架构的“通用包” (Universal APK)
+                // 是否生成一个包含所有架构的”通用包” (Universal APK)
                 isUniversalApk = false
             }
         }

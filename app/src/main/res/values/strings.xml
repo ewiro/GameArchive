@@ -56,6 +56,7 @@
     <string name="settings_frame_hint">Must be PNG, empty to hide</string>
     <string name="settings_save_profile">Save</string>
     <string name="settings_profile_saved">Profile settings saved</string>
+    <string name="settings_group_status">Grouping Status</string>
     <string name="settings_library">Library Settings</string>
     <string name="settings_grouping">Enable status grouping</string>
     <string name="settings_group_recent">Show \'Recently Active\' group</string>
@@ -98,4 +99,30 @@
     <string name="general_error">Error: %s</string>
     <string name="general_no_data">No data obtained</string>
     <string name="general_please_login">Please login first</string>
+    <string name="general_pull_down">Pull down to refresh</string>
+    <string name="general_release">Release to refresh</string>
+    <string name="general_refreshing">Refreshing…</string>
+    <string name="general_refreshed">Refreshed</string>
+
+    <!-- Game Marks -->
+    <string name="mark_unplayed">Unplayed</string>
+    <string name="mark_playing">Playing</string>
+    <string name="mark_completed">Completed</string>
+    <string name="mark_multi_completed">Multiple Playthroughs</string>
+    <string name="mark_perfected">Perfected / 100%</string>
+    <string name="mark_shelved">Shelved</string>
+    <string name="mark_abandoned">Abandoned</string>
+    <string name="mark_longterm">Long-term</string>
+    <string name="mark_filter_all">All</string>
+    <string name="mark_select_status">Select Status</string>
+    <string name="mark_clear">Clear Mark</string>
+
+    <!-- Tags -->
+    <string name="tag_manage">Manage Tags</string>
+    <string name="tag_new">New Tag</string>
+    <string name="tag_edit">Edit Tags</string>
+    <string name="tag_delete_confirm">Delete this tag? It will be removed from all games.</string>
+    <string name="tag_hint">Enter tag name</string>
+    <string name="tag_select">Select Tags</string>
+    <string name="tag_filter_all">All Tags</string>
 </resources>
