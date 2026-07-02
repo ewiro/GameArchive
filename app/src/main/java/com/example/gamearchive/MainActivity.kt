@@ -41,7 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -1038,7 +1039,13 @@ private fun SpecialsScreen(
     }
 
     if (showSortDialog) {
-        Popup {
+        Dialog(
+            onDismissRequest = onDismissSortDialog,
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
             SortDialog(
                 currentSort = viewModel.sortMode,
                 isFilteringOwned = viewModel.isFilteringOwned,
