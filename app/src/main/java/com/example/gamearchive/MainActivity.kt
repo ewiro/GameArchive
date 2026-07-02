@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -212,6 +213,8 @@ private fun MainScreen() {
                 )
                 1 -> SpecialsScreen(
                     listState = specialsListState,
+                    showSortDialog = showSortDialog,
+                    onDismissSortDialog = { showSortDialog = false },
                     onNavigateToDetail = { appId, name, headerUrl, price ->
                         context.startActivity(Intent(context, DetailActivity::class.java).apply {
                             putExtra("APP_ID", appId); putExtra("APP_NAME", name)
@@ -321,16 +324,6 @@ private fun MainScreen() {
                         color = if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
             }
-        }
-        if (showSortDialog) {
-            val specialsVm = viewModel<SpecialsViewModel>()
-            SortDialog(
-                currentSort = specialsVm.sortMode,
-                isFilteringOwned = specialsVm.isFilteringOwned,
-                onSortSelected = { specialsVm.sortMode = it; showSortDialog = false },
-                onFilterToggle = { specialsVm.isFilteringOwned = !specialsVm.isFilteringOwned },
-                onDismiss = { showSortDialog = false }
-            )
         }
     } // Box
     } // Surface
@@ -446,36 +439,47 @@ private fun LibraryScreen(
 
             // 标记筛选横条
             item("mark_filter") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 18.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // "全部" 按钮
-                    MarkFilterChip(
-                        label = context.getString(R.string.mark_filter_all),
-                        selected = markFilter == -1,
-                        color = null,
-                        onClick = { markFilter = -1 }
-                    )
-                    GameMarks.markResIds.forEach { resId ->
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 18.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // "全部" 按钮
                         MarkFilterChip(
-                            label = context.getString(resId),
-                            selected = markFilter == resId,
-                            color = androidx.compose.ui.graphics.Color(
-                                GameMarks.statusColorMap[resId]!!
-                            ),
-                            onClick = {
-                                markFilter = if (markFilter == resId) -1 else resId
-                            }
+                            label = context.getString(R.string.mark_filter_all),
+                            selected = markFilter == -1,
+                            color = null,
+                            onClick = { markFilter = -1 }
+                        )
+                        GameMarks.markResIds.forEach { resId ->
+                            MarkFilterChip(
+                                label = context.getString(resId),
+                                selected = markFilter == resId,
+                                color = androidx.compose.ui.graphics.Color(
+                                    GameMarks.statusColorMap[resId]!!
+                                ),
+                                onClick = {
+                                    markFilter = if (markFilter == resId) -1 else resId
+                                }
+                            )
+                        }
+                    }
+                    if (markFilter != -1) {
+                        Text(
+                            text = "${filteredGames.size} 款游戏",
+                            fontSize = DesignTokens.TextBody2.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }
             }
 
-            if (!isGrouping) {
+            if (!isGrouping || markFilter != -1) {
                 items(filteredGames, key = { "g_${it.appid}" }) { game ->
                     GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger, onClick = {
                         onNavigateToDetail(game.appid, game.name,
@@ -974,6 +978,8 @@ private fun ReviewScore(text: String?) {
 @Composable
 private fun SpecialsScreen(
     listState: LazyListState,
+    showSortDialog: Boolean,
+    onDismissSortDialog: () -> Unit,
     onNavigateToDetail: (Int, String, String, String) -> Unit,
     viewModel: SpecialsViewModel = viewModel()
 ) {
@@ -1031,6 +1037,17 @@ private fun SpecialsScreen(
         }
     }
 
+    if (showSortDialog) {
+        Popup {
+            SortDialog(
+                currentSort = viewModel.sortMode,
+                isFilteringOwned = viewModel.isFilteringOwned,
+                onSortSelected = { viewModel.sortMode = it; onDismissSortDialog() },
+                onFilterToggle = { viewModel.isFilteringOwned = !viewModel.isFilteringOwned },
+                onDismiss = onDismissSortDialog
+            )
+        }
+    }
     }
 }
 
