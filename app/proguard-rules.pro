@@ -54,7 +54,7 @@
 # 修复 suspend 函数 + R8 混淆导致的 "Class cannot be cast to ParameterizedType" 崩溃
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
--keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+-keep class kotlin.coroutines.Continuation
 
 # 5.2 完整保留本项目的网络接口及其方法签名 (Retrofit 靠它解析返回类型)
 -keep interface com.example.gamearchive.SteamApiService { *; }
