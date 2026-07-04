@@ -61,3 +61,22 @@
 
 # 6. 保护 Coil
 -keep class coil.** { *; }
+
+# 7. MIUI X 主题库 (KMP 库，不自带消费者混淆规则，R8 可能破坏主题/颜色系统)
+-keep class top.yukonga.miuix.kmp.** { *; }
+-keep interface top.yukonga.miuix.kmp.** { *; }
+
+# 8. Compose Runtime — 防止 R8 优化模式破坏 Compose lambda/状态机/重组
+-keep class androidx.compose.runtime.** { *; }
+-keep class androidx.compose.foundation.** { *; }
+-keep class androidx.compose.ui.** { *; }
+
+# 9. Lifecycle ViewModel — 防止 R8 移除 ViewModel 构造器导致无法实例化
+-keep class * extends androidx.lifecycle.ViewModel { *; }
+-keepclassmembers class * extends androidx.lifecycle.ViewModel {
+    <init>(...);
+}
+
+# 10. Kotlinx Coroutines — 防止 ServiceLoader 发现不到 MainDispatcher
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
