@@ -25,6 +25,8 @@
 -keep @androidx.annotation.Keep class * { *; }
 # 2. 核心：保留所有泛型和反射信息（解决 ParameterizedType 报错的关键）
 -keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keepattributes AnnotationDefault
 -keepattributes SourceFile, LineNumberTable
 
 # 3. 保护 Retrofit / OkHttp / Gson
@@ -45,7 +47,19 @@
 # 修复 suspend 函数 + R8 混淆导致的 "Class cannot be cast to ParameterizedType" 崩溃
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
--keep class kotlin.coroutines.Continuation
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+
+# R8 full mode：Retrofit 接口由 Proxy 创建，R8 看不到子类型会全部替换成 null
+-if interface * { @retrofit2.http.* <methods>; }
+-keep,allowobfuscation interface <1>
+
+# 保留继承的 Retrofit 服务
+-if interface * { @retrofit2.http.* <methods>; }
+-keep,allowobfuscation interface * extends <1>
+
+# 核心：保留 API 方法返回类型的泛型签名（ParameterizedType 崩溃就在这里）
+-if interface * { @retrofit2.http.* public *** *(...); }
+-keep,allowoptimization,allowshrinking,allowobfuscation class <3>
 
 # 5.2 完整保留本项目的网络接口及其方法签名 (Retrofit 靠它解析返回类型)
 -keep interface com.example.gamearchive.SteamApiService { *; }
