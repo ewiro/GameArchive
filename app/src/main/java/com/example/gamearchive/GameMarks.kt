@@ -2,14 +2,13 @@ package com.example.gamearchive
 
 import android.content.Context
 
-/** 游戏标记系统 — 8 种游玩状态，纯本地存储，用稳定字符串 Key 防资源 ID 漂移 */
+/** 游戏标记系统 — 7 种游玩状态，纯本地存储，用稳定字符串 Key 防资源 ID 漂移 */
 object GameMarks {
 
     private const val PREF_NAME = "game_marks"
 
     // ── 稳定字符串 Key（不随编译变化） ──
     private const val KEY_UNPLAYED = "unplayed"
-    private const val KEY_PLAYING = "playing"
     private const val KEY_COMPLETED = "completed"
     private const val KEY_MULTI = "multi"
     private const val KEY_LONGTERM = "longterm"
@@ -20,7 +19,6 @@ object GameMarks {
     /** 字符串 Key → 资源 ID */
     private val keyToResId = mapOf(
         KEY_UNPLAYED   to R.string.mark_unplayed,
-        KEY_PLAYING    to R.string.mark_playing,
         KEY_COMPLETED  to R.string.mark_completed,
         KEY_MULTI      to R.string.mark_multi_completed,
         KEY_LONGTERM   to R.string.mark_longterm,
@@ -35,7 +33,6 @@ object GameMarks {
     /** 资源 ID → 颜色（深色高饱和版） */
     val statusColorMap = mapOf(
         R.string.mark_unplayed       to 0xFF757575.toInt(),  // gray
-        R.string.mark_playing        to 0xFF1565C0.toInt(),  // blue
         R.string.mark_completed      to 0xFF2E7D32.toInt(),  // green
         R.string.mark_multi_completed to 0xFF7B1FA2.toInt(), // purple
         R.string.mark_longterm       to 0xFFE65100.toInt(),  // orange
@@ -47,7 +44,6 @@ object GameMarks {
     /** 资源 ID 列表（顺序固定，用于 UI 排序） */
     val markResIds = listOf(
         R.string.mark_unplayed,
-        R.string.mark_playing,
         R.string.mark_completed,
         R.string.mark_multi_completed,
         R.string.mark_longterm,

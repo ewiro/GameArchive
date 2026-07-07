@@ -37,7 +37,7 @@
 *   **Visuals**: Built on **MIUI X** theme, supporting dark/light/follow-system modes.
 *   **Statistics**: Displays avatar, level, total game count, and total playtime at the top.
 *   **Cards**: List card colors are dynamically graded based on playtime (from light to dark), intuitively showing your "dedication."
-*   **Marks**: 8 status markers (Unplayed / Playing / Completed / Multi-completed / Long-term / Perfected / Shelved / Abandoned), each with distinct colors at a glance.
+*   **Marks**: 7 status markers (Unplayed / Completed / Multi-completed / Long-term / Perfected / Shelved / Abandoned), each with distinct colors at a glance.
 
 ###  Specials Query
 *   **Experience**: Built-in filtering automatically removes DLCs, soundtracks, season passes, etc., displaying only the **base games**.
