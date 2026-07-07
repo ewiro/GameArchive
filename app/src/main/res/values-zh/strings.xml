@@ -20,6 +20,7 @@
     <string name="library_group_recent">近期活跃 (%d)</string>
     <string name="library_group_played">已玩游戏 (%d)</string>
     <string name="library_group_unplayed">堆积库存 (%d)</string>
+    <string name="library_search">搜索游戏…</string>
 
     <!-- Specials -->
     <string name="specials_title">特惠</string>
