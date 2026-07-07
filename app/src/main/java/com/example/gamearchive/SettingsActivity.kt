@@ -93,6 +93,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var grouping by remember { mutableStateOf(ThemeUtils.isGroupingEnabled(context)) }
     var groupingRecent by remember { mutableStateOf(ThemeUtils.isGroupRecentEnabled(context)) }
     var sortMode by remember { mutableIntStateOf(ThemeUtils.getSortMode(context)) }
+    var showSpecials by remember { mutableStateOf(ThemeUtils.isSpecialsEnabled(context)) }
 
     // ── 标签管理状态 ──
     var showTagDialog by remember { mutableStateOf(false) }
@@ -325,6 +326,20 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.height(10.dp))
+
+                    SwitchRow(
+                        label = context.getString(R.string.settings_show_specials),
+                        checked = showSpecials,
+                        modifier = Modifier.padding(start = 24.dp),
+                        onCheckedChange = {
+                            showSpecials = it
+                            ThemeUtils.saveShowSpecials(context, it)
+                        }
+                    )
+
+                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+                    DividerLine()
+                    Spacer(Modifier.height(DesignTokens.SpaceLg))
 
                     SwitchRow(
                         label = context.getString(R.string.settings_grouping),
