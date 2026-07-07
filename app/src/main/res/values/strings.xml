@@ -58,6 +58,7 @@
     <string name="settings_profile_saved">Profile settings saved</string>
     <string name="settings_group_status">Grouping Status</string>
     <string name="settings_library">Library Settings</string>
+    <string name="settings_show_specials">Show Specials Tab</string>
     <string name="settings_grouping">Enable status grouping</string>
     <string name="settings_group_recent">Show \'Recently Active\' group</string>
     <string name="settings_sort_mode">Default Sort Mode</string>
