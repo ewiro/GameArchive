@@ -125,4 +125,12 @@
     <string name="tag_hint">输入标签名</string>
     <string name="tag_select">选择标签</string>
     <string name="tag_filter_all">全部标签</string>
+
+    <!-- Data Management -->
+    <string name="settings_data">数据管理</string>
+    <string name="settings_export">导出配置</string>
+    <string name="settings_import">导入配置</string>
+    <string name="settings_export_ok">配置已导出</string>
+    <string name="settings_import_ok">配置已导入</string>
+    <string name="settings_import_fail">导入失败：文件无效</string>
 </resources>
