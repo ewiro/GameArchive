@@ -107,7 +107,6 @@
 
     <!-- Game Marks -->
     <string name="mark_unplayed">Unplayed</string>
-    <string name="mark_playing">Playing</string>
     <string name="mark_completed">Completed</string>
     <string name="mark_multi_completed">Multiple Playthroughs</string>
     <string name="mark_perfected">Perfected / 100%</string>

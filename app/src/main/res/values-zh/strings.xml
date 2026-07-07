@@ -107,7 +107,6 @@
 
     <!-- Game Marks -->
     <string name="mark_unplayed">未开始</string>
-    <string name="mark_playing">正在玩</string>
     <string name="mark_completed">通关一周目</string>
     <string name="mark_multi_completed">多周目通关</string>
     <string name="mark_perfected">完美通关</string>
