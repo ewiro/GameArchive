@@ -73,11 +73,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     val context = LocalContext.current
 
     // 状态栏高度
-    val statusBarHeight = remember {
-        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
-    }
-    val statusBarDp = with(androidx.compose.ui.platform.LocalDensity.current) { statusBarHeight.toDp() }
+    val statusBarDp = statusBarHeightDp()
 
     // ── 外观设置状态 ──
     var themeMode by remember { mutableIntStateOf(ThemeUtils.getThemeMode(context)) }
@@ -402,7 +398,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "${context.getString(R.string.tag_manage)} (${GameTags.getAllTags(context).size})",
+                        text = "${context.getString(R.string.tag_manage)} (${allTags.size})",
                         fontSize = DesignTokens.TextBody1.sp
                     )
                     Spacer(Modifier.height(12.dp))

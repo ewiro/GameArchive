@@ -68,6 +68,6 @@ object GameMarks {
             val key = resIdToKey[markResId] ?: return
             editor.putString("mark_$appId", key)
         }
-        editor.commit()
+        editor.apply()
     }
 }
