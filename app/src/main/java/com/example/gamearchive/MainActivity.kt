@@ -227,8 +227,7 @@ private fun MainScreen() {
             }
         }
 
-        // ── 顶栏叠加层（仅特惠开启时显示） ──
-        if (specialsEnabled) {
+        // ── 顶栏叠加层 ──
         Surface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -275,7 +274,6 @@ private fun MainScreen() {
                 }
             }
         }
-        } // if specialsEnabled (top bar)
 
         // ── 底栏叠加层（仅特惠开启时显示） ──
         if (specialsEnabled) {
