@@ -122,11 +122,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     val mediaList = remember { mutableStateListOf<MediaItem>() }
 
     // 状态栏高度
-    val statusBarHeight = remember {
-        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
-    }
-    val statusBarDp = with(LocalDensity.current) { statusBarHeight.toDp() }
+    val statusBarDp = statusBarHeightDp()
 
     // 屏幕宽度（用于媒体画廊高度计算）
     val screenWidth = context.resources.displayMetrics.widthPixels
@@ -235,7 +231,9 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
             } else {
                 reviewSummary = context.getString(R.string.general_no_data)
             }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("DetailActivity", "Failed to load game details for appId=$appId", e)
+            }
         } finally {
             isLoading = false
         }
@@ -390,13 +388,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 text = reviewSummary.ifEmpty { context.getString(R.string.detail_loading_review) },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = DesignTokens.TextBody2.sp,
-                                color = when {
-                                    reviewPercent >= 95 -> DesignTokens.ReviewGreat
-                                    reviewPercent >= 70 -> DesignTokens.ReviewGood
-                                    reviewPercent >= 40 -> DesignTokens.ReviewMixed
-                                    reviewPercent >= 0 -> DesignTokens.ReviewPoor
-                                    else -> DesignTokens.ReviewDefault
-                                },
+                                color = if (reviewPercent >= 0) reviewColor(reviewPercent) else DesignTokens.ReviewDefault,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false)
@@ -826,14 +818,6 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            gameTags = if (checked) {
-                                                gameTags.filter { it != tag }
-                                            } else {
-                                                gameTags + tag
-                                            }
-                                            GameTags.setTagsForGame(context, appId, gameTags)
-                                        }
                                         .padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {

@@ -153,7 +153,6 @@ class SpecialsViewModel : ViewModel() {
                 var id = appIdMatch?.groupValues?.get(1)?.split(",")?.first()?.toIntOrNull() ?: 0
                 val isBundle = id == 0
                 if (isBundle) continue // 仅保留游戏本体
-                if (id == 0) continue
 
                 val rawImgMatch = Regex("src=\"(https://[^\"]+?\\.jpg[^\"]*)\"").find(row)
                 val rawImgUrl = rawImgMatch?.groupValues?.get(1) ?: ""

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -51,15 +53,6 @@ object DesignTokens {
     val Badge020     = Color(0xFF1772B4)
     val BadgeDefault = Color(0xFF20894D)
 
-    /** 时长 → 徽章颜色（匹配现有逻辑：≥200→红 ≥100→橙 ≥50→紫 ≥20→蓝 >0→绿 0→灰） */
-    val badgeColorMap = mapOf(
-        200 to Badge200,
-        100 to Badge100,
-        50  to Badge050,
-        20  to Badge020,
-        0   to BadgeZero,
-    )
-
     /** 根据小时数取徽章颜色 */
     fun badgeColor(hours: Double): Color = when {
         hours >= 200 -> Badge200
@@ -83,15 +76,6 @@ object DesignTokens {
 
     // ── 遮罩 ──
     val ScrimDark = Color(0x80000000)
-
-    // ── 标记颜色 ──
-    val MarkUnplayed  = Color(0xFF757575)  // gray — 未开始
-    val MarkCompleted = Color(0xFF2E7D32)  // green — 通关一周目
-    val MarkMulti     = Color(0xFF7B1FA2)  // purple — 多周目通关
-    val MarkLongterm  = Color(0xFFE65100)  // orange — 长期游玩
-    val MarkPerfected = Color(0xFFFF8F00)  // gold — 完美通关
-    val MarkShelved   = Color(0xFF4E342E)  // brown — 搁置
-    val MarkAbandoned = Color(0xFFC62828)  // red — 抛弃
 
     // ═══════════════════ 透明度层级 ═══════════════════
 
@@ -245,3 +229,22 @@ fun buttonBgColor(lightColor: Color = DesignTokens.AccentBlue): Color =
 @Composable
 fun tagBgColor(): Color =
     if (isAppInDarkTheme()) Color(0xFF3A3A3C) else DesignTokens.AccentBlue
+
+/** 获取状态栏高度（dp），消除 5 处重复代码 */
+@Composable
+fun statusBarHeightDp(): Dp {
+    val context = LocalContext.current
+    return remember {
+        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+        val px = if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
+        (px / context.resources.displayMetrics.density).dp
+    }
+}
+
+/** 评价分数 → 语义颜色 */
+fun reviewColor(percent: Int): Color = when {
+    percent >= 95 -> DesignTokens.ReviewGreat
+    percent >= 70 -> DesignTokens.ReviewGood
+    percent >= 40 -> DesignTokens.ReviewMixed
+    else          -> DesignTokens.ReviewPoor
+}
