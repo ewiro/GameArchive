@@ -395,10 +395,14 @@ private fun LibraryScreen(
 
     // 标记筛选状态（-1 = 全部）
     var markFilter by remember { mutableIntStateOf(-1) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    // 应用标记筛选
-    val filteredGames = remember(sortedGames, markFilter, listRefreshTrigger) {
+    // 应用搜索 + 标记筛选
+    val filteredGames = remember(sortedGames, markFilter, searchQuery, listRefreshTrigger) {
         var list = sortedGames
+        if (searchQuery.isNotBlank()) {
+            list = list.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
         if (markFilter != -1) list = list.filter { GameMarks.getMark(context, it.appid) == markFilter }
         list
     }
@@ -432,6 +436,45 @@ private fun LibraryScreen(
                 item("profile") {
                     ProfileHeader(player!!, gameList.size, gameList.sumOf { it.playtime_forever } / 60.0, level ?: 0)
                 }
+            }
+
+            // 搜索栏
+            item("search_bar") {
+                val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+                var textFieldValue by remember(searchQuery) { mutableStateOf(searchQuery) }
+                TextField(
+                    value = textFieldValue,
+                    onValueChange = { v: String ->
+                        textFieldValue = v
+                        searchQuery = v.trim()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 4.dp),
+                    label = context.getString(R.string.library_search),
+                    useLabelAsPlaceholder = true,
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .clickable {
+                                        textFieldValue = ""
+                                        searchQuery = ""
+                                        focusManager.clearFocus()
+                                    }
+                                    .size(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "✕",
+                                    fontSize = 14.sp,
+                                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint)
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true
+                )
             }
 
             // 标记筛选横条
