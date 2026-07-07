@@ -139,7 +139,8 @@ private fun <T> LiveData<T>.observeAsState(): State<T?> {
 @Composable
 private fun MainScreen() {
     val context = LocalContext.current
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val specialsEnabled = ThemeUtils.isSpecialsEnabled(context)
+    val pagerState = rememberPagerState(pageCount = { if (specialsEnabled) 2 else 1 })
     var bottomBarVisible by remember { mutableStateOf(true) }
     var topBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
@@ -245,12 +246,12 @@ private fun MainScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = context.getString(if (selectedTab == 0) R.string.nav_library else R.string.nav_specials),
+                    text = context.getString(if (specialsEnabled && selectedTab == 1) R.string.nav_specials else R.string.nav_library),
                     fontWeight = FontWeight.Bold,
                     fontSize = DesignTokens.TextTitle.sp,
                     modifier = Modifier.weight(1f)
                 )
-                if (selectedTab == 0) {
+                if (!specialsEnabled || selectedTab == 0) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }) {
@@ -274,7 +275,8 @@ private fun MainScreen() {
             }
         }
 
-        // ── 底栏叠加层 ──
+        // ── 底栏叠加层（仅特惠开启时显示） ──
+        if (specialsEnabled) {
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -326,6 +328,7 @@ private fun MainScreen() {
                 }
             }
         }
+        } // if specialsEnabled
     } // Box
     } // Surface
 }

@@ -17,6 +17,7 @@ object ThemeUtils {
     private const val KEY_SORT_MODE = "sort_mode"
     private const val KEY_GROUP_RECENT = "group_recent"
     private const val KEY_LANGUAGE = "language"
+    private const val KEY_SHOW_SPECIALS = "show_specials"
 
     // 标记设置是否发生变化，用于通知 Activity 重启
     var isChanged = false
@@ -97,6 +98,13 @@ object ThemeUtils {
         isChanged = true
     }
     fun getLanguage(context: Context) = getPrefs(context).getInt(KEY_LANGUAGE, 0)
+
+    // 是否展示特惠界面（默认开启）
+    fun saveShowSpecials(context: Context, enable: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_SHOW_SPECIALS, enable).apply()
+        isChanged = true
+    }
+    fun isSpecialsEnabled(context: Context) = getPrefs(context).getBoolean(KEY_SHOW_SPECIALS, true)
 
     /** 检测语言是否在上次应用后发生了变化（用于触发 Activity 重建） */
     fun hasLanguageChanged(context: Context): Boolean {
