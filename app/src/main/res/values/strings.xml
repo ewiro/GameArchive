@@ -125,4 +125,12 @@
     <string name="tag_hint">Enter tag name</string>
     <string name="tag_select">Select Tags</string>
     <string name="tag_filter_all">All Tags</string>
+
+    <!-- Data Management -->
+    <string name="settings_data">Data Management</string>
+    <string name="settings_export">Export Configuration</string>
+    <string name="settings_import">Import Configuration</string>
+    <string name="settings_export_ok">Configuration exported</string>
+    <string name="settings_import_ok">Configuration imported</string>
+    <string name="settings_import_fail">Import failed: invalid file</string>
 </resources>

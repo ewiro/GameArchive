@@ -2,11 +2,14 @@ package com.example.gamearchive
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -96,6 +99,41 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var newTagName by remember { mutableStateOf("") }
     var tagListRefresh by remember { mutableIntStateOf(0) }
     val allTags = remember(tagListRefresh) { GameTags.getAllTags(context) }
+
+    // ── 导出/导入文件选择器 ──
+    var pendingExportJson by remember { mutableStateOf<String?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        val json = pendingExportJson ?: return@rememberLauncherForActivityResult
+        pendingExportJson = null
+        if (uri != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                Toast.makeText(context, R.string.settings_export_ok, Toast.LENGTH_SHORT).show()
+            } catch (_: Exception) {
+                Toast.makeText(context, R.string.settings_import_fail, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() ?: ""
+                if (DataBackup.importFromJson(context, json)) {
+                    Toast.makeText(context, R.string.settings_import_ok, Toast.LENGTH_SHORT).show()
+                    onRecreate()
+                } else {
+                    Toast.makeText(context, R.string.settings_import_fail, Toast.LENGTH_SHORT).show()
+                }
+            } catch (_: Exception) {
+                Toast.makeText(context, R.string.settings_import_fail, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Surface(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -422,6 +460,65 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        // ── 数据管理 ──
+        item("data_header") {
+            SectionHeader(text = context.getString(R.string.settings_data))
+        }
+
+        item("data_card") {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                cornerRadius = DesignTokens.CornerLarge
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // 导出按钮
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(DesignTokens.ButtonHeight)
+                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                            .background(buttonBgColor())
+                            .clickable {
+                                pendingExportJson = DataBackup.exportToJson(context)
+                                exportLauncher.launch("gamearchive_backup.json")
+                            }
+                            .padding(horizontal = 28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = context.getString(R.string.settings_export),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+
+                    // 导入按钮
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(DesignTokens.ButtonHeight)
+                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                            .background(buttonBgColor(lightColor = Color(0xFF5C6BC0)))
+                            .clickable {
+                                importLauncher.launch(arrayOf("application/json"))
+                            }
+                            .padding(horizontal = 28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = context.getString(R.string.settings_import),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
