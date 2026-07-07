@@ -20,6 +20,7 @@
     <string name="library_group_recent">Recently Active (%d)</string>
     <string name="library_group_played">Played (%d)</string>
     <string name="library_group_unplayed">Backlog (%d)</string>
+    <string name="library_search">Search games…</string>
 
     <!-- Specials -->
     <string name="specials_title">Specials</string>
