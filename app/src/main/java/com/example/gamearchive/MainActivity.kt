@@ -50,6 +50,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -170,11 +171,7 @@ private fun MainScreen() {
     val scope = rememberCoroutineScope()
 
     // 状态栏高度（顶栏叠加层需要）
-    val statusBarHeight = remember {
-        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
-    }
-    val statusBarDp = (statusBarHeight / context.resources.displayMetrics.density).dp
+    val statusBarDp = statusBarHeightDp()
     val topBarHeightDp = 48.dp + statusBarDp + 4.dp
 
     // 排序弹窗状态（从 SpecialsScreen 提升上来）
@@ -407,11 +404,7 @@ private fun LibraryScreen(
     }
 
     // 顶栏叠加层占位高度
-    val statusBarHeight = remember {
-        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
-    }
-    val topBarInsetDp = 48.dp + (statusBarHeight / context.resources.displayMetrics.density).dp + 4.dp
+    val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
 
     if (loading == true && gameList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -767,20 +760,8 @@ private const val HEADER_CACHE_TTL_MS = 90L * 24 * 3600 * 1000  // 90 天
 private fun buildHeaderUrl(context: Context, appId: Int): Any {
     if (appId == BF6_APPID) return R.drawable.bf6_header
     val cache = context.getSharedPreferences("steam_header_cache", Context.MODE_PRIVATE)
-    val entry = cache.getString("header_$appId", null) ?: return "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
-    // 格式: "url|timestamp"
-    val parts = entry.split("|", limit = 2)
-    if (parts.size < 2) {
-        // 旧格式（无时间戳），视为过期，清理后返回默认 URL
-        cache.edit().remove("header_$appId").apply()
-        return "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
-    }
-    val ts = parts[1].toLongOrNull() ?: 0L
-    if (System.currentTimeMillis() - ts > HEADER_CACHE_TTL_MS) {
-        cache.edit().remove("header_$appId").apply()
-        return "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
-    }
-    return parts[0]
+    val cached = readCacheWithExpiry(cache, "header_$appId", HEADER_CACHE_TTL_MS)
+    return cached ?: "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
 }
 
 // 通用缓存读取（含过期检查）。格式 "value|timestamp"，过期返回 null
@@ -805,6 +786,7 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
     val h = game.playtime_forever / 60.0
     val badgeColor = DesignTokens.badgeColor(h)
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -826,7 +808,7 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
                         val cache = context.getSharedPreferences("steam_header_cache", Context.MODE_PRIVATE)
                         if (cache.contains("header_${game.appid}")) return@listener
                         // 异步查 Steam API 获取真实封面 URL
-                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        coroutineScope.launch(Dispatchers.IO) {
                             try {
                                 val resp = GameArchiveApp.apiService.getGameDetails(
                                     game.appid, l = LocaleHelper.currentApiLanguage
@@ -1016,11 +998,7 @@ private fun SpecialsScreen(
     }
 
     // 顶栏叠加层占位高度
-    val statusBarHeight = remember {
-        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
-    }
-    val topBarInsetDp = 48.dp + (statusBarHeight / context.resources.displayMetrics.density).dp + 4.dp
+    val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
     if (loading == true && filteredList.isEmpty()) {
@@ -1159,12 +1137,7 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
             Spacer(Modifier.weight(1f))
             // 好评率 — 置底对齐封面底部
             if (game.reviewScore > 0) {
-                val color = when {
-                    game.reviewScore >= 95 -> DesignTokens.ReviewGreat
-                    game.reviewScore >= 70 -> DesignTokens.ReviewGood
-                    game.reviewScore >= 40 -> DesignTokens.ReviewMixed
-                    else -> DesignTokens.ReviewPoor
-                }
+                val color = reviewColor(game.reviewScore)
                 Text(
                     text = "${game.reviewScore}% " + context.getString(R.string.detail_positive).trim(),
                     fontSize = DesignTokens.TextCaption.sp,
