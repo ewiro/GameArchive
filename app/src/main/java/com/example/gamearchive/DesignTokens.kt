@@ -86,7 +86,6 @@ object DesignTokens {
 
     // ── 标记颜色 ──
     val MarkUnplayed  = Color(0xFF757575)  // gray — 未开始
-    val MarkPlaying   = Color(0xFF1565C0)  // blue — 正在玩
     val MarkCompleted = Color(0xFF2E7D32)  // green — 通关一周目
     val MarkMulti     = Color(0xFF7B1FA2)  // purple — 多周目通关
     val MarkLongterm  = Color(0xFFE65100)  // orange — 长期游玩
