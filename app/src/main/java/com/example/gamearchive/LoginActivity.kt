@@ -46,27 +46,17 @@ class LoginActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        ThemeUtils.applyTheme(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ThemeUtils.applyTheme(this)
 
         if (UserPrefs.isLoggedIn(this)) {
             startMainActivity()
             return
         }
 
-        val colorSchemeMode = when (ThemeUtils.getThemeMode(this)) {
-            0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
-            1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
-            else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
-        }
-
         setContent {
-            MiuixTheme(
-                controller = top.yukonga.miuix.kmp.theme.ThemeController(
-                    colorSchemeMode = colorSchemeMode
-                )
-            ) {
+            MiuixThemeForApp {
                 Surface(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -81,7 +71,7 @@ class LoginActivity : ComponentActivity() {
                     )
                 }
             }
-            } // close Surface
+            } // close MiuixThemeForApp
         }
     }
 

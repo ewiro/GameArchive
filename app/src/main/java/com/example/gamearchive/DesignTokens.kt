@@ -248,3 +248,18 @@ fun reviewColor(percent: Int): Color = when {
     percent >= 40 -> DesignTokens.ReviewMixed
     else          -> DesignTokens.ReviewPoor
 }
+
+/** 统一 MiuixTheme 包装 — 消除 4 个 Activity 中的重复 */
+@Composable
+fun MiuixThemeForApp(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val colorSchemeMode = when (ThemeUtils.getThemeMode(context)) {
+        0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
+        1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
+        else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
+    }
+    top.yukonga.miuix.kmp.theme.MiuixTheme(
+        controller = top.yukonga.miuix.kmp.theme.ThemeController(colorSchemeMode = colorSchemeMode),
+        content = content
+    )
+}

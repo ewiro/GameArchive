@@ -5,7 +5,7 @@ import android.content.Context
 /** 游戏标记系统 — 7 种游玩状态，纯本地存储，用稳定字符串 Key 防资源 ID 漂移 */
 object GameMarks {
 
-    private const val PREF_NAME = "game_marks"
+    const val PREF_NAME = "game_marks"
 
     // ── 稳定字符串 Key（不随编译变化） ──
     private const val KEY_UNPLAYED = "unplayed"
