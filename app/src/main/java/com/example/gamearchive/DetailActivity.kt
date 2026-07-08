@@ -559,9 +559,14 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
 
                 // ── 简介 WebView ──
                 if (descriptionHtml.isNotEmpty()) {
+                    val webViewRef = remember { mutableStateOf<WebView?>(null) }
+                    DisposableEffect(Unit) {
+                        onDispose { webViewRef.value?.destroy() }
+                    }
                     AndroidView(
                         factory = { ctx ->
                             WebView(ctx).apply {
+                                webViewRef.value = this
                                 layoutParams = ViewGroup.LayoutParams(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.WRAP_CONTENT
