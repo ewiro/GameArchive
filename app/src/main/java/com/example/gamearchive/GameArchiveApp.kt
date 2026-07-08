@@ -10,16 +10,20 @@ import retrofit2.converter.gson.GsonConverterFactory
 class GameArchiveApp : Application(), ImageLoaderFactory {
 
     companion object {
-        /** 全局共享的 Steam API 服务（带 15 秒超时，避免详情页加载卡住） */
-        val apiService: SteamApiService by lazy {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+        /** 全局共享 OkHttpClient（30s 超时，兼顾特惠页） */
+        val okHttpClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .build()
+        }
+
+        /** 全局共享的 Steam API 服务 */
+        val apiService: SteamApiService by lazy {
             Retrofit.Builder()
                 .baseUrl(AppConfig.PROXY_URL)
-                .client(client)
+                .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
                 .create(SteamApiService::class.java)

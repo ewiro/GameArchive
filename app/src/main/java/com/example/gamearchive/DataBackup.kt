@@ -66,7 +66,7 @@ object DataBackup {
                 val editor = context.getSharedPreferences("game_marks", Context.MODE_PRIVATE).edit().clear()
                 val marks = root.getJSONObject("game_marks")
                 marks.keys().forEach { key -> editor.putString(key, marks.getString(key)) }
-                editor.commit()
+                editor.apply()
             }
 
             // ── 恢复标签库 ──
@@ -74,7 +74,7 @@ object DataBackup {
                 val editor = context.getSharedPreferences("game_tags_lib", Context.MODE_PRIVATE).edit().clear()
                 val lib = root.getJSONObject("game_tags_lib")
                 lib.keys().forEach { key -> editor.putString(key, lib.getString(key)) }
-                editor.commit()
+                editor.apply()
             }
 
             // ── 恢复游戏标签映射 ──
@@ -82,7 +82,7 @@ object DataBackup {
                 val editor = context.getSharedPreferences("game_tags_map", Context.MODE_PRIVATE).edit().clear()
                 val map = root.getJSONObject("game_tags_map")
                 map.keys().forEach { key -> editor.putString(key, map.getString(key)) }
-                editor.commit()
+                editor.apply()
             }
 
             // ── 恢复用户资料（仅外观 URL） ──
@@ -93,7 +93,7 @@ object DataBackup {
                 if (data.has("custom_frame_url")) editor.putString("custom_frame_url", data.getString("custom_frame_url"))
                 if (data.has("custom_avatar_url")) editor.putString("custom_avatar_url", data.getString("custom_avatar_url"))
                 if (data.has("show_profile_card")) editor.putBoolean("show_profile_card", data.getBoolean("show_profile_card"))
-                editor.commit()
+                editor.apply()
             }
 
             // ── 恢复偏好设置 ──
@@ -106,7 +106,7 @@ object DataBackup {
                 if (p.has("group_recent")) editor.putBoolean("group_recent", p.getBoolean("group_recent"))
                 if (p.has("sort_mode")) editor.putInt("sort_mode", p.getInt("sort_mode"))
                 if (p.has("show_specials")) editor.putBoolean("show_specials", p.getBoolean("show_specials"))
-                editor.commit()
+                editor.apply()
             }
 
             ThemeUtils.isChanged = true
