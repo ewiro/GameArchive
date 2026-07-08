@@ -81,12 +81,6 @@ class SpecialsViewModel : ViewModel() {
 
     // 并发抓取特惠游戏
     private suspend fun fetchSpecials(): List<MarketGame> {
-        // 配置更长的超时时间 (30秒)
-        val client = OkHttpClient.Builder()
-            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .build()
         val totalPages = 2
 
         val deferredResults = (0 until totalPages).map { pageIndex ->
@@ -98,7 +92,7 @@ class SpecialsViewModel : ViewModel() {
                     val url = "${AppConfig.PROXY_URL}search/results/?query&start=$start&count=100&dynamic_data=&sort_by=_ASC&specials=1&infinite=1&l=${LocaleHelper.currentApiLanguage}&cc=cn&category1=998"
 
                     val request = Request.Builder().url(url).build()
-                    val response = client.newCall(request).execute()
+                    val response = GameArchiveApp.okHttpClient.newCall(request).execute()
                     val jsonStr = response.body?.string() ?: "{}"
                     val jsonObj = JSONObject(jsonStr)
                     val html = jsonObj.optString("results_html", "")
