@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -52,8 +51,6 @@ import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.ThemeController
-import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import androidx.compose.ui.state.ToggleableState
 
 class DetailActivity : ComponentActivity() {
@@ -63,24 +60,16 @@ class DetailActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         ThemeUtils.applyTheme(this)
-        super.onCreate(savedInstanceState)
 
         val appId = intent.getIntExtra("APP_ID", 0)
         val appName = intent.getStringExtra("APP_NAME") ?: "Unknown"
         val price = intent.getStringExtra("APP_PRICE") ?: ""
 
-        val colorSchemeMode = when (ThemeUtils.getThemeMode(this)) {
-            0 -> ColorSchemeMode.Light
-            1 -> ColorSchemeMode.Dark
-            else -> ColorSchemeMode.System
-        }
-
         setContent {
-            MiuixTheme(controller = ThemeController(colorSchemeMode = colorSchemeMode)) {
-                DetailScreen(appId = appId, appName = appName, price = price, onBack = { finish() })
-            }
+            MiuixThemeForApp { DetailScreen(appId = appId, appName = appName, price = price, onBack = { finish() }) }
         }
     }
 }

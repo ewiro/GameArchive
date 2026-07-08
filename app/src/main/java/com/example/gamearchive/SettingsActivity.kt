@@ -35,8 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.ThemeController
-import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 
 class SettingsActivity : ComponentActivity() {
 
@@ -45,18 +43,12 @@ class SettingsActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         ThemeUtils.applyTheme(this)
-        super.onCreate(savedInstanceState)
-
-        val colorSchemeMode = when (ThemeUtils.getThemeMode(this)) {
-            0 -> ColorSchemeMode.Light
-            1 -> ColorSchemeMode.Dark
-            else -> ColorSchemeMode.System
-        }
 
         setContent {
-            MiuixTheme(controller = ThemeController(colorSchemeMode = colorSchemeMode)) {
+            MiuixThemeForApp {
                 SettingsScreen(
                     onBack = { finish() },
                     onRecreate = {
@@ -90,7 +82,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
     // ── 库存设置状态 ──
     var grouping by remember { mutableStateOf(ThemeUtils.isGroupingEnabled(context)) }
-    var groupingRecent by remember { mutableStateOf(ThemeUtils.isGroupRecentEnabled(context)) }
     var sortMode by remember { mutableIntStateOf(ThemeUtils.getSortMode(context)) }
     var showSpecials by remember { mutableStateOf(ThemeUtils.isSpecialsEnabled(context)) }
 
@@ -384,18 +375,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             ThemeUtils.saveGrouping(context, it)
                         }
                     )
-
-                    if (grouping) {
-                        SwitchRow(
-                            label = context.getString(R.string.settings_group_recent),
-                            checked = groupingRecent,
-                            modifier = Modifier.padding(start = 24.dp),
-                            onCheckedChange = {
-                                groupingRecent = it
-                                ThemeUtils.saveGroupRecent(context, it)
-                            }
-                        )
-                    }
 
                     Spacer(Modifier.height(DesignTokens.SpaceLg))
                     DividerLine()

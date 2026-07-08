@@ -6,8 +6,8 @@ import org.json.JSONArray
 /** 标签系统 — 用户自定义标签，纯本地存储 */
 object GameTags {
 
-    private const val LIB_PREF = "game_tags_lib"
-    private const val MAP_PREF = "game_tags_map"
+    const val LIB_PREF = "game_tags_lib"
+    const val MAP_PREF = "game_tags_map"
 
     // ── 标签库操作 ──
 

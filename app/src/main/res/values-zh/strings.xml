@@ -61,7 +61,6 @@
     <string name="settings_library">库存列表设置</string>
     <string name="settings_show_specials">展示特惠界面</string>
     <string name="settings_grouping">开启状态分组</string>
-    <string name="settings_group_recent">单独显示 \'近期活跃\' 分组</string>
     <string name="settings_sort_mode">默认排序方式</string>
     <string name="settings_sort_playtime">按游戏时长 (从高到低)</string>
     <string name="settings_sort_name">按名称 (A-Z)</string>
