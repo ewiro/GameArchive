@@ -16,25 +16,25 @@ object DataBackup {
 
         // ── 游戏标记 ──
         val marks = JSONObject()
-        context.getSharedPreferences("game_marks", Context.MODE_PRIVATE).all
+        context.getSharedPreferences(GameMarks.PREF_NAME, Context.MODE_PRIVATE).all
             .forEach { (key, value) -> marks.put(key, value) }
         root.put("game_marks", marks)
 
         // ── 标签库 ──
         val tagsLib = JSONObject()
-        context.getSharedPreferences("game_tags_lib", Context.MODE_PRIVATE).all
+        context.getSharedPreferences(GameTags.LIB_PREF, Context.MODE_PRIVATE).all
             .forEach { (key, value) -> tagsLib.put(key, value) }
         root.put("game_tags_lib", tagsLib)
 
         // ── 游戏标签映射 ──
         val tagsMap = JSONObject()
-        context.getSharedPreferences("game_tags_map", Context.MODE_PRIVATE).all
+        context.getSharedPreferences(GameTags.MAP_PREF, Context.MODE_PRIVATE).all
             .forEach { (key, value) -> tagsMap.put(key, value) }
         root.put("game_tags_map", tagsMap)
 
         // ── 用户资料（仅导出外观 URL，排除凭证） ──
         val userData = JSONObject()
-        val userPrefs = context.getSharedPreferences("steam_user_data", Context.MODE_PRIVATE)
+        val userPrefs = context.getSharedPreferences(UserPrefs.PREF_NAME, Context.MODE_PRIVATE)
         userData.put("custom_bg_url", userPrefs.getString("custom_bg_url", "") ?: "")
         userData.put("custom_frame_url", userPrefs.getString("custom_frame_url", "") ?: "")
         userData.put("custom_avatar_url", userPrefs.getString("custom_avatar_url", "") ?: "")
@@ -43,11 +43,10 @@ object DataBackup {
 
         // ── 偏好设置 ──
         val prefs = JSONObject()
-        val themePrefs = context.getSharedPreferences("app_theme_prefs", Context.MODE_PRIVATE)
+        val themePrefs = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE)
         prefs.put("theme_mode", themePrefs.getInt("theme_mode", 2))
         prefs.put("language", themePrefs.getInt("language", 0))
         prefs.put("enable_grouping", themePrefs.getBoolean("enable_grouping", false))
-        prefs.put("group_recent", themePrefs.getBoolean("group_recent", false))
         prefs.put("sort_mode", themePrefs.getInt("sort_mode", 0))
         prefs.put("show_specials", themePrefs.getBoolean("show_specials", true))
         root.put("app_theme_prefs", prefs)
@@ -59,11 +58,10 @@ object DataBackup {
     fun importFromJson(context: Context, json: String): Boolean {
         return try {
             val root = JSONObject(json)
-            // version 字段保留但不强制校验，兼容未来格式
 
             // ── 恢复游戏标记 ──
             if (root.has("game_marks")) {
-                val editor = context.getSharedPreferences("game_marks", Context.MODE_PRIVATE).edit().clear()
+                val editor = context.getSharedPreferences(GameMarks.PREF_NAME, Context.MODE_PRIVATE).edit().clear()
                 val marks = root.getJSONObject("game_marks")
                 marks.keys().forEach { key -> editor.putString(key, marks.getString(key)) }
                 editor.apply()
@@ -71,7 +69,7 @@ object DataBackup {
 
             // ── 恢复标签库 ──
             if (root.has("game_tags_lib")) {
-                val editor = context.getSharedPreferences("game_tags_lib", Context.MODE_PRIVATE).edit().clear()
+                val editor = context.getSharedPreferences(GameTags.LIB_PREF, Context.MODE_PRIVATE).edit().clear()
                 val lib = root.getJSONObject("game_tags_lib")
                 lib.keys().forEach { key -> editor.putString(key, lib.getString(key)) }
                 editor.apply()
@@ -79,7 +77,7 @@ object DataBackup {
 
             // ── 恢复游戏标签映射 ──
             if (root.has("game_tags_map")) {
-                val editor = context.getSharedPreferences("game_tags_map", Context.MODE_PRIVATE).edit().clear()
+                val editor = context.getSharedPreferences(GameTags.MAP_PREF, Context.MODE_PRIVATE).edit().clear()
                 val map = root.getJSONObject("game_tags_map")
                 map.keys().forEach { key -> editor.putString(key, map.getString(key)) }
                 editor.apply()
@@ -88,7 +86,7 @@ object DataBackup {
             // ── 恢复用户资料（仅外观 URL） ──
             if (root.has("steam_user_data")) {
                 val data = root.getJSONObject("steam_user_data")
-                val editor = context.getSharedPreferences("steam_user_data", Context.MODE_PRIVATE).edit()
+                val editor = context.getSharedPreferences(UserPrefs.PREF_NAME, Context.MODE_PRIVATE).edit()
                 if (data.has("custom_bg_url")) editor.putString("custom_bg_url", data.getString("custom_bg_url"))
                 if (data.has("custom_frame_url")) editor.putString("custom_frame_url", data.getString("custom_frame_url"))
                 if (data.has("custom_avatar_url")) editor.putString("custom_avatar_url", data.getString("custom_avatar_url"))
@@ -99,13 +97,13 @@ object DataBackup {
             // ── 恢复偏好设置 ──
             if (root.has("app_theme_prefs")) {
                 val p = root.getJSONObject("app_theme_prefs")
-                val editor = context.getSharedPreferences("app_theme_prefs", Context.MODE_PRIVATE).edit()
+                val editor = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE).edit()
                 if (p.has("theme_mode")) editor.putInt("theme_mode", p.getInt("theme_mode"))
                 if (p.has("language")) editor.putInt("language", p.getInt("language"))
                 if (p.has("enable_grouping")) editor.putBoolean("enable_grouping", p.getBoolean("enable_grouping"))
-                if (p.has("group_recent")) editor.putBoolean("group_recent", p.getBoolean("group_recent"))
                 if (p.has("sort_mode")) editor.putInt("sort_mode", p.getInt("sort_mode"))
                 if (p.has("show_specials")) editor.putBoolean("show_specials", p.getBoolean("show_specials"))
+                // 兼容旧格式：跳过 group_recent 字段（已废弃）
                 editor.apply()
             }
 

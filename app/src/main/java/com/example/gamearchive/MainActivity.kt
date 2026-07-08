@@ -66,9 +66,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        ThemeUtils.applyTheme(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ThemeUtils.applyTheme(this)
 
         LocaleHelper.currentApiLanguage = LocaleHelper.getApiLanguage(this)
 
@@ -103,22 +103,8 @@ class MainActivity : ComponentActivity() {
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
 
-            // 读取主题模式 — 放在 key 外才能让 settingsVersion 驱动重组
-            val themeMode = ThemeUtils.getThemeMode(context)
-            val colorSchemeMode = when (themeMode) {
-                0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
-                1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
-                else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
-            }
-
             key(settingsVersion) {
-                MiuixTheme(
-                    controller = top.yukonga.miuix.kmp.theme.ThemeController(
-                        colorSchemeMode = colorSchemeMode
-                    )
-                ) {
-                    MainScreen()
-                }
+                MiuixThemeForApp { MainScreen() }
             }
         }
     }
@@ -197,15 +183,16 @@ private fun MainScreen() {
             modifier = Modifier.fillMaxSize(),
             userScrollEnabled = true
         ) { page ->
+            val navigateToDetail: (Int, String, String) -> Unit = { appId, name, price ->
+                context.startActivity(Intent(context, DetailActivity::class.java).apply {
+                    putExtra("APP_ID", appId); putExtra("APP_NAME", name); putExtra("APP_PRICE", price)
+                })
+            }
+
             when (page) {
                 0 -> LibraryScreen(
                     listState = libraryListState,
-                    onNavigateToDetail = { appId, name, headerUrl, price ->
-                        context.startActivity(Intent(context, DetailActivity::class.java).apply {
-                            putExtra("APP_ID", appId); putExtra("APP_NAME", name)
-                            putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
-                        })
-                    },
+                    onNavigateToDetail = navigateToDetail,
                     onNavigateToSettings = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }
@@ -214,12 +201,7 @@ private fun MainScreen() {
                     listState = specialsListState,
                     showSortDialog = showSortDialog,
                     onDismissSortDialog = { showSortDialog = false },
-                    onNavigateToDetail = { appId, name, headerUrl, price ->
-                        context.startActivity(Intent(context, DetailActivity::class.java).apply {
-                            putExtra("APP_ID", appId); putExtra("APP_NAME", name)
-                            putExtra("HEADER_URL", headerUrl); putExtra("APP_PRICE", price)
-                        })
-                    }
+                    onNavigateToDetail = navigateToDetail
                 )
             }
         }
@@ -335,7 +317,7 @@ private fun MainScreen() {
 @Composable
 private fun LibraryScreen(
     listState: LazyListState,
-    onNavigateToDetail: (Int, String, String, String) -> Unit,
+    onNavigateToDetail: (Int, String, String) -> Unit,
     onNavigateToSettings: () -> Unit,
     viewModel: LibraryViewModel = viewModel()
 ) {
@@ -523,7 +505,6 @@ private fun LibraryScreen(
                 items(filteredGames, key = { "g_${it.appid}" }) { game ->
                     GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger, onClick = {
                         onNavigateToDetail(game.appid, game.name,
-                            "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
                             priceMap[game.appid] ?: "Free / Unknown")
                     })
                 }
@@ -542,9 +523,7 @@ private fun LibraryScreen(
                     }
                     if (recentExpanded) {
                         items(recent, key = { "r_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name,
-                                "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
-                                priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -558,9 +537,7 @@ private fun LibraryScreen(
                     }
                     if (playedExpanded) {
                         items(played, key = { "p_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name,
-                                "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
-                                priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -574,9 +551,7 @@ private fun LibraryScreen(
                     }
                     if (unplayedExpanded) {
                         items(unplayed, key = { "u_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name,
-                                "https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg",
-                                priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -1009,7 +984,7 @@ private fun SpecialsScreen(
     listState: LazyListState,
     showSortDialog: Boolean,
     onDismissSortDialog: () -> Unit,
-    onNavigateToDetail: (Int, String, String, String) -> Unit,
+    onNavigateToDetail: (Int, String, String) -> Unit,
     viewModel: SpecialsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -1056,7 +1031,7 @@ private fun SpecialsScreen(
         ) {
             itemsIndexed(filteredList, key = { idx, item -> "s_${item.id}_$idx" }) { _, game ->
                 MarketGameItem(game) {
-                    onNavigateToDetail(game.id, game.name, game.imgUrl, game.finalPriceStr)
+                    onNavigateToDetail(game.id, game.name, game.finalPriceStr)
                 }
             }
         }

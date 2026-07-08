@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 
 object UserPrefs {
     // SharedPreferences 文件名
-    private const val PREF_NAME = "steam_user_data"
+    const val PREF_NAME = "steam_user_data"
 
     // 数据键名定义
     private const val KEY_API_KEY = "api_key"

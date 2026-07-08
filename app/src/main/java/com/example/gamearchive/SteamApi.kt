@@ -57,7 +57,7 @@ import retrofit2.http.Query
 
 @Keep data class ReviewSummary(
     val review_score_desc: String?, val total_positive: Int,
-    val total_reviews: Int, val total_positive_reviews: Int?, val total_reviews_last_30_days: Int?
+    val total_reviews: Int
 )
 
 @Keep data class SteamReview(

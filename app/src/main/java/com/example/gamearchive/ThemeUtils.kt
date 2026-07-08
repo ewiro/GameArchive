@@ -8,14 +8,13 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 object ThemeUtils {
-    // SharedPreferences 文件名
-    private const val PREF_NAME = "app_theme_prefs"
+    // SharedPreferences 文件名（供 DataBackup 引用）
+    const val PREF_NAME = "app_theme_prefs"
 
     // 设置项键名定义
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_ENABLE_GROUPING = "enable_grouping"
     private const val KEY_SORT_MODE = "sort_mode"
-    private const val KEY_GROUP_RECENT = "group_recent"
     private const val KEY_LANGUAGE = "language"
     private const val KEY_SHOW_SPECIALS = "show_specials"
 
@@ -84,13 +83,6 @@ object ThemeUtils {
         isChanged = true
     }
     fun getSortMode(context: Context) = getPrefs(context).getInt(KEY_SORT_MODE, 0)
-
-    // 保存近期分组开关 (用于库存列表)
-    fun saveGroupRecent(context: Context, enable: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_GROUP_RECENT, enable).apply()
-        isChanged = true
-    }
-    fun isGroupRecentEnabled(context: Context) = getPrefs(context).getBoolean(KEY_GROUP_RECENT, false)
 
     // 语言设置：0=跟随系统 1=中文 2=英文
     fun saveLanguage(context: Context, lang: Int) {
