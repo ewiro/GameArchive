@@ -11,7 +11,6 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
-        Thread.setDefaultUncaughtExceptionHandler(CrashHandler(this))
     }
 
     companion object {
