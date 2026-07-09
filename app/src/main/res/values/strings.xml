@@ -133,4 +133,7 @@
     <string name="settings_export_ok">Configuration exported</string>
     <string name="settings_import_ok">Configuration imported</string>
     <string name="settings_import_fail">Import failed: invalid file</string>
+    <string name="settings_crash_log">View Crash Log</string>
+    <string name="crash_log_empty">No crash log</string>
+    <string name="crash_log_copied">Copied to clipboard</string>
 </resources>

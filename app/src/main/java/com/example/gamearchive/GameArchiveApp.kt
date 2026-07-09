@@ -9,6 +9,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class GameArchiveApp : Application(), ImageLoaderFactory {
 
+    override fun onCreate() {
+        super.onCreate()
+        Thread.setDefaultUncaughtExceptionHandler(CrashHandler(this))
+    }
+
     companion object {
         /** 全局共享 OkHttpClient（30s 超时，兼顾特惠页） */
         val okHttpClient: OkHttpClient by lazy {
