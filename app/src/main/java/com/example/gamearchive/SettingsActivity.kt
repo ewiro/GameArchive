@@ -21,9 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +33,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -503,74 +501,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         )
                     }
 
-                    Spacer(Modifier.height(DesignTokens.SpaceLg))
-
-                    // 崩溃日志按钮
-                    var showCrashLog by remember { mutableStateOf(false) }
-                    val crashFile = remember { java.io.File(context.cacheDir, "crash_log.txt") }
-                    val hasCrashLog = remember { crashFile.exists() }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(DesignTokens.ButtonHeight)
-                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                            .background(buttonBgColor(lightColor = Color(0xFF546E7A)).copy(alpha = if (hasCrashLog) 1f else DesignTokens.OpacityDisabled))
-                            .then(if (hasCrashLog) Modifier.clickable { showCrashLog = true } else Modifier)
-                            .padding(horizontal = 28.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (hasCrashLog) context.getString(R.string.settings_crash_log) else context.getString(R.string.crash_log_empty),
-                            fontSize = DesignTokens.TextBody1.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    if (showCrashLog) {
-                        val logContent = remember { crashFile.readText() }
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        Dialog(onDismissRequest = { showCrashLog = false }) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                cornerRadius = DesignTokens.CornerLarge
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(
-                                        text = context.getString(R.string.settings_crash_log),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = DesignTokens.TextSubtitle.sp
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                    Box(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                                        Text(
-                                            text = logContent,
-                                            fontSize = 11.sp,
-                                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                                        )
-                                    }
-                                    Spacer(Modifier.height(12.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f).height(DesignTokens.ButtonHeightSmall)
-                                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                                .background(buttonBgColor())
-                                                .clickable {
-                                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("crash_log", logContent))
-                                                    Toast.makeText(context, R.string.crash_log_copied, Toast.LENGTH_SHORT).show()
-                                                    showCrashLog = false
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(text = context.getString(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
