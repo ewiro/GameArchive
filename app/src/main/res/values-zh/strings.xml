@@ -133,4 +133,7 @@
     <string name="settings_export_ok">配置已导出</string>
     <string name="settings_import_ok">配置已导入</string>
     <string name="settings_import_fail">导入失败：文件无效</string>
+    <string name="settings_crash_log">查看崩溃日志</string>
+    <string name="crash_log_empty">暂无崩溃日志</string>
+    <string name="crash_log_copied">已复制到剪贴板</string>
 </resources>
