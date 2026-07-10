@@ -126,6 +126,10 @@
     <string name="tag_select">Select Tags</string>
     <string name="tag_filter_all">All Tags</string>
 
+    <!-- Notes -->
+    <string name="note_local">Local Notes</string>
+    <string name="note_hint">Leave a comment…</string>
+
     <!-- Data Management -->
     <string name="settings_data">Data Management</string>
     <string name="settings_export">Export Configuration</string>

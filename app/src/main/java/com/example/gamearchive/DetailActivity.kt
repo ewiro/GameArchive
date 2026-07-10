@@ -24,9 +24,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
@@ -101,6 +106,11 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     var gameTags by remember { mutableStateOf(GameTags.getTagsForGame(context, appId)) }
     var showTagSheet by remember { mutableStateOf(false) }
     val allTags = remember { GameTags.getAllTags(context) }
+
+    // 备注状态
+    var gameNote by remember { mutableStateOf(GameNotes.getNote(context, appId)) }
+    var showNoteSheet by remember { mutableStateOf(false) }
+    var noteExpanded by remember { mutableStateOf(false) }
 
     // 评价状态
     var reviewSummary by remember { mutableStateOf("") }
@@ -282,7 +292,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 .padding(horizontal = 4.dp)
                                 .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                                 .background(Color.Black)
-                                .clickable {
+                                .noRippleClickable {
                                     val intent = Intent(context, MediaViewerActivity::class.java)
                                     intent.putStringArrayListExtra("URLS", ArrayList(mediaList.map { it.url }))
                                     intent.putStringArrayListExtra("TYPES", ArrayList(mediaList.map { if (it.isVideo) "video" else "image" }))
@@ -499,8 +509,9 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     if (gameTags.isEmpty()) {
                         Text(
                             text = context.getString(R.string.tag_edit),
-                            fontSize = DesignTokens.TextBody2.sp,
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                             modifier = Modifier.weight(1f)
                         )
                     } else {
@@ -521,14 +532,58 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             }
                         }
                     }
-                    Text(
-                        text = "+",
-                        fontSize = DesignTokens.TextHeadline.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint),
-                        modifier = Modifier.padding(start = 8.dp)
+                    Image(
+                        painter = painterResource(R.drawable.ic_arrow_right),
+                        contentDescription = null,
+                        modifier = Modifier.size(DesignTokens.IconLg),
+                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint))
                     )
                 }
 
+                // ── 本地评论 ──
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (gameNote.isNotEmpty()) {
+                                if (noteExpanded) gameNote
+                                else {
+                                    val preview = gameNote.replace("\n", " ").take(20)
+                                    if (gameNote.length > 20) "$preview…" else preview
+                                }
+                            } else {
+                                context.getString(R.string.note_local)
+                            },
+                            fontSize = DesignTokens.TextBody1.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (gameNote.isNotEmpty())
+                                MiuixTheme.colorScheme.onSurface
+                            else
+                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            modifier = Modifier
+                                .weight(1f)
+                                .noRippleClickable { showNoteSheet = true },
+                            maxLines = if (noteExpanded) Int.MAX_VALUE else 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Image(
+                            painter = painterResource(R.drawable.ic_arrow_right),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(DesignTokens.IconLg)
+                                .graphicsLayer { rotationZ = if (noteExpanded) 90f else 0f }
+                                .noRippleClickable { if (gameNote.isNotEmpty()) noteExpanded = !noteExpanded },
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint))
+                        )
+                    }
+                }
+
+                // 分割线
                 Spacer(Modifier.height(DesignTokens.SpaceMassive))
                 Box(
                     modifier = Modifier
@@ -670,7 +725,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .noRippleClickable {
                                     GameMarks.setMark(context, appId, -1)
                                     currentMark = -1
                                     showMarkSheet = false
@@ -708,7 +763,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .noRippleClickable {
                                         GameMarks.setMark(context, appId, resId)
                                         currentMark = resId
                                         showMarkSheet = false
@@ -782,7 +837,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                     .height(DesignTokens.ButtonHeightSmall)
                                     .clip(RoundedCornerShape(DesignTokens.CornerLarge))
                                     .background(if (newTagInput.trim().isNotEmpty()) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
-                                    .then(if (newTagInput.trim().isNotEmpty()) Modifier.clickable {
+                                    .then(if (newTagInput.trim().isNotEmpty()) Modifier.noRippleClickable {
                                         val trimmed = newTagInput.trim()
                                         if (trimmed.isNotEmpty() && !allTags.contains(trimmed)) {
                                             GameTags.addTag(context, trimmed)
@@ -839,6 +894,87 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             contentAlignment = Alignment.Center
                         ) {
                             Text(text = context.getString(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 本地评论弹窗 ──
+        if (showNoteSheet) {
+            var editText by remember { mutableStateOf(gameNote) }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .clickable { showNoteSheet = false },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = false, onClick = {})
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = context.getString(R.string.note_local),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                .background(MiuixTheme.colorScheme.surface)
+                                .border(
+                                    1.dp,
+                                    MiuixTheme.colorScheme.outline,
+                                    RoundedCornerShape(DesignTokens.CornerMedium)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = editText,
+                                onValueChange = { editText = it },
+                                modifier = Modifier.fillMaxSize(),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontSize = DesignTokens.TextBody1.sp,
+                                    color = MiuixTheme.colorScheme.onSurface
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (editText.isEmpty()) {
+                                        Text(
+                                            text = context.getString(R.string.note_hint),
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(DesignTokens.ButtonHeightSmall)
+                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                .background(buttonBgColor())
+                                .noRippleClickable {
+                                    gameNote = editText.trim()
+                                    GameNotes.setNote(context, appId, gameNote)
+                                    showNoteSheet = false
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = context.getString(R.string.settings_save_profile),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = DesignTokens.TextBody1.sp
+                            )
                         }
                     }
                 }

@@ -41,6 +41,12 @@ object DataBackup {
         userData.put("show_profile_card", userPrefs.getBoolean("show_profile_card", false))
         root.put("steam_user_data", userData)
 
+        // ── 游戏备注 ──
+        val notes = JSONObject()
+        context.getSharedPreferences(GameNotes.PREF_NAME, Context.MODE_PRIVATE).all
+            .forEach { (key, value) -> notes.put(key, value) }
+        root.put("game_notes", notes)
+
         // ── 偏好设置 ──
         val prefs = JSONObject()
         val themePrefs = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE)
@@ -91,6 +97,14 @@ object DataBackup {
                 if (data.has("custom_frame_url")) editor.putString("custom_frame_url", data.getString("custom_frame_url"))
                 if (data.has("custom_avatar_url")) editor.putString("custom_avatar_url", data.getString("custom_avatar_url"))
                 if (data.has("show_profile_card")) editor.putBoolean("show_profile_card", data.getBoolean("show_profile_card"))
+                editor.apply()
+            }
+
+            // ── 恢复游戏备注 ──
+            if (root.has("game_notes")) {
+                val editor = context.getSharedPreferences(GameNotes.PREF_NAME, Context.MODE_PRIVATE).edit().clear()
+                val notes = root.getJSONObject("game_notes")
+                notes.keys().forEach { key -> editor.putString(key, notes.getString(key)) }
                 editor.apply()
             }
 

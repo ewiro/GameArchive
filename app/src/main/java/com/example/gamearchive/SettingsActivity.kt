@@ -37,6 +37,15 @@ import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.runtime.compositionLocalOf
+
 class SettingsActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context?) {
@@ -63,6 +72,15 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 }
+
+private data class DropdownPopupData(
+    val options: List<String>,
+    val selectedIndex: Int,
+    val onSelect: (Int) -> Unit,
+    val triggerRect: Rect
+)
+
+private val LocalDropdownHost = compositionLocalOf<(DropdownPopupData?) -> Unit> { {} }
 
 @Composable
 private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
@@ -127,6 +145,9 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         }
     }
 
+    var dropdownPopup by remember { mutableStateOf<DropdownPopupData?>(null) }
+    CompositionLocalProvider(LocalDropdownHost provides { dropdownPopup = it }) {
+    Box(Modifier.fillMaxSize()) {
     Surface(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -134,30 +155,26 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     ) {
         // ── 顶栏 ──
         item("topbar") {
-            Surface(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 4.dp, end = 8.dp)
-                        .padding(top = statusBarDp + 4.dp)
-                        .height(52.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Image(
-                            painter = painterResource(R.drawable.ic_back),
-                            contentDescription = "Back",
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
-                        )
-                    }
-                    Text(
-                        text = context.getString(R.string.settings_title),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = DesignTokens.TextTitle.sp,
-                        modifier = Modifier.weight(1f).padding(end = 48.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = statusBarDp + 4.dp, end = 12.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_back),
+                        contentDescription = "Back",
+                        modifier = Modifier.size(DesignTokens.IconXl),
+                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                     )
                 }
+                Text(
+                    text = context.getString(R.string.settings_title),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = DesignTokens.TextHeadline.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
             }
         }
 
@@ -171,70 +188,44 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // 深色模式
-                    Text(
-                        text = context.getString(R.string.settings_dark_mode),
-                        fontSize = DesignTokens.TextBody1.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    // 主题样式
+                    val themeOptions = listOf(
+                        context.getString(R.string.settings_follow_system),
+                        context.getString(R.string.settings_light),
+                        context.getString(R.string.settings_dark)
                     )
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        ThemeRadioButton(
-                            label = context.getString(R.string.settings_follow_system),
-                            selected = themeMode == 2,
-                            onClick = { themeMode = 2; ThemeUtils.saveThemeMode(context, 2); onRecreate() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeRadioButton(
-                            label = context.getString(R.string.settings_light),
-                            selected = themeMode == 0,
-                            onClick = { themeMode = 0; ThemeUtils.saveThemeMode(context, 0); onRecreate() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeRadioButton(
-                            label = context.getString(R.string.settings_dark),
-                            selected = themeMode == 1,
-                            onClick = { themeMode = 1; ThemeUtils.saveThemeMode(context, 1); onRecreate() },
-                            modifier = Modifier.weight(1f)
-                        )
+                    val themeIndex = remember(themeMode) {
+                        when (themeMode) { 2 -> 0; 0 -> 1; 1 -> 2; else -> 0 }
                     }
+                    DropdownSelector(
+                        label = context.getString(R.string.settings_dark_mode),
+                        options = themeOptions,
+                        selectedIndex = themeIndex,
+                        onSelect = { idx ->
+                            val newMode = when (idx) { 0 -> 2; 1 -> 0; 2 -> 1; else -> 2 }
+                            themeMode = newMode; ThemeUtils.saveThemeMode(context, newMode); onRecreate()
+                        }
+                    )
 
                     DividerLine()
 
-                    // 语言设置
-                    Text(
-                        text = context.getString(R.string.settings_language),
-                        fontSize = DesignTokens.TextBody1.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    // 语言
+                    val langOptions = listOf(
+                        context.getString(R.string.settings_lang_follow_system),
+                        context.getString(R.string.settings_lang_chinese),
+                        context.getString(R.string.settings_lang_english)
                     )
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        ThemeRadioButton(
-                            label = context.getString(R.string.settings_lang_follow_system),
-                            selected = language == LocaleHelper.LANG_FOLLOW_SYSTEM,
-                            onClick = { language = LocaleHelper.LANG_FOLLOW_SYSTEM; ThemeUtils.saveLanguage(context, language); onRecreate() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeRadioButton(
-                            label = context.getString(R.string.settings_lang_chinese),
-                            selected = language == LocaleHelper.LANG_CHINESE,
-                            onClick = { language = LocaleHelper.LANG_CHINESE; ThemeUtils.saveLanguage(context, language); onRecreate() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeRadioButton(
-                            label = context.getString(R.string.settings_lang_english),
-                            selected = language == LocaleHelper.LANG_ENGLISH,
-                            onClick = { language = LocaleHelper.LANG_ENGLISH; ThemeUtils.saveLanguage(context, language); onRecreate() },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    val langValues = listOf(LocaleHelper.LANG_FOLLOW_SYSTEM, LocaleHelper.LANG_CHINESE, LocaleHelper.LANG_ENGLISH)
+                    val langIndex = remember(language) { langValues.indexOf(language).coerceAtLeast(0) }
+                    DropdownSelector(
+                        label = context.getString(R.string.settings_language),
+                        options = langOptions,
+                        selectedIndex = langIndex,
+                        onSelect = { idx ->
+                            language = langValues[idx]; ThemeUtils.saveLanguage(context, language); onRecreate()
+                        }
+                    )
                 }
             }
         }
@@ -249,7 +240,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
                     SwitchRow(
                         label = context.getString(R.string.settings_show_profile),
                         checked = showProfile,
@@ -311,7 +302,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                         .height(DesignTokens.ButtonHeight)
                                         .clip(RoundedCornerShape(DesignTokens.CornerLarge))
                                         .background(buttonBgColor())
-                                        .clickable {
+                                        .noRippleClickable {
                                             UserPrefs.saveCustomAvatarUrl(context, avatarUrl)
                                             UserPrefs.saveCustomBgUrl(context, bgUrl)
                                             UserPrefs.saveCustomFrameUrl(context, frameUrl)
@@ -345,62 +336,44 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = context.getString(R.string.settings_group_status),
-                        fontSize = DesignTokens.TextBody1.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                    )
-                    Spacer(Modifier.height(10.dp))
-
-                    SwitchRow(
-                        label = context.getString(R.string.settings_show_specials),
-                        checked = showSpecials,
-                        modifier = Modifier.padding(start = 24.dp),
-                        onCheckedChange = {
-                            showSpecials = it
-                            ThemeUtils.saveShowSpecials(context, it)
-                        }
-                    )
-
-                    Spacer(Modifier.height(DesignTokens.SpaceLg))
-                    DividerLine()
-                    Spacer(Modifier.height(DesignTokens.SpaceLg))
-
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    // 分组
                     SwitchRow(
                         label = context.getString(R.string.settings_grouping),
                         checked = grouping,
-                        modifier = Modifier.padding(start = 24.dp),
                         onCheckedChange = {
                             grouping = it
                             ThemeUtils.saveGrouping(context, it)
                         }
                     )
 
-                    Spacer(Modifier.height(DesignTokens.SpaceLg))
                     DividerLine()
-                    Spacer(Modifier.height(DesignTokens.SpaceLg))
 
-                    Text(
-                        text = context.getString(R.string.settings_sort_mode),
-                        fontSize = DesignTokens.TextBody1.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    // 显示特惠
+                    SwitchRow(
+                        label = context.getString(R.string.settings_show_specials),
+                        checked = showSpecials,
+                        onCheckedChange = {
+                            showSpecials = it
+                            ThemeUtils.saveShowSpecials(context, it)
+                        }
                     )
-                    Spacer(Modifier.height(10.dp))
 
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge).clickable { sortMode = 0; ThemeUtils.saveSortMode(context, 0) }.padding(vertical = 6.dp)) {
-                        SelectableIndicator(selected = sortMode == 0)
-                        Spacer(Modifier.width(6.dp))
-                        Text(text = context.getString(R.string.settings_sort_playtime), fontSize = DesignTokens.TextBody1.sp)
-                    }
+                    DividerLine()
 
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(start = DesignTokens.SpaceHuge).clickable { sortMode = 1; ThemeUtils.saveSortMode(context, 1) }.padding(vertical = 6.dp)) {
-                        SelectableIndicator(selected = sortMode == 1)
-                        Spacer(Modifier.width(6.dp))
-                        Text(text = context.getString(R.string.settings_sort_name), fontSize = DesignTokens.TextBody1.sp)
-                    }
+                    // 排序方式
+                    val sortOptions = listOf(
+                        context.getString(R.string.settings_sort_playtime),
+                        context.getString(R.string.settings_sort_name)
+                    )
+                    DropdownSelector(
+                        label = context.getString(R.string.settings_sort_mode),
+                        options = sortOptions,
+                        selectedIndex = sortMode,
+                        onSelect = { idx ->
+                            sortMode = idx; ThemeUtils.saveSortMode(context, sortMode)
+                        }
+                    )
                 }
             }
         }
@@ -414,32 +387,30 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "${context.getString(R.string.tag_manage)} (${allTags.size})",
-                        fontSize = DesignTokens.TextBody1.sp
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable { showTagDialog = true }
+                            .padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .height(DesignTokens.ButtonHeight)
-                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                .background(buttonBgColor())
-                                .clickable { showTagDialog = true }
-                                .padding(horizontal = 28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = context.getString(R.string.tag_manage),
-                                fontSize = DesignTokens.TextBody1.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                        Text(
+                            text = "${context.getString(R.string.tag_manage)} (${allTags.size})",
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = systemFontWeight(),
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Image(
+                            painter = painterResource(R.drawable.ic_arrow_right),
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.IconLg),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                             )
-                        }
+                        )
                     }
                 }
             }
@@ -455,49 +426,63 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // 导出按钮
-                    Box(
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    // 导出配置
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(DesignTokens.ButtonHeight)
-                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                            .background(buttonBgColor())
-                            .clickable {
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable {
                                 pendingExportJson = DataBackup.exportToJson(context)
                                 exportLauncher.launch("gamearchive_backup.json")
                             }
-                            .padding(horizontal = 28.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = context.getString(R.string.settings_export),
-                            fontSize = DesignTokens.TextBody1.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = systemFontWeight(),
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Image(
+                            painter = painterResource(R.drawable.ic_arrow_right),
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.IconLg),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                            )
                         )
                     }
 
-                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+                    DividerLine()
 
-                    // 导入按钮
-                    Box(
+                    // 导入配置
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(DesignTokens.ButtonHeight)
-                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                            .background(buttonBgColor(lightColor = Color(0xFF5C6BC0)))
-                            .clickable {
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable {
                                 importLauncher.launch(arrayOf("application/json"))
                             }
-                            .padding(horizontal = 28.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = context.getString(R.string.settings_import),
-                            fontSize = DesignTokens.TextBody1.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = systemFontWeight(),
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Image(
+                            painter = painterResource(R.drawable.ic_arrow_right),
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.IconLg),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                            )
                         )
                     }
 
@@ -516,7 +501,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         .height(DesignTokens.ButtonHeight)
                         .clip(RoundedCornerShape(DesignTokens.CornerLarge))
                         .background(buttonBgColor(lightColor = DesignTokens.ErrorRed))
-                        .clickable {
+                        .noRippleClickable {
                             UserPrefs.logout(context)
                             val intent = Intent(context, LoginActivity::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -543,7 +528,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .background(DesignTokens.ScrimDark)
-                    .clickable { showTagDialog = false },
+                    .noRippleClickable { showTagDialog = false },
                 contentAlignment = Alignment.Center
             ) {
                 Card(
@@ -584,7 +569,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                         fontSize = DesignTokens.TextSubtitle.sp,
                                         color = DesignTokens.ErrorRed,
                                         modifier = Modifier
-                                            .clickable {
+                                            .noRippleClickable {
                                                 GameTags.deleteTag(context, tag)
                                                 tagListRefresh++
                                             }
@@ -610,7 +595,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     .height(DesignTokens.ButtonHeightSmall)
                                     .clip(RoundedCornerShape(DesignTokens.CornerLarge))
                                     .background(if (newTagName.trim().isNotEmpty()) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
-                                    .then(if (newTagName.trim().isNotEmpty()) Modifier.clickable {
+                                    .then(if (newTagName.trim().isNotEmpty()) Modifier.noRippleClickable {
                                         val trimmed = newTagName.trim()
                                         if (trimmed.isNotEmpty() && !allTags.contains(trimmed)) {
                                             GameTags.addTag(context, trimmed)
@@ -631,7 +616,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 .height(DesignTokens.ButtonHeightSmall)
                                 .clip(RoundedCornerShape(DesignTokens.CornerLarge))
                                 .background(buttonBgColor())
-                                .clickable { showTagDialog = false },
+                                .noRippleClickable { showTagDialog = false },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(text = context.getString(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
@@ -641,7 +626,76 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             }
         }
     } // close Surface
-}
+
+        // ── 选择器弹窗叠加层 ──
+        if (dropdownPopup != null) {
+            val popup = dropdownPopup!!
+            val density = LocalDensity.current
+            val triggerBottomDp = with(density) { (popup.triggerRect.bottom / density.density).dp }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .clickable { dropdownPopup = null },
+                contentAlignment = Alignment.TopStart
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = triggerBottomDp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    val screenWidthDp = with(density) { (context.resources.displayMetrics.widthPixels / density.density).dp }
+                    val triggerRightDp = with(density) { (popup.triggerRect.right / density.density).dp }
+                    val paddingEnd = maxOf(0.dp, screenWidthDp - triggerRightDp)
+                    Card(
+                        modifier = Modifier
+                            .padding(end = paddingEnd)
+                            .wrapContentWidth(),
+                    cornerRadius = DesignTokens.CornerLarge
+                ) {
+                    Column(Modifier.width(IntrinsicSize.Max)) {
+                        popup.options.forEachIndexed { index, option ->
+                            val isSelected = index == popup.selectedIndex
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .noRippleClickable {
+                                        popup.onSelect(index)
+                                        dropdownPopup = null
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = option,
+                                    fontSize = DesignTokens.TextSubtitle.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected)
+                                        MiuixTheme.colorScheme.primary
+                                    else MiuixTheme.colorScheme.onSurface,
+                                    softWrap = false
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Spacer(Modifier.width(32.dp))
+                                Text(
+                                    text = "✓",
+                                    fontSize = DesignTokens.TextSubtitle.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (isSelected)
+                                        MiuixTheme.colorScheme.primary
+                                    else Color.Transparent
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+    } // close Box
+    } // close CompositionLocalProvider
+    } // close SettingsScreen
 
 // ── 复用组件 ──
 
@@ -649,10 +703,10 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 private fun SectionHeader(text: String) {
     Text(
         text = text,
-        color = DesignTokens.AccentBlue,
+        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
         fontWeight = FontWeight.Bold,
         fontSize = DesignTokens.TextBody1.sp,
-        modifier = Modifier.padding(start = 20.dp, top = 22.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 22.dp, bottom = 8.dp)
     )
 }
 
@@ -668,31 +722,74 @@ private fun DividerLine() {
 }
 
 @Composable
-private fun ThemeRadioButton(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp, horizontal = 2.dp)
-    ) {
-        SelectableIndicator(selected = selected)
-        Spacer(Modifier.width(4.dp))
-        Text(text = label, fontSize = DesignTokens.TextBody2.sp)
-    }
-}
-
-@Composable
 private fun SwitchRow(label: String, checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { if (enabled) onCheckedChange(!checked) }
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SelectableIndicator(selected = checked, enabled = enabled)
-        Spacer(Modifier.width(8.dp))
-        Text(text = label, fontSize = DesignTokens.TextBody1.sp)
+        Text(
+            text = label,
+            fontSize = DesignTokens.TextSubtitle.sp,
+            fontWeight = systemFontWeight(),
+            color = MiuixTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = if (enabled) onCheckedChange else null,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+private fun DropdownSelector(
+    label: String,
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val dropdownHost = LocalDropdownHost.current
+    var triggerRect by remember { mutableStateOf(Rect.Zero) }
+
+    Box(modifier = modifier) {
+        // 触发器行
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    triggerRect = coords.positionInWindow().let {
+                        Rect(it.x, it.y, it.x + coords.size.width, it.y + coords.size.height)
+                    }
+                }
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                .noRippleClickable {
+                    dropdownHost(DropdownPopupData(options, selectedIndex, onSelect, triggerRect))
+                }
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = DesignTokens.TextSubtitle.sp,
+                fontWeight = systemFontWeight(),
+                color = MiuixTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(32.dp))
+            Text(
+                text = options[selectedIndex],
+                fontSize = DesignTokens.TextBody1.sp,
+                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+            )
+            Spacer(Modifier.width(4.dp))
+            DropdownArrowEndAction(
+                actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+            )
+        }
     }
 }
 

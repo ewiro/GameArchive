@@ -126,6 +126,10 @@
     <string name="tag_select">选择标签</string>
     <string name="tag_filter_all">全部标签</string>
 
+    <!-- Notes -->
+    <string name="note_local">本地评论</string>
+    <string name="note_hint">评论一下…</string>
+
     <!-- Data Management -->
     <string name="settings_data">数据管理</string>
     <string name="settings_export">导出配置</string>
