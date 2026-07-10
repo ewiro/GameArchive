@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
+import retrofit2.HttpException
 
 /**
  * 库存页的"数据管家"。
@@ -58,44 +60,54 @@ class LibraryViewModel : ViewModel() {
         viewModelScope.launch {
             _loading.value = true
             try {
-                // 三个请求并发发出
-                val gameDeferred = async { GameArchiveApp.apiService.getOwnedGames(apiKey, steamId) }
-                val userDeferred = async { GameArchiveApp.apiService.getPlayerSummaries(apiKey, steamId) }
-                val levelDeferred = async {
-                    try {
-                        GameArchiveApp.apiService.getSteamLevel(apiKey, steamId)
-                    } catch (e: Exception) { null } // 等级失败不影响其他
+                supervisorScope {
+                    // 三个请求并发发出
+                    val gameDeferred = async { GameArchiveApp.apiService.getOwnedGames(apiKey, steamId) }
+                    val userDeferred = async { GameArchiveApp.apiService.getPlayerSummaries(apiKey, steamId) }
+                    val levelDeferred = async {
+                        try {
+                            GameArchiveApp.apiService.getSteamLevel(apiKey, steamId)
+                        } catch (e: Exception) { null } // 等级失败不影响其他
+                    }
+
+                    // 库存游戏 + 黑名单过滤
+                    val gameRes = gameDeferred.await()
+                    // 黑名单：战地6测试版 (Steam 已下架其数据，但库存接口仍返回，强制隐藏)
+                    val blackListIds = setOf(3081410)
+                    val gameList = gameRes.response.games.filter { game ->
+                        !blackListIds.contains(game.appid)
+                    }
+
+                    // 更新全局拥有的游戏ID列表
+                    MainActivity.ownedGameIds.clear()
+                    MainActivity.ownedGameIds.addAll(gameList.map { it.appid })
+
+                    // 玩家信息
+                    val userRes = userDeferred.await()
+                    val playerInfo = if (userRes.response.players.isNotEmpty()) userRes.response.players[0] else null
+
+                    // Steam 等级
+                    val playerLevel = levelDeferred.await()?.response?.player_level ?: 0
+
+                    // 批量获取前20个游戏的价格
+                    fetchBatchPrices(gameList.sortedByDescending { it.playtime_forever }.take(20))
+
+                    _games.value = gameList
+                    _player.value = playerInfo
+                    _level.value = playerLevel
+                    hasLoaded = true
+                    lastLanguage = LocaleHelper.currentApiLanguage
                 }
-
-                // 库存游戏 + 黑名单过滤
-                val gameRes = gameDeferred.await()
-                // 黑名单：战地6测试版 (Steam 已下架其数据，但库存接口仍返回，强制隐藏)
-                val blackListIds = setOf(3081410)
-                val gameList = gameRes.response.games.filter { game ->
-                    !blackListIds.contains(game.appid)
-                }
-
-                // 更新全局拥有的游戏ID列表
-                MainActivity.ownedGameIds.clear()
-                MainActivity.ownedGameIds.addAll(gameList.map { it.appid })
-
-                // 玩家信息
-                val userRes = userDeferred.await()
-                val playerInfo = if (userRes.response.players.isNotEmpty()) userRes.response.players[0] else null
-
-                // Steam 等级
-                val playerLevel = levelDeferred.await()?.response?.player_level ?: 0
-
-                // 批量获取前20个游戏的价格
-                fetchBatchPrices(gameList.sortedByDescending { it.playtime_forever }.take(20))
-
-                _games.value = gameList
-                _player.value = playerInfo
-                _level.value = playerLevel
-                hasLoaded = true
-                lastLanguage = LocaleHelper.currentApiLanguage
             } catch (e: Exception) {
-                _error.value = "Load failed: ${e.message}"
+                val msg = when {
+                    e is HttpException && e.code() == 403 ->
+                        "API Key 无效，或 Steam 个人资料未设为公开"
+                    e is HttpException ->
+                        "网络错误 (HTTP ${e.code()})"
+                    else ->
+                        "Load failed: ${e.message}"
+                }
+                _error.value = msg
                 e.printStackTrace()
             } finally {
                 _loading.value = false

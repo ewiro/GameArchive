@@ -3,6 +3,8 @@ package com.example.gamearchive
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -17,6 +19,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -248,6 +251,28 @@ fun reviewColor(percent: Int): Color = when {
     percent >= 40 -> DesignTokens.ReviewMixed
     else          -> DesignTokens.ReviewPoor
 }
+
+/** 读取系统"粗体文字"辅助功能设置（Android 12+），返回适配后的字重 */
+@Composable
+fun systemFontWeight(): FontWeight {
+    val adjustment = LocalContext.current.resources.configuration.fontWeightAdjustment
+    return when {
+        adjustment >= 300 -> FontWeight(1000)
+        adjustment >= 200 -> FontWeight.Bold
+        adjustment >= 100 -> FontWeight.SemiBold
+        adjustment >= 1 -> FontWeight.Medium
+        else -> FontWeight.Normal
+    }
+}
+
+/** 无涟漪点击修饰符 — 去掉了 Material ripple 灰色方框效果 */
+@Composable
+fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
+    this.clickable(
+        indication = null,
+        interactionSource = remember { MutableInteractionSource() },
+        onClick = onClick
+    )
 
 /** 统一 MiuixTheme 包装 — 消除 4 个 Activity 中的重复 */
 @Composable
