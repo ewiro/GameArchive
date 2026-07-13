@@ -412,8 +412,9 @@ private fun LibraryScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = topBarInsetDp, bottom = 72.dp)
+            contentPadding = PaddingValues(bottom = 72.dp)
         ) {
+            item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
             if (showProfile && player != null) {
                 item("profile") {
                     ProfileHeader(player!!, gameList.size, gameList.sumOf { it.playtime_forever } / 60.0, level ?: 0)
