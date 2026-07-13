@@ -417,7 +417,9 @@ private fun LibraryScreen(
         ) {
             if (showProfile && player != null) {
                 item("profile") {
-                    ProfileHeader(player!!, gameList.size, gameList.sumOf { it.playtime_forever } / 60.0, level ?: 0)
+                    val autoBg by viewModel.autoBgUrl.observeAsState()
+                    val autoFrame by viewModel.autoFrameUrl.observeAsState()
+                    ProfileHeader(player!!, gameList.size, gameList.sumOf { it.playtime_forever } / 60.0, level ?: 0, autoBg, autoFrame)
                 }
             }
 
@@ -566,11 +568,14 @@ private fun LibraryScreen(
 // ── 状态颜色 → DesignTokens.Status*
 
 @Composable
-private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double, level: Int) {
+private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double, level: Int, autoBgUrl: String?, autoFrameUrl: String?) {
     val context = LocalContext.current
     val customBgUrl = UserPrefs.getCustomBgUrl(context)
     val customFrameUrl = UserPrefs.getCustomFrameUrl(context)
     val customAvatar = UserPrefs.getCustomAvatarUrl(context)
+    // 自动获取的作为默认值，手动设置优先
+    val bgUrl = if (customBgUrl.isNotEmpty()) customBgUrl else (autoBgUrl ?: "")
+    val frameUrl = if (customFrameUrl.isNotEmpty()) customFrameUrl else (autoFrameUrl ?: "")
     val textShadow = androidx.compose.ui.graphics.Shadow(
         color = DesignTokens.TextShadowColor, offset = androidx.compose.ui.geometry.Offset(1f, 1f), blurRadius = 2f
     )
@@ -601,11 +606,25 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                     verticalAlignment = Alignment.Top
                 ) {
                     // 头像 + 挂件框 — 挂件为外框，头像居中在内
-                    Box(modifier = Modifier.size(DesignTokens.AvatarOuter)) {           // ← 外框大小
+                    Box(modifier = Modifier.size(DesignTokens.AvatarOuter)) {
+                        // GIF 头像：优先尝试 GIF URL，失败自动回退 avatarfull
+                        var avatarUrl by remember {
+                            mutableStateOf(
+                                if (customAvatar.isNotEmpty()) customAvatar
+                                else if (player.avatarhash.isNotEmpty()) "https://avatars.fastly.steamstatic.com/${player.avatarhash}_full.gif"
+                                else player.avatarfull
+                            )
+                        }
                         AsyncImage(
-                            model = if (customAvatar.isNotEmpty()) customAvatar else player.avatarfull,
+                            model = ImageRequest.Builder(context)
+                                .data(avatarUrl)
+                                .crossfade(true)
+                                .listener(onError = { _, _ ->
+                                    if (avatarUrl.contains(".gif")) avatarUrl = player.avatarfull
+                                })
+                                .build(),
                             contentDescription = null,
-                            modifier = Modifier.size(DesignTokens.AvatarInner)          // ← 头像大小（需 < 外框，差值=边框厚度）
+                            modifier = Modifier.size(DesignTokens.AvatarInner)
                                 .align(Alignment.Center),
                             contentScale = ContentScale.Crop
                         )
