@@ -417,9 +417,7 @@ private fun LibraryScreen(
         ) {
             if (showProfile && player != null) {
                 item("profile") {
-                    val autoBg by viewModel.autoBgUrl.observeAsState()
-                    val autoFrame by viewModel.autoFrameUrl.observeAsState()
-                    ProfileHeader(player!!, gameList.size, gameList.sumOf { it.playtime_forever } / 60.0, level ?: 0, autoBg, autoFrame)
+                    ProfileHeader(player!!, gameList.size, gameList.sumOf { it.playtime_forever } / 60.0, level ?: 0)
                 }
             }
 
@@ -568,14 +566,11 @@ private fun LibraryScreen(
 // ── 状态颜色 → DesignTokens.Status*
 
 @Composable
-private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double, level: Int, autoBgUrl: String?, autoFrameUrl: String?) {
+private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double, level: Int) {
     val context = LocalContext.current
     val customBgUrl = UserPrefs.getCustomBgUrl(context)
     val customFrameUrl = UserPrefs.getCustomFrameUrl(context)
     val customAvatar = UserPrefs.getCustomAvatarUrl(context)
-    // 自动获取的作为默认值，手动设置优先
-    val bgUrl = if (customBgUrl.isNotEmpty()) customBgUrl else (autoBgUrl ?: "")
-    val frameUrl = if (customFrameUrl.isNotEmpty()) customFrameUrl else (autoFrameUrl ?: "")
     val textShadow = androidx.compose.ui.graphics.Shadow(
         color = DesignTokens.TextShadowColor, offset = androidx.compose.ui.geometry.Offset(1f, 1f), blurRadius = 2f
     )
@@ -589,9 +584,9 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
     ) {
         androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth()) {
             // 自定义背景图 + 半透明遮罩
-            if (bgUrl.isNotEmpty()) {
+            if (customBgUrl.isNotEmpty()) {
                 AsyncImage(
-                    model = bgUrl,
+                    model = customBgUrl,
                     contentDescription = null,
                     modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Crop
@@ -607,34 +602,17 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                 ) {
                     // 头像 + 挂件框 — 挂件为外框，头像居中在内
                     Box(modifier = Modifier.size(DesignTokens.AvatarOuter)) {
-                        // GIF 头像：从 avatarfull URL 提取 hash，构造 GIF URL，失败自动回退
-                        var avatarUrl by remember {
-                            val gifUrl = if (customAvatar.isEmpty()) {
-                                val hash = player.avatarfull
-                                    .removeSuffix("_full.jpg")
-                                    .substringAfterLast("/")
-                                if (hash.isNotEmpty()) "https://avatars.fastly.steamstatic.com/${hash}.gif"
-                                else null
-                            } else null
-                            mutableStateOf(customAvatar.ifEmpty { gifUrl ?: player.avatarfull })
-                        }
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(avatarUrl)
-                                .crossfade(true)
-                                .listener(onError = { _, _ ->
-                                    if (avatarUrl.contains(".gif")) avatarUrl = player.avatarfull
-                                })
-                                .build(),
+                            model = if (customAvatar.isNotEmpty()) customAvatar else player.avatarfull,
                             contentDescription = null,
                             modifier = Modifier.size(DesignTokens.AvatarInner)
                                 .align(Alignment.Center),
                             contentScale = ContentScale.Crop
                         )
                         // 挂件铺满外框，叠在头像上方
-                        if (frameUrl.isNotEmpty()) {
+                        if (customFrameUrl.isNotEmpty()) {
                             AsyncImage(
-                                model = frameUrl,
+                                model = customFrameUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit

@@ -99,8 +99,4 @@ interface SteamApiService {
     // reviews 接口
     @GET("appreviews/{appid}")
     suspend fun getGameReviews(@Path("appid") id: Int, @Query("json") j: Int = 1, @Query("language") l: String = "schinese",@Query("num_per_page") count: Int = 100): ReviewResponse
-
-    // 个人资料装备物品（未公开 API，需 API Key）
-    @GET("IPlayerService/GetProfileItemsEquipped/v1/")
-    suspend fun getProfileItemsEquipped(@Query("key") k: String, @Query("input_json") j: String): Map<String, Any>
 }
