@@ -589,9 +589,9 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
     ) {
         androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth()) {
             // 自定义背景图 + 半透明遮罩
-            if (customBgUrl.isNotEmpty()) {
+            if (bgUrl.isNotEmpty()) {
                 AsyncImage(
-                    model = customBgUrl,
+                    model = bgUrl,
                     contentDescription = null,
                     modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Crop
@@ -629,9 +629,9 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                             contentScale = ContentScale.Crop
                         )
                         // 挂件铺满外框，叠在头像上方
-                        if (customFrameUrl.isNotEmpty()) {
+                        if (frameUrl.isNotEmpty()) {
                             AsyncImage(
-                                model = customFrameUrl,
+                                model = frameUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
