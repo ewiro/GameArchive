@@ -742,7 +742,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                     )
                                     .then(
                                         if (currentMark != -1) Modifier.border(
-                                            1.5.dp,
+                                            DesignTokens.BorderThick,
                                             MiuixTheme.colorScheme.outline,
                                             RoundedCornerShape(DesignTokens.CornerMedium)
                                         )
@@ -929,7 +929,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                                 .background(MiuixTheme.colorScheme.surface)
                                 .border(
-                                    1.dp,
+                                    DesignTokens.BorderThin,
                                     MiuixTheme.colorScheme.outline,
                                     RoundedCornerShape(DesignTokens.CornerMedium)
                                 )
@@ -988,7 +988,8 @@ private fun ReviewItem(review: SteamReview) {
     val context = LocalContext.current
     val hours = review.author.playtime_forever / 60
     val date = remember(review.timestamp_created) {
-        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        java.text.SimpleDateFormat("yyyy-MM-dd",
+            if (ThemeUtils.getLanguage(context) == LocaleHelper.LANG_ENGLISH) java.util.Locale.ENGLISH else java.util.Locale.CHINESE)
             .format(java.util.Date(review.timestamp_created * 1000))
     }
 

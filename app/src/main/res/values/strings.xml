@@ -20,12 +20,16 @@
     <string name="library_group_recent">Recently Active (%d)</string>
     <string name="library_group_played">Played (%d)</string>
     <string name="library_group_unplayed">Backlog (%d)</string>
+    <string name="library_filter_count">%d games</string>
     <string name="library_search">Search games…</string>
 
     <!-- Specials -->
     <string name="specials_title">Specials</string>
     <string name="specials_filter_title">Filter</string>
+    <string name="specials_filter">Filter</string>
     <string name="specials_filter_hide_owned">Hide owned games</string>
+    <string name="specials_price_filter">Price Range</string>
+    <string name="specials_price_all">All Prices</string>
     <string name="specials_sort_title">Sort by</string>
     <string name="specials_sort_sales">Sales (Default)</string>
     <string name="specials_sort_price_asc">Price (Low → High)</string>
@@ -89,6 +93,7 @@
     <string name="profile_online">● Online</string>
     <string name="profile_offline">● Offline</string>
     <string name="profile_playing">Playing</string>
+    <string name="profile_level">Lv. %d</string>
     <string name="profile_playtime_label">Playtime</string>
     <string name="profile_count_label">Games</string>
 
@@ -100,6 +105,8 @@
     <string name="general_error">Error: %s</string>
     <string name="general_no_data">No data obtained</string>
     <string name="general_please_login">Please login first</string>
+    <string name="general_api_key_invalid">API Key is invalid, or Steam profile is not public</string>
+    <string name="general_network_http">Network error (HTTP %s)</string>
     <string name="general_pull_down">Pull down to refresh</string>
     <string name="general_release">Release to refresh</string>
     <string name="general_refreshing">Refreshing…</string>
@@ -137,5 +144,14 @@
     <string name="settings_export_ok">Configuration exported</string>
     <string name="settings_import_ok">Configuration imported</string>
     <string name="settings_import_fail">Import failed: invalid file</string>
+
+    <!-- Update -->
+    <string name="settings_version">Version %1$s</string>
+    <string name="settings_check_update">Check for Updates</string>
+    <string name="settings_update_available">New version available: %s\nWould you like to download?</string>
+    <string name="settings_update_latest">You\'re on the latest version</string>
+    <string name="settings_update_failed">Update check failed</string>
+    <string name="settings_update_download">Download</string>
+    <string name="settings_about">About</string>
 
 </resources>

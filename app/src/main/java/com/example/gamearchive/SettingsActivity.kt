@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,6 +46,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.runtime.compositionLocalOf
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 class SettingsActivity : ComponentActivity() {
 
@@ -85,6 +90,11 @@ private val LocalDropdownHost = compositionLocalOf<(DropdownPopupData?) -> Unit>
 @Composable
 private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // ── 更新检查状态 ──
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf("") }
 
     // 状态栏高度
     val statusBarDp = statusBarHeightDp()
@@ -315,7 +325,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     Text(
                                         text = context.getString(R.string.settings_save_profile),
                                         fontSize = DesignTokens.TextBody1.sp,
-                                        color = Color.White,
+                                        color = if (isAppInDarkTheme()) DesignTokens.AccentBlue else Color.White,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -490,6 +500,81 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             }
         }
 
+        // ── 关于与更新 ──
+        item("about_header") {
+            SectionHeader(text = context.getString(R.string.settings_about))
+        }
+        item("about_card") {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                cornerRadius = DesignTokens.CornerLarge
+            ) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    // 检查更新 — 版本号在箭头左边
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable {
+                                scope.launch {
+                                    Toast.makeText(context, R.string.settings_check_update, Toast.LENGTH_SHORT).show()
+                                    try {
+                                        val result = withContext(Dispatchers.IO) {
+                                            val request = okhttp3.Request.Builder()
+                                                .url("https://api.github.com/repos/ewiro/GameArchive/releases/latest")
+                                                .header("Accept", "application/vnd.github.v3+json")
+                                                .build()
+                                            GameArchiveApp.okHttpClient.newCall(request).execute()
+                                        }
+                                        val body = result.body?.string()
+                                        if (body != null) {
+                                            val json = JSONObject(body)
+                                            val tag = json.optString("tag_name", "").removePrefix("v")
+                                            if (tag.isNotEmpty() && tag != BuildConfig.VERSION_NAME) {
+                                                updateInfo = tag
+                                                showUpdateDialog = true
+                                            } else {
+                                                Toast.makeText(context, R.string.settings_update_latest, Toast.LENGTH_SHORT).show()
+                                            }
+                                        } else {
+                                            Toast.makeText(context, R.string.settings_update_failed, Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (_: Exception) {
+                                        Toast.makeText(context, R.string.settings_update_failed, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                            .padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = context.getString(R.string.settings_check_update),
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = systemFontWeight(),
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(32.dp))
+                        Text(
+                            text = BuildConfig.VERSION_NAME,
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Image(
+                            painter = painterResource(R.drawable.ic_arrow_right),
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.IconLg),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                            )
+                        )
+                    }
+
+                }
+            }
+        }
+
         // ── 退出登录 ──
         item("logout") {
             Box(
@@ -514,7 +599,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     Text(
                         text = context.getString(R.string.settings_logout),
                         fontSize = DesignTokens.TextBody1.sp,
-                        color = Color.White,
+                        color = if (isAppInDarkTheme()) DesignTokens.ErrorRed else Color.White,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -620,6 +705,48 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(text = context.getString(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
+                        }
+                    }
+                }
+            }
+        }
+        // ── 更新弹窗 ──
+        if (showUpdateDialog) {
+            androidx.compose.ui.window.Dialog(onDismissRequest = { showUpdateDialog = false }) {
+                Card(modifier = Modifier.padding(32.dp)) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Text(
+                            text = context.getString(R.string.settings_update_available, updateInfo),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f).height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .background(MiuixTheme.colorScheme.surface)
+                                    .border(DesignTokens.BorderThin, MiuixTheme.colorScheme.outline, RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .noRippleClickable { showUpdateDialog = false },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "Cancel", fontSize = DesignTokens.TextBody1.sp, color = MiuixTheme.colorScheme.onSurface)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f).height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .background(buttonBgColor())
+                                    .noRippleClickable {
+                                        showUpdateDialog = false
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ewiro/GameArchive/releases/latest"))
+                                        context.startActivity(intent)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = context.getString(R.string.settings_update_download), fontSize = DesignTokens.TextBody1.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

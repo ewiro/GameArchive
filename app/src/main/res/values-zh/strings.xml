@@ -20,12 +20,16 @@
     <string name="library_group_recent">近期活跃 (%d)</string>
     <string name="library_group_played">已玩游戏 (%d)</string>
     <string name="library_group_unplayed">堆积库存 (%d)</string>
+    <string name="library_filter_count">%d 款游戏</string>
     <string name="library_search">搜索游戏…</string>
 
     <!-- Specials -->
     <string name="specials_title">特惠</string>
     <string name="specials_filter_title">筛选内容</string>
+    <string name="specials_filter">筛选</string>
     <string name="specials_filter_hide_owned">隐藏已在库中的游戏</string>
+    <string name="specials_price_filter">价格区间</string>
+    <string name="specials_price_all">全部价格</string>
     <string name="specials_sort_title">排序方式</string>
     <string name="specials_sort_sales">销量 (默认)</string>
     <string name="specials_sort_price_asc">现价 (低 → 高)</string>
@@ -89,6 +93,7 @@
     <string name="profile_online">● 在线</string>
     <string name="profile_offline">● 离线</string>
     <string name="profile_playing">正在游戏</string>
+    <string name="profile_level">Lv. %d</string>
     <string name="profile_playtime_label">游戏时长</string>
     <string name="profile_count_label">库存数量</string>
 
@@ -100,6 +105,8 @@
     <string name="general_error">错误: %s</string>
     <string name="general_no_data">未获取到数据</string>
     <string name="general_please_login">请先登录</string>
+    <string name="general_api_key_invalid">API Key 无效，或 Steam 个人资料未设为公开</string>
+    <string name="general_network_http">网络错误 (HTTP %s)</string>
     <string name="general_pull_down">下拉刷新</string>
     <string name="general_release">松开刷新</string>
     <string name="general_refreshing">正在刷新…</string>
@@ -137,5 +144,14 @@
     <string name="settings_export_ok">配置已导出</string>
     <string name="settings_import_ok">配置已导入</string>
     <string name="settings_import_fail">导入失败：文件无效</string>
+
+    <!-- Update -->
+    <string name="settings_version">版本 %1$s</string>
+    <string name="settings_check_update">检查更新</string>
+    <string name="settings_update_available">发现新版本: %s\n是否前往下载？</string>
+    <string name="settings_update_latest">已是最新版本</string>
+    <string name="settings_update_failed">检查更新失败</string>
+    <string name="settings_update_download">前往下载</string>
+    <string name="settings_about">关于</string>
 
 </resources>

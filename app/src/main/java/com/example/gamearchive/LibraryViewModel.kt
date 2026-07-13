@@ -35,9 +35,9 @@ class LibraryViewModel : ViewModel() {
     private val _loading = MutableLiveData<Boolean>()
     val loading: LiveData<Boolean> = _loading
 
-    // 出错提示文字（一次性）
-    private val _error = MutableLiveData<String?>()
-    val error: LiveData<String?> = _error
+    /** 出错提示（一次性），Pair<resId, formatArg?> */
+    private val _error = MutableLiveData<Pair<Int, String?>?>()
+    val error: LiveData<Pair<Int, String?>?> = _error
 
     // 数据是否已经加载过（避免重复联网）
     private var hasLoaded = false
@@ -53,7 +53,7 @@ class LibraryViewModel : ViewModel() {
     /** 下拉刷新或首次加载 */
     fun refresh(apiKey: String, steamId: String) {
         if (apiKey.isEmpty() || steamId.isEmpty()) {
-            _error.value = "Please login first"
+            _error.value = Pair(R.string.general_please_login, null)
             return
         }
 
@@ -99,15 +99,14 @@ class LibraryViewModel : ViewModel() {
                     lastLanguage = LocaleHelper.currentApiLanguage
                 }
             } catch (e: Exception) {
-                val msg = when {
+                _error.value = when {
                     e is HttpException && e.code() == 403 ->
-                        "API Key 无效，或 Steam 个人资料未设为公开"
+                        Pair(R.string.general_api_key_invalid, null)
                     e is HttpException ->
-                        "网络错误 (HTTP ${e.code()})"
+                        Pair(R.string.general_network_http, e.code().toString())
                     else ->
-                        "Load failed: ${e.message}"
+                        Pair(R.string.general_error, e.message)
                 }
-                _error.value = msg
                 e.printStackTrace()
             } finally {
                 _loading.value = false

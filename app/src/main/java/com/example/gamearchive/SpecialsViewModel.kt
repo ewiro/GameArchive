@@ -44,13 +44,14 @@ class SpecialsViewModel : ViewModel() {
     private val _loading = MutableLiveData<Boolean>()
     val loading: LiveData<Boolean> = _loading
 
-    // 出错提示文字（一次性）
-    private val _error = MutableLiveData<String?>()
-    val error: LiveData<String?> = _error
+    /** 出错提示（一次性），Pair<resId, formatArg?> */
+    private val _error = MutableLiveData<Pair<Int, String?>?>()
+    val error: LiveData<Pair<Int, String?>?> = _error
 
     // 用户的筛选与排序设置（Compose State，转屏后保留）
     var isFilteringOwned by mutableStateOf(false)
     var sortMode by mutableIntStateOf(0)
+    var priceFilter by mutableIntStateOf(0)   // 0=全部 1=0-10 2=10-50 3=50-100 4=100+
 
     private var hasLoaded = false
     private var lastLanguage: String? = null
@@ -67,11 +68,11 @@ class SpecialsViewModel : ViewModel() {
             try {
                 val list = withContext(Dispatchers.IO) { fetchSpecials() }
                 _rawList.value = list
-                if (list.isEmpty()) _error.value = "No data obtained"
+                if (list.isEmpty()) _error.value = Pair(R.string.general_no_data, null)
                 hasLoaded = true
                 lastLanguage = LocaleHelper.currentApiLanguage
             } catch (e: Exception) {
-                _error.value = "Load failed: ${e.message}"
+                _error.value = Pair(R.string.general_error, e.message)
             } finally {
                 _loading.value = false
             }
