@@ -11,6 +11,7 @@ import retrofit2.http.Query
 @Keep data class PlayerSummaryList(val players: List<PlayerInfo>)
 @Keep data class PlayerInfo(
     val steamid: String, val personaname: String, val avatarfull: String,
+    val avatarhash: String = "",
     val personastate: Int, val gameextrainfo: String?
 )
 

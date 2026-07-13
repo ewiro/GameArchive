@@ -6,10 +6,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -136,22 +141,17 @@ private fun MainScreen() {
     val specialsListState = rememberLazyListState()
     val activeListState = if (selectedTab == 0) libraryListState else specialsListState
 
-    // 滑动方向检测（仅同页滑动触发显隐，切页时只重置记数、不触发动画）
-    val lastScrollIndex = remember { mutableIntStateOf(0) }
+    // 滑动检测：仅顶部显示栏，离开顶部即隐藏，回到顶部显示
     val lastTab = remember { mutableIntStateOf(selectedTab) }
     LaunchedEffect(activeListState.firstVisibleItemIndex, selectedTab) {
         val idx = activeListState.firstVisibleItemIndex
         if (selectedTab != lastTab.intValue) {
-            // 切页了：只重置追踪，不做显隐判断
             lastTab.intValue = selectedTab
+            bottomBarVisible = true; topBarVisible = true
         } else {
-            if (idx > lastScrollIndex.intValue && idx > 1) {
-                bottomBarVisible = false; topBarVisible = false
-            } else if (idx < lastScrollIndex.intValue) {
-                bottomBarVisible = true; topBarVisible = true
-            }
+            bottomBarVisible = idx == 0
+            topBarVisible = idx == 0
         }
-        lastScrollIndex.intValue = idx
     }
 
     val scope = rememberCoroutineScope()
@@ -334,8 +334,9 @@ private fun LibraryScreen(
     LaunchedEffect(Unit) { viewModel.loadIfNeeded(apiKey, steamId) }
 
     LaunchedEffect(viewModel.error.value) {
-        viewModel.error.value?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+        viewModel.error.value?.let { (resId, arg) ->
+            val msg = if (arg != null) context.getString(resId, arg) else context.getString(resId)
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
             viewModel.clearError()
         }
     }
@@ -491,7 +492,7 @@ private fun LibraryScreen(
                     }
                     if (markFilter != -1) {
                         Text(
-                            text = "${filteredGames.size} 款游戏",
+                            text = context.getString(R.string.library_filter_count, filteredGames.size),
                             fontSize = DesignTokens.TextBody2.sp,
                             color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
@@ -631,7 +632,7 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                             style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
                         )
                         Text(
-                            text = "Lv. $level",
+                            text = context.getString(R.string.profile_level, level),
                             color = DesignTokens.ProfileTextDim2,
                             fontSize = DesignTokens.TextBody2.sp,
                             fontWeight = FontWeight.Bold,
@@ -994,17 +995,28 @@ private fun SpecialsScreen(
     LaunchedEffect(Unit) { viewModel.loadIfNeeded() }
 
     LaunchedEffect(viewModel.error.value) {
-        viewModel.error.value?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+        viewModel.error.value?.let { (resId, arg) ->
+            val msg = if (arg != null) context.getString(resId, arg) else context.getString(resId)
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
             viewModel.clearError()
         }
     }
 
     val gameList = rawList ?: emptyList()
     var filteredList by remember { mutableStateOf<List<MarketGame>>(emptyList()) }
-    LaunchedEffect(gameList, viewModel.isFilteringOwned, viewModel.sortMode) {
+    LaunchedEffect(gameList, viewModel.isFilteringOwned, viewModel.sortMode, viewModel.priceFilter) {
         var list = gameList.toList()
         if (viewModel.isFilteringOwned) list = list.filter { !MainActivity.ownedGameIds.contains(it.id) }
+        // 价格筛选
+        if (viewModel.priceFilter > 0) {
+            list = when (viewModel.priceFilter) {
+                1 -> list.filter { it.priceVal <= 10.0 }
+                2 -> list.filter { it.priceVal in 10.01..50.0 }
+                3 -> list.filter { it.priceVal in 50.01..100.0 }
+                4 -> list.filter { it.priceVal > 100.0 }
+                else -> list
+            }
+        }
         list = when (viewModel.sortMode) {
             1 -> list.sortedBy { it.priceVal }
             2 -> list.sortedByDescending { it.priceVal }
@@ -1047,8 +1059,10 @@ private fun SpecialsScreen(
         ) {
             SortDialog(
                 currentSort = viewModel.sortMode,
+                currentPrice = viewModel.priceFilter,
                 isFilteringOwned = viewModel.isFilteringOwned,
                 onSortSelected = { viewModel.sortMode = it; onDismissSortDialog() },
+                onPriceSelected = { viewModel.priceFilter = it },
                 onFilterToggle = { viewModel.isFilteringOwned = !viewModel.isFilteringOwned },
                 onDismiss = onDismissSortDialog
             )
@@ -1060,52 +1074,168 @@ private fun SpecialsScreen(
 @Composable
 private fun SortDialog(
     currentSort: Int,
+    currentPrice: Int,
     isFilteringOwned: Boolean,
     onSortSelected: (Int) -> Unit,
+    onPriceSelected: (Int) -> Unit,
     onFilterToggle: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val sortOptions = listOf(
-        R.string.specials_sort_sales to "默认",
-        R.string.specials_sort_price_asc to "价格从低到高",
-        R.string.specials_sort_price_desc to "价格从高到低",
-        R.string.specials_sort_discount to "折扣最大",
-        R.string.specials_sort_rating to "好评最高"
+        R.string.specials_sort_sales,
+        R.string.specials_sort_price_asc,
+        R.string.specials_sort_price_desc,
+        R.string.specials_sort_discount,
+        R.string.specials_sort_rating
     )
+    val priceOptions = listOf(
+        context.getString(R.string.specials_price_all),
+        "¥0 - ¥10",
+        "¥10 - ¥50",
+        "¥50 - ¥100",
+        "¥100+"
+    )
+    var showSortOptions by remember { mutableStateOf(false) }
+    var showPriceOptions by remember { mutableStateOf(false) }
+
+    // 阻止穿透点击关闭弹窗
+    val stopPropagation = Modifier.clickable(enabled = false, onClick = {})
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DesignTokens.ScrimDark)
-            .clickable(onClick = onDismiss),
+        modifier = Modifier.fillMaxSize().background(DesignTokens.ScrimDark).clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center
     ) {
-        Card(modifier = Modifier.padding(32.dp)) {
+        Card(modifier = Modifier.padding(32.dp).then(stopPropagation)) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = context.getString(R.string.specials_sort_title),
+                    text = context.getString(R.string.specials_filter),
                     fontWeight = FontWeight.Bold,
+                    fontSize = DesignTokens.TextBody1.sp,
+                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-                sortOptions.forEachIndexed { i, (labelRes, _) ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable { onSortSelected(i) }.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SelectableIndicator(selected = currentSort == i)
-                        Spacer(Modifier.width(8.dp))
-                        Text(text = context.getString(labelRes))
+                // ── 排序方式 ──
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                        .clickable { showSortOptions = !showSortOptions; showPriceOptions = false }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = context.getString(R.string.specials_sort_title),
+                        fontSize = DesignTokens.TextSubtitle.sp,
+                        fontWeight = systemFontWeight(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(32.dp))
+                    Text(
+                        text = context.getString(sortOptions[currentSort]),
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    DropdownArrowEndAction(
+                        actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    )
+                }
+                AnimatedVisibility(
+                    visible = showSortOptions,
+                    enter = expandVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeIn(animationSpec = tween(DesignTokens.AnimDuration)),
+                    exit = shrinkVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeOut(animationSpec = tween(DesignTokens.AnimDuration))
+                ) {
+                    Column {
+                        sortOptions.forEachIndexed { i, resId ->
+                            val sel = currentSort == i
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable { onSortSelected(i); showSortOptions = false }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = context.getString(resId),
+                                    fontSize = DesignTokens.TextSubtitle.sp,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (sel) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1f))
+                                Spacer(Modifier.width(32.dp))
+                                Text(text = "✓",
+                                    fontSize = DesignTokens.TextSubtitle.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                            }
+                        }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(DesignTokens.DividerHeight).padding(vertical = 8.dp).background(MiuixTheme.colorScheme.outline))
+                // ── 价格区间 ──
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                        .clickable { showPriceOptions = !showPriceOptions; showSortOptions = false }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = context.getString(R.string.specials_price_filter),
+                        fontSize = DesignTokens.TextSubtitle.sp,
+                        fontWeight = systemFontWeight(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(32.dp))
+                    Text(
+                        text = priceOptions[currentPrice],
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    DropdownArrowEndAction(
+                        actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    )
+                }
+                AnimatedVisibility(
+                    visible = showPriceOptions,
+                    enter = expandVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeIn(animationSpec = tween(DesignTokens.AnimDuration)),
+                    exit = shrinkVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeOut(animationSpec = tween(DesignTokens.AnimDuration))
+                ) {
+                    Column {
+                        priceOptions.forEachIndexed { i, label ->
+                            val sel = currentPrice == i
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable { onPriceSelected(i); showPriceOptions = false }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = label,
+                                    fontSize = DesignTokens.TextSubtitle.sp,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (sel) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1f))
+                                Spacer(Modifier.width(32.dp))
+                                Text(text = "✓",
+                                    fontSize = DesignTokens.TextSubtitle.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                            }
+                        }
+                    }
+                }
+                Box(modifier = Modifier.fillMaxWidth().height(DesignTokens.DividerHeight).padding(vertical = 8.dp).background(MiuixTheme.colorScheme.outline))
+                // ── 隐藏已拥有 ──
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable { onFilterToggle() }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SelectableIndicator(selected = isFilteringOwned)
-                    Spacer(Modifier.width(8.dp))
-                    Text(text = context.getString(R.string.specials_filter_hide_owned))
+                    Text(
+                        text = context.getString(R.string.specials_filter_hide_owned),
+                        fontSize = DesignTokens.TextSubtitle.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(checked = isFilteringOwned, onCheckedChange = { onFilterToggle() })
                 }
             }
         }
