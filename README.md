@@ -83,9 +83,11 @@
 
 ### 3. (进阶) 自建代理服务
 为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理（地址统一配置于 `AppConfig.kt` 中的 `PROXY_URL` 常量）。
-为了数据绝对安全和更快的速度，**强烈建议您部署自己的 Worker**，只需修改 `AppConfig.kt` 一处地址后重新编译即可。
-
- **[点击查看：自建 Cloudflare Worker 教程](WORKER_SETUP.md)**
+为了数据绝对安全和更快的速度，**强烈建议您部署自己的 Worker**：
+1. 在 [Cloudflare Workers](https://workers.cloudflare.com/) 创建新 Worker
+2. 将项目根目录的 `cloudflare_worker.js` 内容复制进去
+3. 将 `AppConfig.kt` 中的 `PROXY_URL` 改为你的 Worker 地址
+4. 重新编译即可
 
 ---
 
