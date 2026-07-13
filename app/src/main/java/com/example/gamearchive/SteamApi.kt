@@ -11,7 +11,6 @@ import retrofit2.http.Query
 @Keep data class PlayerSummaryList(val players: List<PlayerInfo>)
 @Keep data class PlayerInfo(
     val steamid: String, val personaname: String, val avatarfull: String,
-    val avatarhash: String = "",
     val personastate: Int, val gameextrainfo: String?
 )
 
@@ -80,25 +79,6 @@ import retrofit2.http.Query
 @Keep data class SteamLevelResponse(val response: SteamLevelData)
 @Keep data class SteamLevelData(val player_level: Int?)
 
-// --- 6. 个人资料装备物品 ---
-@Keep data class ProfileItemsResponse(val response: ProfileItemsData?)
-@Keep data class ProfileItemsData(
-    val profile_background: ProfileBackgroundData?,
-    val avatar_frame: AvatarFrameData?
-)
-@Keep data class ProfileBackgroundData(
-    val equipped_background: EquippedBgData?
-)
-@Keep data class EquippedBgData(
-    @SerializedName("background_image_url") val backgroundImageUrl: String?
-)
-@Keep data class AvatarFrameData(
-    val equipped_frame: EquippedFrameData?
-)
-@Keep data class EquippedFrameData(
-    @SerializedName("image_url") val imageUrl: String?
-)
-
 // --- 接口定义 ---
 interface SteamApiService {
     @GET("IPlayerService/GetOwnedGames/v0001/")
@@ -122,5 +102,5 @@ interface SteamApiService {
 
     // 个人资料装备物品（未公开 API，需 API Key）
     @GET("IPlayerService/GetProfileItemsEquipped/v1/")
-    suspend fun getProfileItemsEquipped(@Query("key") k: String, @Query("steamid") s: String): ProfileItemsResponse
+    suspend fun getProfileItemsEquipped(@Query("key") k: String, @Query("input_json") j: String): Map<String, Any>
 }

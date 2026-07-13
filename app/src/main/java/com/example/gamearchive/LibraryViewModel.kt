@@ -96,20 +96,32 @@ class LibraryViewModel : ViewModel() {
                     // 自动获取个人资料背景和头像框（失败不影响其他）
                     val itemsDeferred = async {
                         try {
-                            GameArchiveApp.apiService.getProfileItemsEquipped(apiKey, steamId)
+                            val json = """{"steamid":"$steamId"}"""
+                            GameArchiveApp.apiService.getProfileItemsEquipped(apiKey, json)
                         } catch (e: Exception) { null }
                     }
 
                     // 批量获取前20个游戏的价格
                     fetchBatchPrices(gameList.sortedByDescending { it.playtime_forever }.take(20))
 
-                    // 处理个人资料装备物品
+                    // 处理个人资料装备物品 (解析 Map，递归查找 URL)
                     val itemsRes = itemsDeferred.await()
-                    if (itemsRes?.response != null) {
-                        autoBgUrl.value = itemsRes.response.profile_background
-                            ?.equipped_background?.backgroundImageUrl
-                        autoFrameUrl.value = itemsRes.response.avatar_frame
-                            ?.equipped_frame?.imageUrl
+                    if (itemsRes != null) {
+                        val response = itemsRes["response"]
+                        if (response is Map<*, *>) {
+                            // 背景
+                            val bg = response["profile_background"]
+                            if (bg is Map<*, *>) {
+                                val bgImg = findFirstUrl(bg)
+                                if (bgImg != null) autoBgUrl.value = bgImg
+                            }
+                            // 头像框
+                            val frame = response["avatar_frame"]
+                            if (frame is Map<*, *>) {
+                                val frameImg = findFirstUrl(frame)
+                                if (frameImg != null) autoFrameUrl.value = frameImg
+                            }
+                        }
                     }
 
                     _games.value = gameList
@@ -154,5 +166,21 @@ class LibraryViewModel : ViewModel() {
     /** 错误提示已显示，清空避免重复弹出 */
     fun clearError() {
         _error.value = null
+    }
+
+    companion object {
+        /** 递归查找 Map 中第一个 http 开头的 URL 字符串 */
+        private fun findFirstUrl(map: Map<*, *>): String? {
+            for ((_, value) in map) {
+                when (value) {
+                    is String -> if (value.startsWith("http")) return value
+                    is Map<*, *> -> {
+                        val found = findFirstUrl(value)
+                        if (found != null) return found
+                    }
+                }
+            }
+            return null
+        }
     }
 }
