@@ -80,6 +80,25 @@ import retrofit2.http.Query
 @Keep data class SteamLevelResponse(val response: SteamLevelData)
 @Keep data class SteamLevelData(val player_level: Int?)
 
+// --- 6. 个人资料装备物品 ---
+@Keep data class ProfileItemsResponse(val response: ProfileItemsData?)
+@Keep data class ProfileItemsData(
+    val profile_background: ProfileBackgroundData?,
+    val avatar_frame: AvatarFrameData?
+)
+@Keep data class ProfileBackgroundData(
+    val equipped_background: EquippedBgData?
+)
+@Keep data class EquippedBgData(
+    @SerializedName("background_image_url") val backgroundImageUrl: String?
+)
+@Keep data class AvatarFrameData(
+    val equipped_frame: EquippedFrameData?
+)
+@Keep data class EquippedFrameData(
+    @SerializedName("image_url") val imageUrl: String?
+)
+
 // --- 接口定义 ---
 interface SteamApiService {
     @GET("IPlayerService/GetOwnedGames/v0001/")
@@ -100,4 +119,8 @@ interface SteamApiService {
     // reviews 接口
     @GET("appreviews/{appid}")
     suspend fun getGameReviews(@Path("appid") id: Int, @Query("json") j: Int = 1, @Query("language") l: String = "schinese",@Query("num_per_page") count: Int = 100): ReviewResponse
+
+    // 个人资料装备物品（未公开 API，需 API Key）
+    @GET("IPlayerService/GetProfileItemsEquipped/v1/")
+    suspend fun getProfileItemsEquipped(@Query("key") k: String, @Query("steamid") s: String): ProfileItemsResponse
 }

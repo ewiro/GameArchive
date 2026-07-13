@@ -28,6 +28,10 @@ class LibraryViewModel : ViewModel() {
     private val _level = MutableLiveData<Int>()
     val level: LiveData<Int> = _level
 
+    // 自动获取的个人资料背景/头像框
+    val autoBgUrl = MutableLiveData<String?>()
+    val autoFrameUrl = MutableLiveData<String?>()
+
     // 价格表：游戏ID -> 价格文字
     val priceMap = mutableMapOf<Int, String>()
 
@@ -89,8 +93,24 @@ class LibraryViewModel : ViewModel() {
                     // Steam 等级
                     val playerLevel = levelDeferred.await()?.response?.player_level ?: 0
 
+                    // 自动获取个人资料背景和头像框（失败不影响其他）
+                    val itemsDeferred = async {
+                        try {
+                            GameArchiveApp.apiService.getProfileItemsEquipped(apiKey, steamId)
+                        } catch (e: Exception) { null }
+                    }
+
                     // 批量获取前20个游戏的价格
                     fetchBatchPrices(gameList.sortedByDescending { it.playtime_forever }.take(20))
+
+                    // 处理个人资料装备物品
+                    val itemsRes = itemsDeferred.await()
+                    if (itemsRes?.response != null) {
+                        autoBgUrl.value = itemsRes.response.profile_background
+                            ?.equipped_background?.backgroundImageUrl
+                        autoFrameUrl.value = itemsRes.response.avatar_frame
+                            ?.equipped_frame?.imageUrl
+                    }
 
                     _games.value = gameList
                     _player.value = playerInfo
