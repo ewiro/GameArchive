@@ -607,13 +607,16 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                 ) {
                     // 头像 + 挂件框 — 挂件为外框，头像居中在内
                     Box(modifier = Modifier.size(DesignTokens.AvatarOuter)) {
-                        // GIF 头像：优先尝试 GIF URL，失败自动回退 avatarfull
+                        // GIF 头像：从 avatarfull URL 提取 hash，构造 GIF URL，失败自动回退
                         var avatarUrl by remember {
-                            mutableStateOf(
-                                if (customAvatar.isNotEmpty()) customAvatar
-                                else if (player.avatarhash.isNotEmpty()) "https://avatars.fastly.steamstatic.com/${player.avatarhash}_full.gif"
-                                else player.avatarfull
-                            )
+                            val gifUrl = if (customAvatar.isEmpty()) {
+                                val hash = player.avatarfull
+                                    .removeSuffix("_full.jpg")
+                                    .substringAfterLast("/")
+                                if (hash.isNotEmpty()) "https://avatars.fastly.steamstatic.com/${hash}.gif"
+                                else null
+                            } else null
+                            mutableStateOf(customAvatar.ifEmpty { gifUrl ?: player.avatarfull })
                         }
                         AsyncImage(
                             model = ImageRequest.Builder(context)
