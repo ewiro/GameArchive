@@ -1,0 +1,36 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.vs/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Signing
+*.jks
+*.keystore
+keystore.properties
+
+# Built release artifacts
+/dist
+/app/release/
+
+# IDE temp
+.kotlin/
+
+# AI tools
+.reasonix/
+reasonix.toml
+.claude/
+
+# Internal docs
+/docs/
+AGENTS.md
+install.sh
+CHANGELOG.md
+WORKER_SETUP.md
+cloudflare_worker.js

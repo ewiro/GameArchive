@@ -83,9 +83,11 @@ You need to enter your Steam information for the first time use:
 
 ### 3. (Advanced) Self-hosted Proxy Service
 To ensure stable access in mainland China, the App uses a built-in Cloudflare Worker proxy by default (address configured in the `PROXY_URL` constant of `AppConfig.kt`).
-For absolute data security and faster speeds, **it is strongly recommended that you deploy your own Worker** — simply replace that one address in `AppConfig.kt` and rebuild.
-
- **[Click to View: Self-hosted Cloudflare Worker Tutorial](WORKER_SETUP.md)**
+For absolute data security and faster speeds, **it is strongly recommended that you deploy your own Worker**:
+1. Create a new Worker on [Cloudflare Workers](https://workers.cloudflare.com/)
+2. Copy the contents of `cloudflare_worker.js` into it
+3. Replace `PROXY_URL` in `AppConfig.kt` with your Worker address
+4. Rebuild
 
 ---
 
