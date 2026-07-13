@@ -402,7 +402,6 @@ private fun LibraryScreen(
             isRefreshing = loading == true,
             onRefresh = { viewModel.refresh(apiKey, steamId); listRefreshTrigger++ },
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = topBarInsetDp),
             refreshTexts = listOf(
                 context.getString(R.string.general_pull_down),
                 context.getString(R.string.general_release),
