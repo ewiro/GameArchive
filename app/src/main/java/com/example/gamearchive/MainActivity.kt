@@ -806,6 +806,19 @@ private fun readCacheWithExpiry(prefs: android.content.SharedPreferences, key: S
     return parts[0]
 }
 
+// ── 特惠页封面白名单（standardImgUrl 失效的游戏，改用 backupImgUrl）──
+private const val SPECIALS_WHITELIST_PREF = "specials_cover_whitelist"
+
+private fun isSpecialsCoverWhitelisted(context: Context, appId: Int): Boolean {
+    val prefs = context.getSharedPreferences(SPECIALS_WHITELIST_PREF, Context.MODE_PRIVATE)
+    return prefs.getBoolean("w_$appId", false)
+}
+
+private fun addToSpecialsWhitelist(context: Context, appId: Int) {
+    val prefs = context.getSharedPreferences(SPECIALS_WHITELIST_PREF, Context.MODE_PRIVATE)
+    prefs.edit().putBoolean("w_$appId", true).apply()
+}
+
 // ── 游戏卡片（库存） ──
 @Composable
 private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onClick: () -> Unit) {
@@ -1259,8 +1272,11 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
             .padding(horizontal = 18.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // 封面：130dp×61dp, 6dp 圆角（标准 URL 失败时回退备用 URL）
-        var coverUrl by remember { mutableStateOf(game.imgUrl) }
+        // 封面：130dp×61dp, 6dp 圆角（白名单游戏直接用备用 URL；标准 URL 失败时回退并记入白名单）
+        val whitelisted = remember(game.id) { isSpecialsCoverWhitelisted(context, game.id) }
+        var coverUrl by remember(game.id, whitelisted) {
+            mutableStateOf(if (whitelisted && !game.backupImgUrl.isNullOrEmpty()) game.backupImgUrl else game.imgUrl)
+        }
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(coverUrl)
@@ -1268,6 +1284,7 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
                 .listener(onError = { _, _ ->
                     val backup = game.backupImgUrl
                     if (!backup.isNullOrEmpty() && coverUrl != backup) {
+                        addToSpecialsWhitelist(context, game.id)
                         coverUrl = backup
                     }
                 })

@@ -173,7 +173,7 @@ class SpecialsViewModel : ViewModel() {
                     }
                 }
 
-                list.add(MarketGame(id, name, rawImgUrl, priceStr, originStr, discount, null, standardImgUrl, priceVal, reviewScore))
+                list.add(MarketGame(id, name, standardImgUrl, priceStr, originStr, discount, null, rawImgUrl, priceVal, reviewScore))
 
             } catch (e: Exception) {}
         }
