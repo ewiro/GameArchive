@@ -21,6 +21,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -36,6 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.*
+import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 import androidx.compose.ui.geometry.Rect
@@ -118,7 +124,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var showTagDialog by remember { mutableStateOf(false) }
     var newTagName by remember { mutableStateOf("") }
     var tagListRefresh by remember { mutableIntStateOf(0) }
-    val allTags = remember(tagListRefresh) { GameTags.getAllTags(context) }
+    val allTags = remember(tagListRefresh) { GameTags.getAllTags(context).distinctBy { it.lowercase() } }
 
     // ── 导出/导入文件选择器 ──
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
@@ -173,7 +179,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             ) {
                 IconButton(onClick = onBack) {
                     Image(
-                        painter = painterResource(R.drawable.ic_back),
+                        imageVector = MiuixIcons.Demibold.Back,
                         contentDescription = "Back",
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
@@ -414,12 +420,10 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             modifier = Modifier.weight(1f)
                         )
                         Image(
-                            painter = painterResource(R.drawable.ic_arrow_right),
+                            imageVector = MiuixIcons.Basic.ArrowRight,
                             contentDescription = null,
-                            modifier = Modifier.size(DesignTokens.IconLg),
-                            colorFilter = ColorFilter.tint(
-                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                            )
+                            modifier = Modifier.size(DesignTokens.IconMd),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
                         )
                     }
                 }
@@ -457,12 +461,10 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             modifier = Modifier.weight(1f)
                         )
                         Image(
-                            painter = painterResource(R.drawable.ic_arrow_right),
+                            imageVector = MiuixIcons.Basic.ArrowRight,
                             contentDescription = null,
-                            modifier = Modifier.size(DesignTokens.IconLg),
-                            colorFilter = ColorFilter.tint(
-                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                            )
+                            modifier = Modifier.size(DesignTokens.IconMd),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
                         )
                     }
 
@@ -487,12 +489,10 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             modifier = Modifier.weight(1f)
                         )
                         Image(
-                            painter = painterResource(R.drawable.ic_arrow_right),
+                            imageVector = MiuixIcons.Basic.ArrowRight,
                             contentDescription = null,
-                            modifier = Modifier.size(DesignTokens.IconLg),
-                            colorFilter = ColorFilter.tint(
-                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                            )
+                            modifier = Modifier.size(DesignTokens.IconMd),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
                         )
                     }
 
@@ -562,12 +562,10 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         )
                         Spacer(Modifier.width(4.dp))
                         Image(
-                            painter = painterResource(R.drawable.ic_arrow_right),
+                            imageVector = MiuixIcons.Basic.ArrowRight,
                             contentDescription = null,
-                            modifier = Modifier.size(DesignTokens.IconLg),
-                            colorFilter = ColorFilter.tint(
-                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                            )
+                            modifier = Modifier.size(DesignTokens.IconMd),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
                         )
                     }
 
@@ -620,91 +618,53 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(32.dp)
+                        .heightIn(max = 540.dp)
                         .clickable(enabled = false, onClick = {})
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = context.getString(R.string.tag_manage),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextBody1.sp,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
-                        // 现有标签列表
-                        if (allTags.isEmpty()) {
+
+                        if (allTags.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f, fill = false)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                allTags.forEach { tag ->
+                                    val count = GameTags.getTagUsageCount(context, tag)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = tag,
+                                            fontSize = DesignTokens.TextSubtitle.sp,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = "${count}",
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Spacer(Modifier.height(12.dp))
                             Text(
                                 text = context.getString(R.string.general_no_data),
                                 color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint),
                                 fontSize = DesignTokens.TextBody1.sp
                             )
-                        } else {
-                            allTags.forEach { tag ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = tag,
-                                        fontSize = DesignTokens.TextBody1.sp,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = "✕",
-                                        fontSize = DesignTokens.TextSubtitle.sp,
-                                        color = DesignTokens.ErrorRed,
-                                        modifier = Modifier
-                                            .noRippleClickable {
-                                                GameTags.deleteTag(context, tag)
-                                                tagListRefresh++
-                                            }
-                                            .padding(8.dp)
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        // 新建标签输入
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextField(
-                                value = newTagName,
-                                onValueChange = { newTagName = it },
-                                modifier = Modifier.weight(1f),
-                                label = context.getString(R.string.tag_hint),
-                                useLabelAsPlaceholder = true,
-                                singleLine = true
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .height(DesignTokens.ButtonHeightSmall)
-                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                    .background(if (newTagName.trim().isNotEmpty()) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
-                                    .then(if (newTagName.trim().isNotEmpty()) Modifier.noRippleClickable {
-                                        val trimmed = newTagName.trim()
-                                        if (trimmed.isNotEmpty() && !allTags.contains(trimmed)) {
-                                            GameTags.addTag(context, trimmed)
-                                            newTagName = ""
-                                            tagListRefresh++
-                                        }
-                                    } else Modifier)
-                                    .padding(horizontal = DesignTokens.SpaceXl, vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = context.getString(R.string.tag_new), fontSize = DesignTokens.TextBody2.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(DesignTokens.ButtonHeightSmall)
-                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                .background(buttonBgColor())
-                                .noRippleClickable { showTagDialog = false },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = context.getString(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
                         }
                     }
                 }
@@ -717,8 +677,8 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
                             text = context.getString(R.string.settings_update_available, updateInfo),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextBody1.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -805,13 +765,13 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 )
                                 Spacer(Modifier.weight(1f))
                                 Spacer(Modifier.width(32.dp))
-                                Text(
-                                    text = "✓",
-                                    fontSize = DesignTokens.TextSubtitle.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = if (isSelected)
+                                Image(
+                                    imageVector = MiuixIcons.Basic.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(DesignTokens.IconMd),
+                                    colorFilter = ColorFilter.tint(if (isSelected)
                                         MiuixTheme.colorScheme.primary
-                                    else Color.Transparent
+                                    else Color.Transparent)
                                 )
                             }
                         }

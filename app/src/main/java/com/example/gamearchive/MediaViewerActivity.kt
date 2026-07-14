@@ -27,6 +27,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.*
 
 class MediaViewerActivity : ComponentActivity() {
 
@@ -107,7 +109,7 @@ private fun MediaViewerScreen(
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(android.R.drawable.ic_menu_close_clear_cancel),
+                imageVector = MiuixIcons.Demibold.Close,
                 contentDescription = "Close",
                 modifier = Modifier.size(DesignTokens.IconHuge),
                 colorFilter = ColorFilter.tint(Color.White)

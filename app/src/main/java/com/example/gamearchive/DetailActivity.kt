@@ -14,7 +14,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.animation.AnimatedVisibility
@@ -57,6 +60,9 @@ import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.*
+import top.yukonga.miuix.kmp.icon.basic.*
 import androidx.compose.ui.state.ToggleableState
 
 class DetailActivity : ComponentActivity() {
@@ -106,7 +112,8 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     // 标签状态
     var gameTags by remember { mutableStateOf(GameTags.getTagsForGame(context, appId)) }
     var showTagSheet by remember { mutableStateOf(false) }
-    val allTags = remember { GameTags.getAllTags(context) }
+    var tagRefresh by remember { mutableIntStateOf(0) }
+    val allTags = remember(tagRefresh) { GameTags.getAllTags(context).distinctBy { it.lowercase() } }
 
     // 备注状态
     var gameNote by remember { mutableStateOf(GameNotes.getNote(context, appId)) }
@@ -311,7 +318,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             if (item.isVideo) {
                                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
                                 Image(
-                                    painter = painterResource(android.R.drawable.ic_media_play),
+                                    imageVector = MiuixIcons.Demibold.Play,
                                     contentDescription = "Play",
                                     modifier = Modifier.size(DesignTokens.IconPlay),
                                     colorFilter = ColorFilter.tint(Color.White)
@@ -416,7 +423,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(
-                                painter = painterResource(R.drawable.ic_business),
+                                imageVector = MiuixIcons.Demibold.Community,
                                 contentDescription = null,
                                 modifier = Modifier.size(DesignTokens.IconMd),
                                 colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
@@ -450,7 +457,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                             Image(
-                                painter = painterResource(R.drawable.ic_calendar),
+                                imageVector = MiuixIcons.Demibold.Months,
                                 contentDescription = null,
                                 modifier = Modifier.size(DesignTokens.IconMd),
                                 colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
@@ -491,9 +498,9 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         )
                     }
                     Image(
-                        painter = painterResource(R.drawable.ic_arrow_right),
+                        imageVector = MiuixIcons.Basic.ArrowRight,
                         contentDescription = null,
-                        modifier = Modifier.size(DesignTokens.IconLg),
+                        modifier = Modifier.size(DesignTokens.IconMd),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint))
                     )
                 }
@@ -521,7 +528,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            gameTags.forEach { tag ->
+                            gameTags.distinctBy { it.lowercase() }.forEach { tag ->
                                 Text(
                                     text = tag,
                                     fontSize = DesignTokens.TextBody1.sp,
@@ -534,9 +541,9 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         }
                     }
                     Image(
-                        painter = painterResource(R.drawable.ic_arrow_right),
+                        imageVector = MiuixIcons.Basic.ArrowRight,
                         contentDescription = null,
-                        modifier = Modifier.size(DesignTokens.IconLg),
+                        modifier = Modifier.size(DesignTokens.IconMd),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint))
                     )
                 }
@@ -573,10 +580,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             overflow = TextOverflow.Ellipsis
                         )
                         Image(
-                            painter = painterResource(R.drawable.ic_arrow_right),
+                            imageVector = MiuixIcons.Basic.ArrowRight,
                             contentDescription = null,
                             modifier = Modifier
-                                .size(DesignTokens.IconLg)
+                                .size(DesignTokens.IconMd)
                                 .graphicsLayer { rotationZ = if (noteExpanded) 90f else 0f }
                                 .noRippleClickable { if (gameNote.isNotEmpty()) noteExpanded = !noteExpanded },
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint))
@@ -680,7 +687,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
             ) {
                 IconButton(onClick = onBack) {
                     Image(
-                        painter = painterResource(R.drawable.ic_back),
+                        imageVector = MiuixIcons.Demibold.Back,
                         contentDescription = "Back",
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
@@ -715,8 +722,8 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = context.getString(R.string.mark_select_status),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextBody1.sp,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         // 清除标记
@@ -799,7 +806,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
 
         // ── 标签选择底部弹窗 ──
         if (showTagSheet) {
-            Box(
+Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(DesignTokens.ScrimDark)
@@ -814,17 +821,17 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = context.getString(R.string.tag_select),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextBody1.sp,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         // ── 新建标签 ──
                         var newTagInput by remember { mutableStateOf("") }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(IntrinsicSize.Max)) {
                             top.yukonga.miuix.kmp.basic.TextField(
                                 value = newTagInput,
                                 onValueChange = { newTagInput = it },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(0.6f),
                                 label = context.getString(R.string.tag_hint),
                                 useLabelAsPlaceholder = true,
                                 singleLine = true
@@ -832,22 +839,26 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             Spacer(Modifier.width(8.dp))
                             Box(
                                 modifier = Modifier
-                                    .height(DesignTokens.ButtonHeightSmall)
+                                    .widthIn(min = 72.dp)
+                                    .fillMaxHeight()
                                     .clip(RoundedCornerShape(DesignTokens.CornerLarge))
                                     .background(if (newTagInput.trim().isNotEmpty()) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
                                     .then(if (newTagInput.trim().isNotEmpty()) Modifier.noRippleClickable {
                                         val trimmed = newTagInput.trim()
-                                        if (trimmed.isNotEmpty() && !allTags.contains(trimmed)) {
-                                            GameTags.addTag(context, trimmed)
-                                            gameTags = gameTags + trimmed
-                                            GameTags.setTagsForGame(context, appId, gameTags)
-                                            newTagInput = ""
+                                        if (trimmed.isEmpty()) return@noRippleClickable
+                                        if (allTags.any { it.equals(trimmed, ignoreCase = true) }) {
+                                            android.widget.Toast.makeText(context, R.string.tag_exists, android.widget.Toast.LENGTH_SHORT).show()
+                                            return@noRippleClickable
                                         }
+                                        GameTags.addTag(context, trimmed)
+                                        gameTags = gameTags + trimmed
+                                        GameTags.setTagsForGame(context, appId, gameTags)
+                                        newTagInput = ""
                                     } else Modifier)
-                                    .padding(horizontal = DesignTokens.SpaceXl, vertical = 8.dp),
+                                    .padding(horizontal = DesignTokens.SpaceXl),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = context.getString(R.string.tag_new), fontSize = DesignTokens.TextBody2.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(text = "新建", fontSize = DesignTokens.TextBody1.sp, color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                         Spacer(Modifier.height(12.dp))
@@ -860,24 +871,49 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
                         } else {
-                            allTags.forEach { tag ->
-                                val checked = gameTags.contains(tag)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        state = if (checked) ToggleableState.On else ToggleableState.Off,
-                                        onClick = {
-                                            gameTags = if (checked) gameTags.filter { it != tag }
-                                            else gameTags + tag
-                                            GameTags.setTagsForGame(context, appId, gameTags)
-                                        }
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(text = tag, fontSize = DesignTokens.TextBody1.sp)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 420.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                allTags.forEach { tag ->
+                                    val checked = gameTags.contains(tag)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Checkbox(
+                                            state = if (checked) ToggleableState.On else ToggleableState.Off,
+                                            onClick = {
+                                                gameTags = if (checked) gameTags.filter { it != tag }
+                                                else gameTags + tag
+                                                GameTags.setTagsForGame(context, appId, gameTags)
+                                            }
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = tag,
+                                            fontSize = DesignTokens.TextSubtitle.sp,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Image(
+                                            imageVector = MiuixIcons.Demibold.Close,
+                                            contentDescription = "Delete",
+                                            colorFilter = ColorFilter.tint(DesignTokens.ErrorRed),
+                                            modifier = Modifier
+                                                .size(DesignTokens.IconXl)
+                                                .noRippleClickable {
+                                                    GameTags.deleteTag(context, tag)
+                                                    gameTags = gameTags.filter { it != tag }
+                                                    GameTags.setTagsForGame(context, appId, gameTags)
+                                                    tagRefresh++
+                                                }
+                                                .padding(4.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -916,8 +952,8 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = context.getString(R.string.note_local),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextBody1.sp,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         Box(

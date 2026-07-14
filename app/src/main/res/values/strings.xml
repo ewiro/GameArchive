@@ -154,5 +154,6 @@
     <string name="settings_update_failed">Update check failed</string>
     <string name="settings_update_download">Download</string>
     <string name="settings_about">About</string>
+    <string name="tag_exists">Tag already exists</string>
 
 </resources>

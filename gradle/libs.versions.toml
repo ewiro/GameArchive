@@ -11,6 +11,7 @@ material = "1.13.0"
 activity = "1.10.1"
 constraintlayout = "2.2.1"
 miuix-ui = "0.9.2"
+miuix-icons = "0.9.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -22,6 +23,7 @@ material = { group = "com.google.android.material", name = "material", version.r
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui", version.ref = "miuix-ui" }
+miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons", version.ref = "miuix-icons" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
