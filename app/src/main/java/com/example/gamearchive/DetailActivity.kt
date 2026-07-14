@@ -75,7 +75,7 @@ class DetailActivity : ComponentActivity() {
         val price = intent.getStringExtra("APP_PRICE") ?: ""
 
         setContent {
-            MiuixThemeForApp { DetailScreen(appId = appId, appName = appName, price = price, onBack = { finish() }) }
+            MiuixThemeForApp { DetailScreen(appId = appId, appName = appName, price = price, onBack = { finish(); overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right) }) }
         }
     }
 }
@@ -262,7 +262,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
         animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
     )
 
-    Surface(modifier = Modifier.fillMaxSize()) {
+    Surface(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(DesignTokens.CornerXLarge))) {
     androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
 
         if (isLoading) {

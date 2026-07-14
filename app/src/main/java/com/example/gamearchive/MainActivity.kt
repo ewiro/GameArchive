@@ -22,6 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -65,6 +66,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 
 class MainActivity : ComponentActivity() {
 
@@ -193,6 +196,7 @@ private fun MainScreen() {
                 context.startActivity(Intent(context, DetailActivity::class.java).apply {
                     putExtra("APP_ID", appId); putExtra("APP_NAME", name); putExtra("APP_PRICE", price)
                 })
+                (context as? android.app.Activity)?.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             }
 
             when (page) {
@@ -280,9 +284,15 @@ private fun MainScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 库存 Tab
+                val tabAnim0 by animateFloatAsState(
+                    targetValue = if (selectedTab == 0) 1f else 0f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+                    label = "tab_anim_0"
+                )
                 Column(
                     modifier = Modifier
-                        .clickable { scope.launch { pagerState.animateScrollToPage(0) } }
+                        .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnim0; scaleY = 0.85f + 0.15f * tabAnim0 }
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(0) } }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -296,9 +306,15 @@ private fun MainScreen() {
                         color = if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
                 // 特惠 Tab
+                val tabAnim1 by animateFloatAsState(
+                    targetValue = if (selectedTab == 1) 1f else 0f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+                    label = "tab_anim_1"
+                )
                 Column(
                     modifier = Modifier
-                        .clickable { scope.launch { pagerState.animateScrollToPage(1) } }
+                        .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnim1; scaleY = 0.85f + 0.15f * tabAnim1 }
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(1) } }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
