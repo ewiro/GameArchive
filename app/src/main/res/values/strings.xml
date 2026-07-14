@@ -142,6 +142,7 @@
     <string name="settings_export">Export Configuration</string>
     <string name="settings_import">Import Configuration</string>
     <string name="settings_export_ok">Configuration exported</string>
+    <string name="settings_export_fail">Export failed</string>
     <string name="settings_import_ok">Configuration imported</string>
     <string name="settings_import_fail">Import failed: invalid file</string>
 

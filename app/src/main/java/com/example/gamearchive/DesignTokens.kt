@@ -36,7 +36,6 @@ object DesignTokens {
     val ReviewGreat   = Color(0xFFE65100)  // ≥95%
     val ReviewGood    = Color(0xFF1565C0)  // ≥70%
     val ReviewMixed   = Color(0xFF616161)  // ≥40%
-    val ReviewPoor    = Color(0xFFD32F2F)  // <40%
     val ReviewDefault = Color(0xFF66C0F4)  // 暂无评分
 
     // ── 语义反馈 ──
@@ -249,7 +248,7 @@ fun reviewColor(percent: Int): Color = when {
     percent >= 95 -> DesignTokens.ReviewGreat
     percent >= 70 -> DesignTokens.ReviewGood
     percent >= 40 -> DesignTokens.ReviewMixed
-    else          -> DesignTokens.ReviewPoor
+    else          -> DesignTokens.ErrorRed
 }
 
 /** 读取系统"粗体文字"辅助功能设置（Android 12+），返回适配后的字重 */
