@@ -37,6 +37,11 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
             .crossfade(true)
+            .memoryCache {
+                coil.memory.MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
             .diskCache {
                 coil.disk.DiskCache.Builder()
                     .directory(cacheDir.resolve("coil_images"))
