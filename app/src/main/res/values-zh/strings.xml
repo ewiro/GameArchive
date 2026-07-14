@@ -142,6 +142,7 @@
     <string name="settings_export">导出配置</string>
     <string name="settings_import">导入配置</string>
     <string name="settings_export_ok">配置已导出</string>
+    <string name="settings_export_fail">导出失败</string>
     <string name="settings_import_ok">配置已导入</string>
     <string name="settings_import_fail">导入失败：文件无效</string>
 

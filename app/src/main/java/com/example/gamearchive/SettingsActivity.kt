@@ -132,7 +132,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
                 Toast.makeText(context, R.string.settings_export_ok, Toast.LENGTH_SHORT).show()
             } catch (_: Exception) {
-                Toast.makeText(context, R.string.settings_import_fail, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.settings_export_fail, Toast.LENGTH_SHORT).show()
             }
         }
     }

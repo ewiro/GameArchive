@@ -42,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -667,10 +668,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .graphicsLayer {
-                    translationY = with(density) { topBarOffsetY.toPx() }
-                    alpha = 0.999f
-                }
+                .offset { IntOffset(0, with(density) { topBarOffsetY.roundToPx() }) }
         ) {
             Row(
                 modifier = Modifier

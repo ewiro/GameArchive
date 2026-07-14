@@ -125,7 +125,7 @@ class LibraryViewModel : ViewModel() {
                 if (details.success && details.data?.price_overview != null) {
                     priceMap[id] = details.data.price_overview.final_formatted ?: "¥ --"
                 } else {
-                    priceMap[id] = "Free/Unknown"
+                    priceMap[id] = "Free / Unknown"
                 }
             }
         } catch (e: Exception) { }
