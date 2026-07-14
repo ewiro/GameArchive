@@ -16,7 +16,6 @@
     <string name="nav_specials">特惠</string>
 
     <!-- Library -->
-    <string name="library_title">库存</string>
     <string name="library_group_recent">近期活跃 (%d)</string>
     <string name="library_group_played">已玩游戏 (%d)</string>
     <string name="library_group_unplayed">堆积库存 (%d)</string>
@@ -24,8 +23,6 @@
     <string name="library_search">搜索游戏…</string>
 
     <!-- Specials -->
-    <string name="specials_title">特惠</string>
-    <string name="specials_filter_title">筛选内容</string>
     <string name="specials_filter">筛选</string>
     <string name="specials_filter_hide_owned">隐藏已在库中的游戏</string>
     <string name="specials_price_filter">价格区间</string>
@@ -36,8 +33,6 @@
     <string name="specials_sort_price_desc">现价 (高 → 低)</string>
     <string name="specials_sort_discount">折扣 (高 → 低)</string>
     <string name="specials_sort_rating">好评率 (高 → 低)</string>
-    <string name="specials_confirm">确定</string>
-    <string name="specials_no_data">暂无数据</string>
 
     <!-- Settings -->
     <string name="settings_title">设置</string>
@@ -61,7 +56,6 @@
     <string name="settings_frame_hint">必须为 PNG 格式，留空隐藏</string>
     <string name="settings_save_profile">保存</string>
     <string name="settings_profile_saved">个人资料设置已更新</string>
-    <string name="settings_group_status">分组状态</string>
     <string name="settings_library">库存列表设置</string>
     <string name="settings_show_specials">展示特惠界面</string>
     <string name="settings_grouping">开启状态分组</string>
@@ -77,7 +71,6 @@
     <string name="detail_positive"> 好评</string>
     <string name="detail_developer">开发商</string>
     <string name="detail_release_date">发行日期</string>
-    <string name="detail_history_low">史低</string>
     <string name="detail_unknown">未知</string>
 
     <!-- Reviews -->
@@ -87,7 +80,6 @@
     <string name="review_helpful">%d 人觉得有用</string>
 
     <!-- Price -->
-    <string name="price_free">免费/未知</string>
 
     <!-- Profile Header -->
     <string name="profile_online">● 在线</string>
@@ -101,7 +93,6 @@
     <string name="review_score_format">%d%% 好评</string>
 
     <!-- General -->
-    <string name="general_load_failed">加载失败</string>
     <string name="general_error">错误: %s</string>
     <string name="general_no_data">未获取到数据</string>
     <string name="general_please_login">请先登录</string>
@@ -126,12 +117,9 @@
 
     <!-- Tags -->
     <string name="tag_manage">标签管理</string>
-    <string name="tag_new">新建标签</string>
     <string name="tag_edit">编辑标签</string>
-    <string name="tag_delete_confirm">确定删除此标签？将从所有游戏中移除。</string>
     <string name="tag_hint">输入标签名</string>
     <string name="tag_select">选择标签</string>
-    <string name="tag_filter_all">全部标签</string>
 
     <!-- Notes -->
     <string name="note_local">本地评论</string>
@@ -147,7 +135,6 @@
     <string name="settings_import_fail">导入失败：文件无效</string>
 
     <!-- Update -->
-    <string name="settings_version">版本 %1$s</string>
     <string name="settings_check_update">检查更新</string>
     <string name="settings_update_available">发现新版本: %s\n是否前往下载？</string>
     <string name="settings_update_latest">已是最新版本</string>
