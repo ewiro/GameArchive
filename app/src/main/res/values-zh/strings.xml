@@ -154,5 +154,6 @@
     <string name="settings_update_failed">检查更新失败</string>
     <string name="settings_update_download">前往下载</string>
     <string name="settings_about">关于</string>
+    <string name="tag_exists">已存在相同标签</string>
 
 </resources>

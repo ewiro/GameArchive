@@ -65,6 +65,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.*
+import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -245,7 +248,7 @@ private fun MainScreen() {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }) {
                         Image(
-                            painter = painterResource(R.drawable.ic_settings),
+                            imageVector = MiuixIcons.Demibold.Settings,
                             contentDescription = context.getString(R.string.settings_title),
                             modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
@@ -254,7 +257,7 @@ private fun MainScreen() {
                 } else {
                     IconButton(onClick = { showSortDialog = true }) {
                         Image(
-                            painter = painterResource(R.drawable.ic_sort),
+                            imageVector = MiuixIcons.Demibold.Filter,
                             contentDescription = "Sort",
                             modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
@@ -297,7 +300,7 @@ private fun MainScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
-                        painter = painterResource(if (selectedTab == 0) R.drawable.ic_lib_filled else R.drawable.ic_lib_outlined),
+                        imageVector = if (selectedTab == 0) MiuixIcons.Demibold.Home else MiuixIcons.Light.Home,
                         contentDescription = context.getString(R.string.nav_library),
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
@@ -319,7 +322,7 @@ private fun MainScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
-                        painter = painterResource(if (selectedTab == 1) R.drawable.ic_sale_filled else R.drawable.ic_sale_outlined),
+                        imageVector = if (selectedTab == 1) MiuixIcons.Demibold.Promotions else MiuixIcons.Light.Promotions,
                         contentDescription = context.getString(R.string.nav_specials),
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
@@ -458,26 +461,6 @@ private fun LibraryScreen(
                         .padding(horizontal = 18.dp, vertical = 4.dp),
                     label = context.getString(R.string.library_search),
                     useLabelAsPlaceholder = true,
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .clickable {
-                                        textFieldValue = ""
-                                        searchQuery = ""
-                                        focusManager.clearFocus()
-                                    }
-                                    .size(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "✕",
-                                    fontSize = 14.sp,
-                                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint)
-                                )
-                            }
-                        }
-                    },
                     singleLine = true
                 )
             }
@@ -749,7 +732,7 @@ private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
             .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -783,7 +766,7 @@ private fun MarkFilterChip(label: String, selected: Boolean, color: Color?, onCl
                 if (selected && color != null) Modifier.border(DesignTokens.BorderThick, color, RoundedCornerShape(DesignTokens.CornerLarge))
                 else Modifier.border(DesignTokens.BorderThin, MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled), RoundedCornerShape(DesignTokens.CornerLarge))
             )
-            .clickable(onClick = onClick)
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
@@ -846,7 +829,7 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 6.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -1172,9 +1155,9 @@ private fun SortDialog(
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.width(4.dp))
-                    DropdownArrowEndAction(
-                        actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                    )
+        DropdownArrowEndAction(
+                actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+            )
                 }
                 AnimatedVisibility(
                     visible = showSortOptions,
@@ -1197,10 +1180,12 @@ private fun SortDialog(
                                     softWrap = false,
                                     modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(32.dp))
-                                Text(text = "✓",
-                                    fontSize = DesignTokens.TextSubtitle.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                                Image(
+                                imageVector = MiuixIcons.Basic.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(DesignTokens.IconMd),
+                                colorFilter = ColorFilter.tint(if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                            )
                             }
                         }
                     }
@@ -1227,9 +1212,9 @@ private fun SortDialog(
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.width(4.dp))
-                    DropdownArrowEndAction(
-                        actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                    )
+        DropdownArrowEndAction(
+                actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+            )
                 }
                 AnimatedVisibility(
                     visible = showPriceOptions,
@@ -1252,10 +1237,12 @@ private fun SortDialog(
                                     softWrap = false,
                                     modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(32.dp))
-                                Text(text = "✓",
-                                    fontSize = DesignTokens.TextSubtitle.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                                Image(
+                                imageVector = MiuixIcons.Basic.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(DesignTokens.IconMd),
+                                colorFilter = ColorFilter.tint(if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                            )
                             }
                         }
                     }
@@ -1284,7 +1271,7 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Top
     ) {
