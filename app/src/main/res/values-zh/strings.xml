@@ -137,10 +137,8 @@
 
     <!-- Update -->
     <string name="settings_check_update">检查更新</string>
-    <string name="settings_update_available">发现新版本: %s\n是否前往下载？</string>
     <string name="settings_update_latest">已是最新版本</string>
     <string name="settings_update_failed">检查更新失败</string>
-    <string name="settings_update_download">前往下载</string>
     <string name="settings_about">关于</string>
     <string name="tag_exists">已存在相同标签</string>
 

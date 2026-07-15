@@ -137,10 +137,8 @@
 
     <!-- Update -->
     <string name="settings_check_update">Check for Updates</string>
-    <string name="settings_update_available">New version available: %s\nWould you like to download?</string>
     <string name="settings_update_latest">You\'re on the latest version</string>
     <string name="settings_update_failed">Update check failed</string>
-    <string name="settings_update_download">Download</string>
     <string name="settings_about">About</string>
     <string name="tag_exists">Tag already exists</string>
 
