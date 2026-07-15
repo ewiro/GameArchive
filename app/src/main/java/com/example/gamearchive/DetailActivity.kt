@@ -326,7 +326,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     }
                 }
 
-                // ── 价格 + 评价 —— 单卡片竖线分割 ──
+                // ── 价格 + 评价 —— 左右双区 ──
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -334,19 +334,21 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     cornerRadius = DesignTokens.CornerLarge
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(6.dp),
+                        modifier = Modifier.fillMaxWidth().padding(12.dp).height(IntrinsicSize.Max),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 价格区
+                        // ── 左：价格区（折扣 2/5 + 价格 3/5）──
                         Row(
-                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                            modifier = Modifier.weight(1f).height(IntrinsicSize.Max),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // 折扣块（左半的 2/5）
                             if (discountPercent > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .background(DesignTokens.DiscountGreen, RoundedCornerShape(DesignTokens.CornerMedium))
-                                        .padding(horizontal = 6.dp, vertical = 10.dp),
+                                        .weight(0.4f).fillMaxHeight()
+                                        .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                        .background(DesignTokens.DiscountGreen),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -356,54 +358,68 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                         color = DesignTokens.DiscountGreenText
                                     )
                                 }
-                                Spacer(Modifier.width(6.dp))
                             }
-                            if (originalPrice.isNotEmpty()) {
+                            // 价格双行（左半的 3/5）
+                            Column(
+                                modifier = Modifier.weight(if (discountPercent > 0) 0.6f else 1f)
+                                    .padding(start = if (discountPercent > 0) 10.dp else 0.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                if (originalPrice.isNotEmpty()) {
+                                    Text(
+                                        text = originalPrice,
+                                        fontSize = DesignTokens.TextCaption.sp,
+                                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                                        textDecoration = TextDecoration.LineThrough
+                                    )
+                                }
                                 Text(
-                                    text = originalPrice,
-                                    fontSize = DesignTokens.TextCaption.sp,
-                                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-                                    textDecoration = TextDecoration.LineThrough
+                                    text = finalPrice,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = DesignTokens.TextSubtitle.sp
                                 )
-                                Spacer(Modifier.width(4.dp))
                             }
-                            Text(
-                                text = finalPrice,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = DesignTokens.TextSubtitle.sp,
-                                maxLines = 1
-                            )
                         }
 
-                        // 竖线
+                        // 竖线分隔
                         Box(
                             modifier = Modifier
                                 .width(1.dp)
-                                .height(36.dp)
-                                .background(MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled))
+                                .fillMaxHeight()
+                                .padding(vertical = 4.dp)
+                                .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.3f))
                         )
+                        Spacer(Modifier.width(12.dp))
 
-                        // 评价区
-                        Row(
-                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                        // ── 右：评价区（双行）──
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = reviewSummary.ifEmpty { context.getString(R.string.detail_loading_review) },
-                                fontWeight = FontWeight.Bold,
-                                fontSize = DesignTokens.TextBody2.sp,
-                                color = if (reviewPercent >= 0) reviewColor(reviewPercent) else DesignTokens.ReviewDefault,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
-                            )
-                            if (reviewPercent >= 0) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "$reviewPercent%",
+                                    text = reviewSummary.ifEmpty { context.getString(R.string.detail_loading_review) },
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = DesignTokens.TextBody2.sp,
-                                    modifier = Modifier.padding(start = 4.dp)
+                                    fontSize = DesignTokens.TextBody1.sp,
+                                    color = if (reviewPercent >= 0) reviewColor(reviewPercent) else DesignTokens.ReviewDefault
+                                )
+                                if (reviewPercent >= 0) {
+                                    Text(
+                                        text = "  $reviewPercent%",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        color = reviewColor(reviewPercent)
+                                    )
+                                }
+                            }
+                            if (reviewCount > 0) {
+                                Text(
+                                    text = context.getString(R.string.detail_reviews_count, reviewCount),
+                                    fontSize = DesignTokens.TextCaption.sp,
+                                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                                    modifier = Modifier.padding(top = 2.dp)
                                 )
                             }
                         }

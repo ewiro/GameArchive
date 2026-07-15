@@ -67,6 +67,7 @@
     <!-- Detail -->
     <string name="detail_about">ABOUT THIS GAME</string>
     <string name="detail_reviews_title">PLAYER REVIEWS</string>
+    <string name="detail_reviews_count">%d reviews</string>
     <string name="detail_loading_review">Loading reviews…</string>
     <string name="detail_positive"> Positive</string>
     <string name="detail_developer">Developer</string>
