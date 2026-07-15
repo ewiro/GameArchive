@@ -273,6 +273,7 @@ private fun MainScreen() {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .clickable(enabled = false, onClick = {})
                 .graphicsLayer {
                     translationY = with(density) { bottomBarOffsetY.toPx() }
                     alpha = 0.999f
