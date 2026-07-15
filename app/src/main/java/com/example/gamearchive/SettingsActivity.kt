@@ -97,10 +97,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // ── 更新检查状态 ──
-    var showUpdateDialog by remember { mutableStateOf(false) }
-    var updateInfo by remember { mutableStateOf("") }
-
     // 状态栏高度
     val statusBarDp = statusBarHeightDp()
 
@@ -522,6 +518,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                             val request = okhttp3.Request.Builder()
                                                 .url("https://api.github.com/repos/ewiro/GameArchive/releases/latest")
                                                 .header("Accept", "application/vnd.github.v3+json")
+                                                .header("User-Agent", "GameArchive")
                                                 .build()
                                             GameArchiveApp.okHttpClient.newCall(request).execute()
                                         }
@@ -530,8 +527,8 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                             val json = JSONObject(body)
                                             val tag = json.optString("tag_name", "").removePrefix("v")
                                             if (tag.isNotEmpty() && tag != BuildConfig.VERSION_NAME) {
-                                                updateInfo = tag
-                                                showUpdateDialog = true
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ewiro/GameArchive/releases/latest"))
+                                                context.startActivity(intent)
                                             } else {
                                                 Toast.makeText(context, R.string.settings_update_latest, Toast.LENGTH_SHORT).show()
                                             }
@@ -669,48 +666,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 }
             }
         }
-        // ── 更新弹窗 ──
-        if (showUpdateDialog) {
-            androidx.compose.ui.window.Dialog(onDismissRequest = { showUpdateDialog = false }) {
-                Card(modifier = Modifier.padding(32.dp)) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        Text(
-                            text = context.getString(R.string.settings_update_available, updateInfo),
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-                            fontSize = DesignTokens.TextBody1.sp,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f).height(DesignTokens.ButtonHeightSmall)
-                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                    .background(MiuixTheme.colorScheme.surface)
-                                    .border(DesignTokens.BorderThin, MiuixTheme.colorScheme.outline, RoundedCornerShape(DesignTokens.CornerLarge))
-                                    .noRippleClickable { showUpdateDialog = false },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = "Cancel", fontSize = DesignTokens.TextBody1.sp, color = MiuixTheme.colorScheme.onSurface)
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f).height(DesignTokens.ButtonHeightSmall)
-                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                    .background(buttonBgColor())
-                                    .noRippleClickable {
-                                        showUpdateDialog = false
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ewiro/GameArchive/releases/latest"))
-                                        context.startActivity(intent)
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = context.getString(R.string.settings_update_download), fontSize = DesignTokens.TextBody1.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+
     } // close Surface
 
         // ── 选择器弹窗叠加层 ──
