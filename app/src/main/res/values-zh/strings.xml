@@ -67,6 +67,7 @@
     <!-- Detail -->
     <string name="detail_about">游戏简介</string>
     <string name="detail_reviews_title">玩家评测</string>
+    <string name="detail_reviews_count">%d 条评价</string>
     <string name="detail_loading_review">评价加载中…</string>
     <string name="detail_positive"> 好评</string>
     <string name="detail_developer">开发商</string>
