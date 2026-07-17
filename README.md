@@ -78,8 +78,8 @@
 
 ### 2. 获取必要信息
 首次使用需要输入您的 Steam 信息：
-*   **Steam ID**: 您的 64 位数字 ID（可在个人资料链接中找到）。
-*   **Web API Key**: 前往 [Steam 开发者页面](https://steamcommunity.com/dev/apikey) 免费申请（**域名可随意填写**）。
+*   **ID**: 您的数字ID，非账户名（可在个人资料链接中找到）。
+*   **API**: 前往 [Steam 开发者页面](https://steamcommunity.com/dev/apikey) 免费申请（**域名可随意填写**）。
 
 ### 3. (进阶) 自建代理服务
 为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理（地址统一配置于 `AppConfig.kt` 中的 `PROXY_URL` 常量）。
