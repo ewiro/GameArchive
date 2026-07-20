@@ -121,6 +121,13 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var tagListRefresh by remember { mutableIntStateOf(0) }
     val allTags = remember(tagListRefresh) { GameTags.getAllTags(context).distinctBy { it.lowercase() }.sortedByDescending { GameTags.getTagUsageCount(context, it) } }
 
+    // ── 账号管理状态 ──
+    var showAddAccountDialog by remember { mutableStateOf(false) }
+    var newSteamId by remember { mutableStateOf("") }
+    var newApiKey by remember { mutableStateOf("") }
+    var accounts by remember { mutableStateOf(UserPrefs.getAdditionalAccounts(context)) }
+    var listRefreshTrigger by remember { mutableIntStateOf(0) }
+
     // ── 导出/导入文件选择器 ──
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
     val exportLauncher = rememberLauncherForActivityResult(
@@ -569,6 +576,88 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             }
         }
 
+        // ── 账号管理 ──
+        item("accounts_header") { SectionHeader(text = context.getString(R.string.settings_accounts)) }
+        item("accounts_card") {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                cornerRadius = DesignTokens.CornerLarge
+            ) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    // 主账号
+                    val primaryId = UserPrefs.getSteamId(context)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = primaryId,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // 分隔线
+                    if (accounts.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        DividerLine()
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    // 额外账号列表
+                    accounts.forEachIndexed { idx, acc ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = acc.first,
+                                fontSize = DesignTokens.TextSubtitle.sp,
+                                color = MiuixTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = context.getString(R.string.account_remove),
+                                fontSize = DesignTokens.TextBody1.sp,
+                                color = DesignTokens.ErrorRed,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                    .noRippleClickable {
+                                        UserPrefs.removeAccount(context, idx)
+                                        accounts = UserPrefs.getAdditionalAccounts(context)
+                                        listRefreshTrigger++
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+                    DividerLine()
+                    Spacer(Modifier.height(4.dp))
+
+                    // 添加账号按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable { showAddAccountDialog = true }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = context.getString(R.string.account_add),
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            color = MiuixTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
         // ── 退出登录 ──
         item("logout") {
             Box(
@@ -660,6 +749,76 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 text = context.getString(R.string.general_no_data),
                                 color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint),
                                 fontSize = DesignTokens.TextBody1.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 添加账号弹窗 ──
+        if (showAddAccountDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .noRippleClickable { showAddAccountDialog = false },
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp)
+                        .clickable(enabled = false, onClick = {})
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = context.getString(R.string.account_add),
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        LabeledTextField(
+                            label = context.getString(R.string.account_steam_id_hint),
+                            value = newSteamId,
+                            onValueChange = { newSteamId = it },
+                            hint = ""
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        LabeledTextField(
+                            label = context.getString(R.string.account_api_key_hint),
+                            value = newApiKey,
+                            onValueChange = { newApiKey = it },
+                            hint = ""
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+                        val canAdd = newSteamId.trim().isNotEmpty() && newApiKey.trim().isNotEmpty()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(DesignTokens.ButtonHeightSmall)
+                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                .background(if (canAdd) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
+                                .then(if (canAdd) Modifier.noRippleClickable {
+                                    if (UserPrefs.addAccount(context, newSteamId.trim(), newApiKey.trim())) {
+                                        accounts = UserPrefs.getAdditionalAccounts(context)
+                                        listRefreshTrigger++
+                                        showAddAccountDialog = false
+                                        newSteamId = ""
+                                        newApiKey = ""
+                                    } else {
+                                        Toast.makeText(context, context.getString(R.string.account_exists), Toast.LENGTH_SHORT).show()
+                                    }
+                                } else Modifier),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = context.getString(R.string.settings_save_profile),
+                                fontSize = DesignTokens.TextBody1.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
