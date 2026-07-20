@@ -2,6 +2,8 @@ package com.example.gamearchive
 
 import android.content.Context
 import android.content.SharedPreferences
+import org.json.JSONArray
+import org.json.JSONObject
 
 object UserPrefs {
     // SharedPreferences 文件名
@@ -90,5 +92,57 @@ object UserPrefs {
     // 退出登录，清空所有保存的数据
     fun logout(context: Context) {
         getPrefs(context).edit().clear().apply()
+    }
+
+    // ── 多账号管理 ──
+    private const val KEY_ADDITIONAL_ACCOUNTS = "additional_accounts"
+
+    /** 获取额外账号列表 (steamId, apiKey) */
+    fun getAdditionalAccounts(context: Context): List<Pair<String, String>> {
+        val json = getPrefs(context).getString(KEY_ADDITIONAL_ACCOUNTS, null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                Pair(obj.getString("steamId"), obj.getString("apiKey"))
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    /** 获取所有账号（主账号 + 额外） */
+    fun getAllAccounts(context: Context): List<Pair<String, String>> {
+        val primary = Pair(getSteamId(context), getApiKey(context))
+        if (primary.first.isEmpty() || primary.second.isEmpty()) return getAdditionalAccounts(context)
+        return listOf(primary) + getAdditionalAccounts(context)
+    }
+
+    /** 添加额外账号，重复steamId返回false */
+    fun addAccount(context: Context, steamId: String, apiKey: String): Boolean {
+        val all = getAllAccounts(context)
+        if (all.any { it.first == steamId }) return false
+        val existing = getAdditionalAccounts(context).toMutableList()
+        existing.add(Pair(steamId, apiKey))
+        saveAdditionalAccounts(context, existing)
+        return true
+    }
+
+    /** 删除额外账号 */
+    fun removeAccount(context: Context, index: Int) {
+        val existing = getAdditionalAccounts(context).toMutableList()
+        if (index in existing.indices) {
+            existing.removeAt(index)
+            saveAdditionalAccounts(context, existing)
+        }
+    }
+
+    private fun saveAdditionalAccounts(context: Context, accounts: List<Pair<String, String>>) {
+        val arr = JSONArray()
+        for (acc in accounts) {
+            val obj = JSONObject()
+            obj.put("steamId", acc.first)
+            obj.put("apiKey", acc.second)
+            arr.put(obj)
+        }
+        getPrefs(context).edit().putString(KEY_ADDITIONAL_ACCOUNTS, arr.toString()).apply()
     }
 }

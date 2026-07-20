@@ -61,26 +61,35 @@ class LibraryViewModel : ViewModel() {
             _loading.value = true
             try {
                 supervisorScope {
-                    // 三个请求并发发出
-                    val gameDeferred = async { GameArchiveApp.apiService.getOwnedGames(apiKey, steamId) }
-                    val userDeferred = async { GameArchiveApp.apiService.getPlayerSummaries(apiKey, steamId) }
-                    val levelDeferred = async {
-                        try {
-                            GameArchiveApp.apiService.getSteamLevel(apiKey, steamId)
-                        } catch (e: Exception) { null } // 等级失败不影响其他
+                    // 收集所有账号
+                    val allAccounts = if (context != null) {
+                        val extra = UserPrefs.getAdditionalAccounts(context)
+                        listOf(Pair(steamId, apiKey)) + extra
+                    } else {
+                        listOf(Pair(steamId, apiKey))
                     }
 
-                    // 库存游戏 + 黑名单过滤
-                    val gameRes = gameDeferred.await()
-                    // 黑名单：战地6测试版 (Steam 已下架其数据，但库存接口仍返回，强制隐藏)
+                    // 黑名单
                     val blackListIds = setOf(3081410)
-                    val gameList = gameRes.response.games.filter { game ->
-                        !blackListIds.contains(game.appid)
+
+                    // 并发拉取所有账号的库存
+                    val allGamesDeferred = allAccounts.map { (sid, key) ->
+                        async { fetchGamesForAccount(key, sid, blackListIds) }
+                    }
+
+                    // 合并去重（按appid）
+                    val seen = mutableSetOf<Int>()
+                    val merged = mutableListOf<GameInfo>()
+                    for (deferred in allGamesDeferred) {
+                        val games = deferred.await()
+                        for (g in games) {
+                            if (seen.add(g.appid)) merged.add(g)
+                        }
                     }
 
                     // 新入库游戏默认标记"未玩"
                     if (context != null) {
-                        for (game in gameList) {
+                        for (game in merged) {
                             if (GameMarks.getMark(context, game.appid) == -1) {
                                 GameMarks.setMark(context, game.appid, R.string.mark_unplayed)
                             }
@@ -89,19 +98,21 @@ class LibraryViewModel : ViewModel() {
 
                     // 更新全局拥有的游戏ID列表
                     MainActivity.ownedGameIds.clear()
-                    MainActivity.ownedGameIds.addAll(gameList.map { it.appid })
+                    MainActivity.ownedGameIds.addAll(merged.map { it.appid })
 
-                    // 玩家信息
-                    val userRes = userDeferred.await()
+                    // 玩家信息（仅主账号）
+                    val userRes = async { GameArchiveApp.apiService.getPlayerSummaries(apiKey, steamId) }.await()
                     val playerInfo = if (userRes.response.players.isNotEmpty()) userRes.response.players[0] else null
 
-                    // Steam 等级
-                    val playerLevel = levelDeferred.await()?.response?.player_level ?: 0
+                    // Steam 等级（仅主账号）
+                    val playerLevel = try {
+                        GameArchiveApp.apiService.getSteamLevel(apiKey, steamId)?.response?.player_level ?: 0
+                    } catch (e: Exception) { 0 }
 
                     // 批量获取前20个游戏的价格
-                    fetchBatchPrices(gameList.sortedByDescending { it.playtime_forever }.take(20))
+                    fetchBatchPrices(merged.sortedByDescending { it.playtime_forever }.take(20))
 
-                    _games.value = gameList
+                    _games.value = merged
                     _player.value = playerInfo
                     _level.value = playerLevel
                     hasLoaded = true
@@ -121,6 +132,13 @@ class LibraryViewModel : ViewModel() {
                 _loading.value = false
             }
         }
+    }
+
+    private suspend fun fetchGamesForAccount(apiKey: String, steamId: String, blackListIds: Set<Int>): List<GameInfo> {
+        return try {
+            val gameRes = GameArchiveApp.apiService.getOwnedGames(apiKey, steamId)
+            gameRes.response.games.filter { !blackListIds.contains(it.appid) }
+        } catch (e: Exception) { emptyList() }
     }
 
     private suspend fun fetchBatchPrices(games: List<GameInfo>) {
