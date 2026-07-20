@@ -520,29 +520,44 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             .noRippleClickable {
                                 scope.launch {
                                     Toast.makeText(context, R.string.settings_check_update, Toast.LENGTH_SHORT).show()
+                                    var latestTag: String? = null
                                     try {
+                                        // 方式1：github.com 网页重定向（国区更易访问）
                                         val result = withContext(Dispatchers.IO) {
                                             val request = okhttp3.Request.Builder()
-                                                .url("https://api.github.com/repos/ewiro/GameArchive/releases/latest")
-                                                .header("Accept", "application/vnd.github.v3+json")
+                                                .url("https://github.com/ewiro/GameArchive/releases/latest")
                                                 .header("User-Agent", "GameArchive")
                                                 .build()
                                             GameArchiveApp.okHttpClient.newCall(request).execute()
                                         }
-                                        val body = result.body?.string()
-                                        if (body != null) {
-                                            val json = JSONObject(body)
-                                            val tag = json.optString("tag_name", "").removePrefix("v")
-                                            if (tag.isNotEmpty() && tag != BuildConfig.VERSION_NAME) {
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ewiro/GameArchive/releases/latest"))
-                                                context.startActivity(intent)
-                                            } else {
-                                                Toast.makeText(context, R.string.settings_update_latest, Toast.LENGTH_SHORT).show()
+                                        val finalUrl = result.request.url.toString()
+                                        val rawTag = finalUrl.substringAfterLast("/")
+                                        if (rawTag.startsWith("v")) latestTag = rawTag.removePrefix("v")
+                                    } catch (_: Exception) { }
+                                    if (latestTag == null) {
+                                        try {
+                                            // 方式2：api.github.com JSON（兜底）
+                                            val result = withContext(Dispatchers.IO) {
+                                                val request = okhttp3.Request.Builder()
+                                                    .url("https://api.github.com/repos/ewiro/GameArchive/releases/latest")
+                                                    .header("Accept", "application/vnd.github.v3+json")
+                                                    .header("User-Agent", "GameArchive")
+                                                    .build()
+                                                GameArchiveApp.okHttpClient.newCall(request).execute()
                                             }
-                                        } else {
-                                            Toast.makeText(context, R.string.settings_update_failed, Toast.LENGTH_SHORT).show()
-                                        }
-                                    } catch (_: Exception) {
+                                            val body = result.body?.string()
+                                            if (body != null) {
+                                                val json = JSONObject(body)
+                                                latestTag = json.optString("tag_name", "").removePrefix("v")
+                                            }
+                                        } catch (_: Exception) { }
+                                    }
+                                    if (latestTag != null && latestTag.isNotEmpty() && latestTag != BuildConfig.VERSION_NAME) {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ewiro/GameArchive/releases/latest"))
+                                        context.startActivity(intent)
+                                    } else if (latestTag != null) {
+                                        Toast.makeText(context, R.string.settings_update_latest, Toast.LENGTH_SHORT).show()
+                                    } else {
                                         Toast.makeText(context, R.string.settings_update_failed, Toast.LENGTH_SHORT).show()
                                     }
                                 }
