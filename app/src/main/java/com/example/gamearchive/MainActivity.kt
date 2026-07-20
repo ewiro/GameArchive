@@ -357,7 +357,7 @@ private fun LibraryScreen(
     val apiKey = UserPrefs.getApiKey(context)
     val steamId = UserPrefs.getSteamId(context)
 
-    LaunchedEffect(Unit) { viewModel.loadIfNeeded(apiKey, steamId) }
+    LaunchedEffect(Unit) { viewModel.loadIfNeeded(apiKey, steamId, context) }
 
     LaunchedEffect(viewModel.error.value) {
         viewModel.error.value?.let { (resId, arg) ->
@@ -413,6 +413,7 @@ private fun LibraryScreen(
             list = list.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
         if (markFilter != -1) list = list.filter { GameMarks.getMark(context, it.appid) == markFilter }
+        else list = list.filter { GameMarks.getMark(context, it.appid) != R.string.mark_abandoned }
         list
     }
 
@@ -425,7 +426,7 @@ private fun LibraryScreen(
     } else {
         PullToRefresh(
             isRefreshing = loading == true,
-            onRefresh = { viewModel.refresh(apiKey, steamId); listRefreshTrigger++ },
+            onRefresh = { viewModel.refresh(apiKey, steamId, context); listRefreshTrigger++ },
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = topBarInsetDp),
             refreshTexts = listOf(
@@ -876,7 +877,7 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
             // 第一行：游戏名 + 时长徽章（近期时长在徽章下方）
             Row(verticalAlignment = Alignment.Top) {
                 Text(
-                    text = game.name,
+                    text = GameNames.getName(context, game.appid) ?: game.name,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Bold,
@@ -1304,7 +1305,7 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
             modifier = Modifier.weight(1f).padding(start = 14.dp, end = 8.dp).height(61.dp)
         ) {
             Text(
-                text = game.name,
+                text = GameNames.getName(context, game.id) ?: game.name,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Bold,

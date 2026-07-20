@@ -141,5 +141,8 @@
     <string name="settings_update_failed">Update check failed</string>
     <string name="settings_about">About</string>
     <string name="tag_exists">Tag already exists</string>
+    <string name="game_rename">Rename Game</string>
+    <string name="game_restore_default">Restore Default</string>
+    <string name="general_cancel">Cancel</string>
 
 </resources>

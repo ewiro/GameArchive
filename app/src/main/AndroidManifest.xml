@@ -22,6 +22,7 @@
         <activity
             android:name=".LoginActivity"
             android:exported="true"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.SteamTracker">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -32,21 +33,25 @@
         <!-- 主页 -->
         <activity
             android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true" />
 
         <!-- 设置页 -->
         <activity
             android:name=".SettingsActivity"
+            android:windowSoftInputMode="adjustResize"
             android:label="Settings"
             android:parentActivityName=".MainActivity"/>
 
         <!-- 详情页 -->
         <activity
             android:name=".DetailActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false" />
 
         <activity
-            android:name=".MediaViewerActivity" />
+            android:name=".MediaViewerActivity"
+            android:windowSoftInputMode="adjustResize" />
 
     </application>
 

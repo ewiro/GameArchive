@@ -119,7 +119,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var showTagDialog by remember { mutableStateOf(false) }
     var newTagName by remember { mutableStateOf("") }
     var tagListRefresh by remember { mutableIntStateOf(0) }
-    val allTags = remember(tagListRefresh) { GameTags.getAllTags(context).distinctBy { it.lowercase() } }
+    val allTags = remember(tagListRefresh) { GameTags.getAllTags(context).distinctBy { it.lowercase() }.sortedByDescending { GameTags.getTagUsageCount(context, it) } }
 
     // ── 导出/导入文件选择器 ──
     var pendingExportJson by remember { mutableStateOf<String?>(null) }

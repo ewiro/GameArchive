@@ -47,6 +47,12 @@ object DataBackup {
             .forEach { (key, value) -> notes.put(key, value) }
         root.put("game_notes", notes)
 
+        // ── 自定义游戏名 ──
+        val gameNames = JSONObject()
+        context.getSharedPreferences(GameNames.PREF_NAME, Context.MODE_PRIVATE).all
+            .forEach { (key, value) -> gameNames.put(key, value) }
+        root.put("game_names", gameNames)
+
         // ── 偏好设置 ──
         val prefs = JSONObject()
         val themePrefs = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE)
@@ -105,6 +111,14 @@ object DataBackup {
                 val editor = context.getSharedPreferences(GameNotes.PREF_NAME, Context.MODE_PRIVATE).edit().clear()
                 val notes = root.getJSONObject("game_notes")
                 notes.keys().forEach { key -> editor.putString(key, notes.getString(key)) }
+                editor.apply()
+            }
+
+            // ── 恢复自定义游戏名 ──
+            if (root.has("game_names")) {
+                val editor = context.getSharedPreferences(GameNames.PREF_NAME, Context.MODE_PRIVATE).edit().clear()
+                val names = root.getJSONObject("game_names")
+                names.keys().forEach { key -> editor.putString(key, names.getString(key)) }
                 editor.apply()
             }
 

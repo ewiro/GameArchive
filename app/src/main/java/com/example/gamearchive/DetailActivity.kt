@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.async
@@ -57,6 +59,8 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
@@ -94,7 +98,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     val context = LocalContext.current
 
     // 数据状态
-    var gameName by remember { mutableStateOf(appName) }
+    var gameName by remember { mutableStateOf(GameNames.getName(context, appId) ?: appName) }
     var finalPrice by remember { mutableStateOf(price) }
     var originalPrice by remember { mutableStateOf("") }
     var discountPercent by remember { mutableIntStateOf(0) }
@@ -116,6 +120,8 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     // 备注状态
     var gameNote by remember { mutableStateOf(GameNotes.getNote(context, appId)) }
     var showNoteSheet by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var renameText by remember { mutableStateOf("") }
     var noteExpanded by remember { mutableStateOf(false) }
 
     // 评价状态
@@ -149,7 +155,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
 
             val data = detailsResp?.get(appId.toString())?.data
             if (data != null) {
-                if (!data.name.isNullOrEmpty()) gameName = data.name
+                if (!data.name.isNullOrEmpty() && GameNames.getName(context, appId) == null) gameName = data.name
 
                 // 媒体
                 data.movies?.take(3)?.forEach { movie ->
@@ -714,6 +720,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(end = 48.dp)
+                        .noRippleClickable { renameText = gameName; showRenameDialog = true }
                 )
             }
         }
@@ -920,9 +927,9 @@ Box(
                                             modifier = Modifier
                                                 .size(DesignTokens.IconXl)
                                                 .noRippleClickable {
-                                                    GameTags.deleteTag(context, tag)
                                                     gameTags = gameTags.filter { it != tag }
                                                     GameTags.setTagsForGame(context, appId, gameTags)
+                                                    GameTags.deleteTag(context, tag)
                                                     tagRefresh++
                                                 }
                                                 .padding(4.dp)
@@ -961,6 +968,7 @@ Box(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .imePadding()
                         .clickable(enabled = false, onClick = {})
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
@@ -1023,6 +1031,77 @@ Box(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = DesignTokens.TextBody1.sp
                             )
+                        }
+                    }
+                }
+            }
+        }
+        // ── 重命名弹窗 ──
+        if (showRenameDialog) {
+            Dialog(
+                onDismissRequest = { showRenameDialog = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+            ) {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), cornerRadius = DesignTokens.CornerLarge) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = context.getString(R.string.game_rename),
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        TextField(
+                            value = renameText,
+                            onValueChange = { renameText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Box(
+                                modifier = Modifier
+                                    .height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .background(buttonBgColor())
+                                    .noRippleClickable {
+                                        GameNames.deleteName(context, appId)
+                                        gameName = appName
+                                        showRenameDialog = false
+                                    }
+                                    .padding(horizontal = DesignTokens.SpaceXl),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = context.getString(R.string.game_restore_default),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = DesignTokens.TextBody1.sp
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .background(if (renameText.trim().isNotEmpty()) buttonBgColor() else buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled))
+                                    .then(if (renameText.trim().isNotEmpty()) Modifier.noRippleClickable {
+                                        val trimmed = renameText.trim()
+                                        if (trimmed.isNotEmpty()) {
+                                            GameNames.setName(context, appId, trimmed)
+                                            gameName = trimmed
+                                            showRenameDialog = false
+                                        }
+                                    } else Modifier)
+                                    .padding(horizontal = DesignTokens.SpaceXl),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = context.getString(R.string.settings_save_profile),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = DesignTokens.TextBody1.sp
+                                )
+                            }
                         }
                     }
                 }
