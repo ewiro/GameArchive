@@ -87,15 +87,6 @@ class LibraryViewModel : ViewModel() {
                         }
                     }
 
-                    // 新入库游戏默认标记"未玩"
-                    if (context != null) {
-                        for (game in merged) {
-                            if (GameMarks.getMark(context, game.appid) == -1) {
-                                GameMarks.setMark(context, game.appid, R.string.mark_unplayed)
-                            }
-                        }
-                    }
-
                     // 更新全局拥有的游戏ID列表
                     MainActivity.ownedGameIds.clear()
                     MainActivity.ownedGameIds.addAll(merged.map { it.appid })
