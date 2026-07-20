@@ -45,13 +45,13 @@ class LibraryViewModel : ViewModel() {
     private var lastLanguage: String? = null
 
     /** 界面首次进入时调用：已经有数据就不重复加载（语言未变时） */
-    fun loadIfNeeded(apiKey: String, steamId: String) {
+    fun loadIfNeeded(apiKey: String, steamId: String, context: android.content.Context? = null) {
         if (hasLoaded && lastLanguage == LocaleHelper.currentApiLanguage) return
-        refresh(apiKey, steamId)
+        refresh(apiKey, steamId, context)
     }
 
     /** 下拉刷新或首次加载 */
-    fun refresh(apiKey: String, steamId: String) {
+    fun refresh(apiKey: String, steamId: String, context: android.content.Context? = null) {
         if (apiKey.isEmpty() || steamId.isEmpty()) {
             _error.value = Pair(R.string.general_please_login, null)
             return
@@ -76,6 +76,15 @@ class LibraryViewModel : ViewModel() {
                     val blackListIds = setOf(3081410)
                     val gameList = gameRes.response.games.filter { game ->
                         !blackListIds.contains(game.appid)
+                    }
+
+                    // 新入库游戏默认标记"未玩"
+                    if (context != null) {
+                        for (game in gameList) {
+                            if (GameMarks.getMark(context, game.appid) == -1) {
+                                GameMarks.setMark(context, game.appid, R.string.mark_unplayed)
+                            }
+                        }
                     }
 
                     // 更新全局拥有的游戏ID列表

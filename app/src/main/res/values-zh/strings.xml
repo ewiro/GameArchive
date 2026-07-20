@@ -141,5 +141,8 @@
     <string name="settings_update_failed">检查更新失败</string>
     <string name="settings_about">关于</string>
     <string name="tag_exists">已存在相同标签</string>
+    <string name="game_rename">重命名游戏</string>
+    <string name="game_restore_default">恢复默认</string>
+    <string name="general_cancel">取消</string>
 
 </resources>
