@@ -144,14 +144,19 @@ private fun <T> LiveData<T>.observeAsState(): State<T?> {
 private fun MainScreen() {
     val context = LocalContext.current
     val specialsEnabled = ThemeUtils.isSpecialsEnabled(context)
-    val pagerState = rememberPagerState(pageCount = { if (specialsEnabled) 2 else 1 })
+    val pagerState = rememberPagerState(pageCount = { if (specialsEnabled) 3 else 2 })
     var bottomBarVisible by remember { mutableStateOf(true) }
     var topBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
 
     val libraryListState = rememberLazyListState()
     val specialsListState = rememberLazyListState()
-    val activeListState = if (selectedTab == 0) libraryListState else specialsListState
+    val bangumiListState = rememberLazyListState()
+    val activeListState = when {
+        selectedTab == 0 -> libraryListState
+        specialsEnabled && selectedTab == 1 -> specialsListState
+        else -> bangumiListState
+    }
 
     // 滑动检测：仅顶部显示栏，离开顶部即隐藏，回到顶部显示
     val lastTab = remember { mutableIntStateOf(selectedTab) }
@@ -210,12 +215,21 @@ private fun MainScreen() {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }
                 )
-                1 -> SpecialsScreen(
-                    listState = specialsListState,
-                    showSortDialog = showSortDialog,
-                    onDismissSortDialog = { showSortDialog = false },
-                    onNavigateToDetail = navigateToDetail
-                )
+                else -> {
+                    if (specialsEnabled && page == 1) {
+                        SpecialsScreen(
+                            listState = specialsListState,
+                            showSortDialog = showSortDialog,
+                            onDismissSortDialog = { showSortDialog = false },
+                            onNavigateToDetail = navigateToDetail
+                        )
+                    } else {
+                        BangumiPage(
+                            listState = bangumiListState,
+                            onNavigateToDetail = navigateToDetail
+                        )
+                    }
+                }
             }
         }
 
@@ -238,12 +252,18 @@ private fun MainScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = context.getString(if (specialsEnabled && selectedTab == 1) R.string.nav_specials else R.string.nav_library),
+                    text = context.getString(
+                        when {
+                            specialsEnabled && selectedTab == 1 -> R.string.nav_specials
+                            (!specialsEnabled && selectedTab == 1) || (specialsEnabled && selectedTab == 2) -> R.string.nav_bangumi
+                            else -> R.string.nav_library
+                        }
+                    ),
                     fontWeight = FontWeight.Bold,
                     fontSize = DesignTokens.TextTitle.sp,
                     modifier = Modifier.weight(1f)
                 )
-                if (!specialsEnabled || selectedTab == 0) {
+                if (!specialsEnabled || selectedTab == 0 || selectedTab == (if (specialsEnabled) 2 else 1)) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }) {
@@ -267,8 +287,7 @@ private fun MainScreen() {
             }
         }
 
-        // ── 底栏叠加层（仅特惠开启时显示） ──
-        if (specialsEnabled) {
+        // ── 底栏叠加层（至少2页时始终显示） ──
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -309,31 +328,55 @@ private fun MainScreen() {
                     Text(text = context.getString(R.string.nav_library), fontSize = DesignTokens.TextCaption.sp,
                         color = if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
-                // 特惠 Tab
-                val tabAnim1 by animateFloatAsState(
-                    targetValue = if (selectedTab == 1) 1f else 0f,
+                // 特惠 Tab（仅开启时显示）
+                if (specialsEnabled) {
+                    val tabAnim1 by animateFloatAsState(
+                        targetValue = if (selectedTab == 1) 1f else 0f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+                        label = "tab_anim_1"
+                    )
+                    Column(
+                        modifier = Modifier
+                            .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnim1; scaleY = 0.85f + 0.15f * tabAnim1 }
+                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(1) } }
+                            .padding(horizontal = 24.dp, vertical = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(
+                            imageVector = if (selectedTab == 1) MiuixIcons.Demibold.Promotions else MiuixIcons.Light.Promotions,
+                            contentDescription = context.getString(R.string.nav_specials),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
+                        )
+                        Text(text = context.getString(R.string.nav_specials), fontSize = DesignTokens.TextCaption.sp,
+                            color = if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
+                    }
+                }
+                // 动漫 Tab
+                val bangumiTabIdx = if (specialsEnabled) 2 else 1
+                val tabAnimBgm by animateFloatAsState(
+                    targetValue = if (selectedTab == bangumiTabIdx) 1f else 0f,
                     animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-                    label = "tab_anim_1"
+                    label = "tab_anim_bgm"
                 )
                 Column(
                     modifier = Modifier
-                        .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnim1; scaleY = 0.85f + 0.15f * tabAnim1 }
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(1) } }
+                        .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnimBgm; scaleY = 0.85f + 0.15f * tabAnimBgm }
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(bangumiTabIdx) } }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
-                        imageVector = if (selectedTab == 1) MiuixIcons.Demibold.Promotions else MiuixIcons.Light.Promotions,
-                        contentDescription = context.getString(R.string.nav_specials),
+                        imageVector = if (selectedTab == bangumiTabIdx) MiuixIcons.Demibold.Album else MiuixIcons.Light.Album,
+                        contentDescription = context.getString(R.string.nav_bangumi),
                         modifier = Modifier.size(DesignTokens.IconXl),
-                        colorFilter = ColorFilter.tint(if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
+                        colorFilter = ColorFilter.tint(if (selectedTab == bangumiTabIdx) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                     )
-                    Text(text = context.getString(R.string.nav_specials), fontSize = DesignTokens.TextCaption.sp,
-                        color = if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
+                    Text(text = context.getString(R.string.nav_bangumi), fontSize = DesignTokens.TextCaption.sp,
+                        color = if (selectedTab == bangumiTabIdx) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
             }
         }
-        } // if specialsEnabled
     } // Box
     } // Surface
 }
@@ -1435,4 +1478,465 @@ private fun SpecialsSkeleton(topInsetDp: androidx.compose.ui.unit.Dp) {
     val cfg = LocalConfiguration.current; val h = cfg.screenHeightDp.dp; val ch = DesignTokens.CoverHeight + 12.dp
     val n = maxOf(6, ((h + topInsetDp) / ch).toInt())
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topInsetDp, bottom = 72.dp)) { items(n) { SkeletonCard() } }
+}
+
+// ── 动漫页加载骨架 ──
+@Composable
+private fun BangumiLoadingSkeleton(topInsetDp: androidx.compose.ui.unit.Dp) {
+    val bg = MiuixTheme.colorScheme.secondaryContainer  // 匹配真实卡片背景
+    val shimmer = ShimmerBrush()
+    val cfg = LocalConfiguration.current; val h = cfg.screenHeightDp.dp
+    val headerH = 280.dp  // 骨架头部估算高度
+    val ch = DesignTokens.CoverHeight + 12.dp
+    val n = maxOf(4, ((h - headerH) / ch).toInt())
+
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topInsetDp, bottom = 72.dp)) {
+        // ── 个人资料卡骨架 ──
+        item("skel_profile") {
+            Box(
+                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(DesignTokens.CornerXLarge)).background(bg)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(56.dp).clip(CircleShape).background(shimmer))
+                        Spacer(Modifier.width(24.dp))
+                        Column(Modifier.weight(1f)) {
+                            Box(Modifier.fillMaxWidth(0.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                            Spacer(Modifier.height(8.dp))
+                            Box(Modifier.fillMaxWidth(0.25f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        repeat(5) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(Modifier.size(24.dp, 14.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                                Spacer(Modifier.height(6.dp))
+                                Box(Modifier.size(32.dp, 10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // ── 搜索栏骨架 ──
+        item("skel_search") {
+            Box(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 18.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                .background(MiuixTheme.colorScheme.surfaceVariant))
+        }
+        // ── 筛选条骨架 ──
+        item("skel_filters") {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                repeat(6) {
+                    Box(Modifier.size(56.dp, 32.dp).clip(RoundedCornerShape(16.dp)).background(shimmer))
+                }
+            }
+        }
+        // ── 条目骨架 ──
+        items(n) { SkeletonCard() }
+    }
+}
+
+/** Bangumi 收藏类型 → 标签颜色 */
+private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
+    1 to Color(0xFF42A5F5),  // 想看 - blue
+    2 to Color(0xFF66BB6A),  // 看过 - green
+    3 to Color(0xFFFF9800),  // 在看 - orange
+    4 to Color(0xFF9E9E9E),  // 搁置 - gray
+    5 to Color(0xFFEF5350),  // 抛弃 - red
+)
+
+@Composable
+private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, String, String) -> Unit) {
+    val context = LocalContext.current
+    val bgmUsername = UserPrefs.getBangumiUsername(context)
+    val viewModel: BangumiViewModel = viewModel()
+    val loading by viewModel.loading.observeAsState()
+    val error by viewModel.error.observeAsState()
+    val collections by viewModel.collections.observeAsState()
+    val bgmUser by viewModel.user.observeAsState()
+
+    LaunchedEffect(bgmUsername) { viewModel.loadIfNeeded(bgmUsername) }
+
+    // 错误提示
+    LaunchedEffect(error) {
+        val e = error ?: return@LaunchedEffect
+        if (e is Pair<*, *>) {
+            val resId = e.first as? Int ?: return@LaunchedEffect
+            android.widget.Toast.makeText(context, context.getString(resId, (e.second as? String) ?: ""), android.widget.Toast.LENGTH_LONG).show()
+        }
+        viewModel.clearError()
+    }
+
+    val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
+
+    // ── 未填写用户名 ──
+    if (bgmUsername.isBlank()) {
+        Box(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Image(
+                    imageVector = MiuixIcons.Light.Album,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = context.getString(R.string.bangumi_no_username),
+                    fontSize = DesignTokens.TextBody1.sp,
+                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                )
+            }
+        }
+        return
+    }
+
+    PullToRefresh(
+        isRefreshing = loading == true,
+        onRefresh = { viewModel.refresh(bgmUsername) },
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = topBarInsetDp),
+        refreshTexts = listOf(
+            context.getString(R.string.general_pull_down),
+            context.getString(R.string.general_release),
+            context.getString(R.string.general_refreshing),
+            context.getString(R.string.general_refreshed)
+        ),
+    ) {
+        val collectionMap = collections
+        val showSkeleton = loading == true && collectionMap == null
+        val showEmpty = !showSkeleton && (collectionMap == null || collectionMap.isEmpty())
+
+        // ── 骨架屏数量 ──
+        val cfg = LocalConfiguration.current
+        val skeletonCount = remember { maxOf(4, ((cfg.screenHeightDp.dp - 260.dp) / (DesignTokens.CoverHeight + 12.dp)).toInt()) }
+        // 骨架材质（@Composable，在此处初始化供 LazyColumn 使用）
+        val shimmer = ShimmerBrush()
+        val skelBg = MiuixTheme.colorScheme.secondaryContainer
+
+        // ── 状态变量（提至此处，不随 item 生命周期销毁） ──
+        val allItems = remember(collectionMap) {
+            collectionMap?.entries?.flatMap { (type, list) -> list.map { Pair(it, type) } } ?: emptyList()
+        }
+        var typeFilter by remember { mutableIntStateOf(-1) }
+        var searchQuery by remember { mutableStateOf("") }
+        val filteredItems = remember(allItems, typeFilter, searchQuery) {
+            var list = if (typeFilter == -1) allItems else allItems.filter { it.second == typeFilter }
+            if (searchQuery.isNotBlank()) {
+                list = list.filter { (item, _) ->
+                    val sub = item.subject
+                    (sub?.name_cn?.contains(searchQuery, ignoreCase = true) == true) ||
+                    (sub?.name?.contains(searchQuery, ignoreCase = true) == true)
+                }
+            }
+            list
+        }
+        val totalCount = collectionMap?.values?.sumOf { it.size } ?: 0
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 72.dp)
+        ) {
+            item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
+
+            if (showSkeleton) {
+                // ── 加载骨架 ──
+                // 个人资料卡骨架
+                item("skel_profile") {
+                    Box(
+                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)
+                            .clip(RoundedCornerShape(DesignTokens.CornerXLarge)).background(skelBg)
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(70.dp).clip(CircleShape).background(shimmer))
+                                Spacer(Modifier.width(24.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Box(Modifier.fillMaxWidth(0.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                                    Spacer(Modifier.height(8.dp))
+                                    Box(Modifier.fillMaxWidth(0.25f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                repeat(5) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(Modifier.size(24.dp, 14.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                                        Spacer(Modifier.height(6.dp))
+                                        Box(Modifier.size(32.dp, 10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // 搜索栏骨架
+                item("skel_search") {
+                    Box(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 18.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                        .background(MiuixTheme.colorScheme.surfaceVariant))
+                }
+                // 筛选条骨架
+                item("skel_filters") {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        repeat(6) {
+                            Box(Modifier.size(56.dp, 32.dp).clip(RoundedCornerShape(16.dp)).background(shimmer))
+                        }
+                    }
+                }
+                // 条目骨架（适配动漫页头部高度）
+                val n2 = skeletonCount
+                items(n2) { SkeletonCard() }
+            } else if (showEmpty) {
+                // ── 空状态 ──
+                item("empty") {
+                    Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = context.getString(R.string.bangumi_empty),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                        )
+                    }
+                }
+            } else {
+                // ── 个人资料卡 ──
+                item("bgm_profile") { BangumiProfileCard(bgmUsername, bgmUser, totalCount, collectionMap!!) }
+
+                // ── 搜索栏 ──
+                item("search_bar") {
+                    var textFieldValue by remember(searchQuery) { mutableStateOf(searchQuery) }
+                    TextField(
+                        value = textFieldValue,
+                        onValueChange = { v -> textFieldValue = v; searchQuery = v.trim() },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
+                        label = context.getString(R.string.bangumi_search),
+                        useLabelAsPlaceholder = true,
+                        singleLine = true
+                    )
+                }
+
+                // ── 收藏类型筛选横条 ──
+                item("type_filter") {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 18.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            MarkFilterChip(
+                                label = context.getString(R.string.mark_filter_all),
+                                selected = typeFilter == -1,
+                                color = null,
+                                onClick = { typeFilter = -1 }
+                            )
+                            BangumiViewModel.typeNames.forEach { (type, nameRes) ->
+                                MarkFilterChip(
+                                    label = context.getString(nameRes),
+                                    selected = typeFilter == type,
+                                    color = BANGUMI_TYPE_COLORS[type],
+                                    onClick = {
+                                        typeFilter = if (typeFilter == type) -1 else type
+                                    }
+                                )
+                            }
+                        }
+                        if (typeFilter != -1) {
+                            Text(
+                                text = context.getString(R.string.library_filter_count, filteredItems.size),
+                                fontSize = DesignTokens.TextBody2.sp,
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                // ── 动漫列表（扁平，横线分割） ──
+                itemsIndexed(filteredItems, key = { _, pair -> "bgm_${pair.first.subject_id}" }) { index, (item, type) ->
+                    if (index > 0) {
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
+                    }
+                    BangumiItem(item = item, type = type, onClick = {
+                        android.widget.Toast.makeText(context,
+                            item.subject?.name_cn ?: item.subject?.name ?: "Item ${item.subject_id}",
+                            android.widget.Toast.LENGTH_SHORT).show()
+                    })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit) {
+    val sub = item.subject ?: return
+    val imgUrl = sub.images?.common ?: sub.images?.medium
+    val context = LocalContext.current
+    val typeLabel = BangumiViewModel.typeNames[type]?.let { context.getString(it) } ?: ""
+    val typeColor = BANGUMI_TYPE_COLORS[type] ?: Color.Gray
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .noRippleClickable { onClick() }
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        // 封面
+        Box(
+            Modifier.size(48.dp, 68.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MiuixTheme.colorScheme.surfaceVariant)
+        ) {
+            if (imgUrl != null) {
+                AsyncImage(
+                    model = imgUrl,
+                    contentDescription = sub.name_cn ?: sub.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            // 名称
+            Text(
+                text = sub.name_cn ?: sub.name,
+                fontSize = DesignTokens.TextBody1.sp,
+                fontWeight = FontWeight.Bold,
+                color = MiuixTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(6.dp))
+            // 评分 + 话数 + 类型标签
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (sub.rating?.score != null) {
+                    Text(
+                        text = "⭐${String.format("%.1f", sub.rating.score)}",
+                        fontSize = DesignTokens.TextCaption.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (sub.eps != null) {
+                    Text(
+                        text = "${sub.eps}话",
+                        fontSize = DesignTokens.TextCaption.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                // 收藏类型标签
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(DesignTokens.CornerSmall))
+                        .background(typeColor.copy(alpha = DesignTokens.OpacityChipBg))
+                        .border(1.dp, typeColor, RoundedCornerShape(DesignTokens.CornerSmall))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = typeLabel,
+                        fontSize = DesignTokens.TextCaption.sp,
+                        color = typeColor,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── 动漫个人资料卡 ──
+@Composable
+private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount: Int, collectionMap: Map<Int, List<BangumiCollection>>) {
+    val context = LocalContext.current
+    // Bangumi 用户头像（medium 尺寸，56dp 圆形 — 对齐游戏页 AvatarInner）
+    val avatarUrl = user?.avatar?.medium ?: user?.avatar?.small
+    val displayName = user?.nickname?.ifBlank { null } ?: "@$username"
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 6.dp)
+            .background(MiuixTheme.colorScheme.secondaryContainer, RoundedCornerShape(DesignTokens.CornerXLarge))
+            .clip(RoundedCornerShape(DesignTokens.CornerXLarge))
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp)) {
+            // 头像 + 用户名行
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // 头像（圆形，56dp — 对齐游戏页 AvatarInner）
+                Box(
+                    modifier = Modifier
+                        .size(70.dp)
+                        .clip(CircleShape)
+                        .background(MiuixTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (avatarUrl != null) {
+                        AsyncImage(
+                            model = avatarUrl,
+                            contentDescription = displayName,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Image(
+                            imageVector = MiuixIcons.Light.Album,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
+                        )
+                    }
+                }
+                Spacer(Modifier.width(24.dp))
+                Column {
+                    Text(
+                        text = displayName,
+                        color = MiuixTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = DesignTokens.TextHeadline.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = context.getString(R.string.bangumi_profile_total, totalCount),
+                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                        fontSize = DesignTokens.TextBody2.sp
+                    )
+                }
+            }
+
+            // 分类统计行
+            Spacer(Modifier.height(24.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                BangumiViewModel.typeNames.forEach { (type, nameRes) ->
+                    val count = collectionMap[type]?.size ?: 0
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "$count",
+                            color = MiuixTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextSubtitle.sp
+                        )
+                        Text(
+                            text = context.getString(nameRes),
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            fontSize = DesignTokens.TextCaption.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

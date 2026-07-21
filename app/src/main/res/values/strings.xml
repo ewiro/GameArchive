@@ -12,7 +12,7 @@
     <string name="login_success">Login successful</string>
 
     <!-- Bottom Navigation -->
-    <string name="nav_library">Library</string>
+    <string name="nav_library">Games</string>
     <string name="nav_specials">Specials</string>
 
     <!-- Library -->
@@ -151,5 +151,19 @@
     <string name="game_rename">Rename Game</string>
     <string name="game_restore_default">Restore Default</string>
     <string name="general_cancel">Cancel</string>
+
+    <!-- Bangumi -->
+    <string name="nav_bangumi">Anime</string>
+    <string name="settings_bangumi">Bangumi Username</string>
+    <string name="settings_bangumi_hint">bgm.tv username</string>
+    <string name="bangumi_wish">Want to Watch</string>
+    <string name="bangumi_done">Watched</string>
+    <string name="bangumi_doing">Watching</string>
+    <string name="bangumi_on_hold">On Hold</string>
+    <string name="bangumi_dropped">Dropped</string>
+    <string name="bangumi_no_username">Enter Bangumi username in Settings</string>
+    <string name="bangumi_empty">No anime collection found</string>
+    <string name="bangumi_profile_total">%d anime in collection</string>
+    <string name="bangumi_search">Search anime…</string>
 
 </resources>

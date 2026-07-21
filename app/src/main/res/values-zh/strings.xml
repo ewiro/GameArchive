@@ -12,7 +12,7 @@
     <string name="login_success">登录成功</string>
 
     <!-- Bottom Navigation -->
-    <string name="nav_library">库存</string>
+    <string name="nav_library">游戏</string>
     <string name="nav_specials">特惠</string>
 
     <!-- Library -->
@@ -151,5 +151,19 @@
     <string name="game_rename">重命名游戏</string>
     <string name="game_restore_default">恢复默认</string>
     <string name="general_cancel">取消</string>
+
+    <!-- Bangumi -->
+    <string name="nav_bangumi">动漫</string>
+    <string name="settings_bangumi">Bangumi 用户名</string>
+    <string name="settings_bangumi_hint">bgm.tv 用户名</string>
+    <string name="bangumi_wish">想看</string>
+    <string name="bangumi_done">看过</string>
+    <string name="bangumi_doing">在看</string>
+    <string name="bangumi_on_hold">搁置</string>
+    <string name="bangumi_dropped">抛弃</string>
+    <string name="bangumi_no_username">请在设置中填写 Bangumi 用户名</string>
+    <string name="bangumi_empty">暂无动漫收藏记录</string>
+    <string name="bangumi_profile_total">共收藏 %d 部动漫</string>
+    <string name="bangumi_search">搜索动漫…</string>
 
 </resources>
