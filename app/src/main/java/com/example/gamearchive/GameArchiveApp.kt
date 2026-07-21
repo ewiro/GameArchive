@@ -32,6 +32,16 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
                 .build()
                 .create(SteamApiService::class.java)
         }
+
+        /** 全局共享的 Bangumi API 服务 */
+        val bgmService: BangumiService by lazy {
+            Retrofit.Builder()
+                .baseUrl(AppConfig.PROXY_URL)
+                .client(okHttpClient)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+                .create(BangumiService::class.java)
+        }
     }
 
     override fun newImageLoader(): ImageLoader {

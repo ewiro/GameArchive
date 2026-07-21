@@ -145,4 +145,15 @@ object UserPrefs {
         }
         getPrefs(context).edit().putString(KEY_ADDITIONAL_ACCOUNTS, arr.toString()).apply()
     }
+
+    // ── Bangumi 用户名 ──
+    private const val KEY_BANGUMI_USERNAME = "bangumi_username"
+
+    fun getBangumiUsername(context: Context): String {
+        return getPrefs(context).getString(KEY_BANGUMI_USERNAME, "") ?: ""
+    }
+
+    fun setBangumiUsername(context: Context, username: String) {
+        getPrefs(context).edit().putString(KEY_BANGUMI_USERNAME, username.trim()).apply()
+    }
 }

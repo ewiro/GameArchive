@@ -502,6 +502,42 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             }
         }
 
+        // ── Bangumi 用户名 ──
+        item("bangumi_header") {
+            SectionHeader(text = context.getString(R.string.settings_bangumi))
+        }
+        item("bangumi_card") {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                cornerRadius = DesignTokens.CornerLarge
+            ) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    var bgmUser by remember { mutableStateOf(UserPrefs.getBangumiUsername(context)) }
+                    LabeledTextField(
+                        label = context.getString(R.string.settings_bangumi),
+                        value = bgmUser,
+                        onValueChange = { bgmUser = it },
+                        hint = context.getString(R.string.settings_bangumi_hint)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = "✓",
+                        fontSize = DesignTokens.TextSubtitle.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                            .background(buttonBgColor())
+                            .noRippleClickable {
+                                UserPrefs.setBangumiUsername(context, bgmUser)
+                                Toast.makeText(context, "\u2705 " + context.getString(R.string.settings_bangumi), Toast.LENGTH_SHORT).show()
+                            }
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                    )
+                }
+            }
+        }
+
         // ── 关于与更新 ──
         item("about_header") {
             SectionHeader(text = context.getString(R.string.settings_about))
