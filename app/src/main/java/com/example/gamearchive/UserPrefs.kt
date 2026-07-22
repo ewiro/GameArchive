@@ -156,4 +156,15 @@ object UserPrefs {
     fun setBangumiUsername(context: Context, username: String) {
         getPrefs(context).edit().putString(KEY_BANGUMI_USERNAME, username.trim()).apply()
     }
+
+    // ── Bangumi 评分展示模式：0=展示评分, 1=仅我的评分, 2=不展示 ──
+    private const val KEY_BANGUMI_RATING_MODE = "bangumi_rating_mode"
+
+    fun getBangumiRatingMode(context: Context): Int {
+        return getPrefs(context).getInt(KEY_BANGUMI_RATING_MODE, 0)
+    }
+
+    fun setBangumiRatingMode(context: Context, mode: Int) {
+        getPrefs(context).edit().putInt(KEY_BANGUMI_RATING_MODE, mode).apply()
+    }
 }

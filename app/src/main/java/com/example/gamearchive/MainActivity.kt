@@ -144,7 +144,10 @@ private fun <T> LiveData<T>.observeAsState(): State<T?> {
 private fun MainScreen() {
     val context = LocalContext.current
     val specialsEnabled = ThemeUtils.isSpecialsEnabled(context)
-    val pagerState = rememberPagerState(pageCount = { if (specialsEnabled) 3 else 2 })
+    val bangumiEnabled = ThemeUtils.isBangumiEnabled(context)
+    val specialsPage = if (specialsEnabled) 1 else -1
+    val bangumiPage = if (bangumiEnabled) (if (specialsEnabled) 2 else 1) else -1
+    val pagerState = rememberPagerState(pageCount = { 1 + (if (specialsEnabled) 1 else 0) + (if (bangumiEnabled) 1 else 0) })
     var bottomBarVisible by remember { mutableStateOf(true) }
     var topBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
@@ -152,10 +155,11 @@ private fun MainScreen() {
     val libraryListState = rememberLazyListState()
     val specialsListState = rememberLazyListState()
     val bangumiListState = rememberLazyListState()
-    val activeListState = when {
-        selectedTab == 0 -> libraryListState
-        specialsEnabled && selectedTab == 1 -> specialsListState
-        else -> bangumiListState
+    val activeListState = when (selectedTab) {
+        0 -> libraryListState
+        specialsPage -> specialsListState
+        bangumiPage -> bangumiListState
+        else -> libraryListState
     }
 
     // 滑动检测：仅顶部显示栏，离开顶部即隐藏，回到顶部显示
@@ -254,8 +258,8 @@ private fun MainScreen() {
                 Text(
                     text = context.getString(
                         when {
-                            specialsEnabled && selectedTab == 1 -> R.string.nav_specials
-                            (!specialsEnabled && selectedTab == 1) || (specialsEnabled && selectedTab == 2) -> R.string.nav_bangumi
+                            selectedTab == specialsPage -> R.string.nav_specials
+                            selectedTab == bangumiPage -> R.string.nav_bangumi
                             else -> R.string.nav_library
                         }
                     ),
@@ -263,7 +267,7 @@ private fun MainScreen() {
                     fontSize = DesignTokens.TextTitle.sp,
                     modifier = Modifier.weight(1f)
                 )
-                if (!specialsEnabled || selectedTab == 0 || selectedTab == (if (specialsEnabled) 2 else 1)) {
+                if (selectedTab == 0 || selectedTab == bangumiPage) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }) {
@@ -287,7 +291,8 @@ private fun MainScreen() {
             }
         }
 
-        // ── 底栏叠加层（至少2页时始终显示） ──
+        // ── 底栏叠加层（至少2页时显示） ──
+        if (specialsEnabled || bangumiEnabled) {
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -353,32 +358,34 @@ private fun MainScreen() {
                     }
                 }
                 // 动漫 Tab
-                val bangumiTabIdx = if (specialsEnabled) 2 else 1
+                if (bangumiEnabled) {
                 val tabAnimBgm by animateFloatAsState(
-                    targetValue = if (selectedTab == bangumiTabIdx) 1f else 0f,
+                    targetValue = if (selectedTab == bangumiPage) 1f else 0f,
                     animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
                     label = "tab_anim_bgm"
                 )
                 Column(
                     modifier = Modifier
                         .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnimBgm; scaleY = 0.85f + 0.15f * tabAnimBgm }
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(bangumiTabIdx) } }
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(bangumiPage) } }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
-                        imageVector = if (selectedTab == bangumiTabIdx) MiuixIcons.Demibold.Album else MiuixIcons.Light.Album,
+                        imageVector = if (selectedTab == bangumiPage) MiuixIcons.Demibold.Album else MiuixIcons.Light.Album,
                         contentDescription = context.getString(R.string.nav_bangumi),
                         modifier = Modifier.size(DesignTokens.IconXl),
-                        colorFilter = ColorFilter.tint(if (selectedTab == bangumiTabIdx) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
+                        colorFilter = ColorFilter.tint(if (selectedTab == bangumiPage) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                     )
                     Text(text = context.getString(R.string.nav_bangumi), fontSize = DesignTokens.TextCaption.sp,
-                        color = if (selectedTab == bangumiTabIdx) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
+                        color = if (selectedTab == bangumiPage) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
+                }
                 }
             }
         }
     } // Box
     } // Surface
+        } // end if bottom bar
 }
 
 // ────────── 库存页 ──────────
@@ -1422,18 +1429,24 @@ private fun ShimmerBrush(): Brush {
 private fun BangumiSkeletonCard() {
     val bg = MiuixTheme.colorScheme.surfaceVariant
     val shimmer = ShimmerBrush()
-    val coverW = 100.dp; val coverH = 140.dp
+    val coverW = 80.dp; val coverH = 112.dp
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.size(coverW, coverH).clip(RoundedCornerShape(6.dp)).background(bg))
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.height(coverH).padding(vertical = 2.dp)) {
+        // 中：名字 + 话数
+        Column(Modifier.weight(1f).height(coverH).padding(vertical = 2.dp)) {
             Box(Modifier.fillMaxWidth(0.7f).height(14.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-            Spacer(Modifier.height(6.dp))
-            Box(Modifier.fillMaxWidth(0.5f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
             Spacer(Modifier.weight(1f))
-            Box(Modifier.fillMaxWidth(0.35f).height(10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+            Box(Modifier.width(56.dp).height(10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+        }
+        Spacer(Modifier.width(8.dp))
+        // 右：评分 + 评级 + 日期
+        Column(Modifier.height(coverH).padding(vertical = 2.dp), horizontalAlignment = Alignment.End) {
+            Box(Modifier.width(32.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
             Spacer(Modifier.height(4.dp))
-            Box(Modifier.fillMaxWidth(0.2f).height(10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+            Box(Modifier.width(24.dp).height(8.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.width(48.dp).height(10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
         }
     }
 }
@@ -1565,11 +1578,11 @@ private fun BangumiLoadingSkeleton(topInsetDp: androidx.compose.ui.unit.Dp) {
 
 /** Bangumi 收藏类型 → 标签颜色 */
 private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
-    1 to Color(0xFF42A5F5),  // 想看 - blue
-    2 to Color(0xFF66BB6A),  // 看过 - green
-    3 to Color(0xFFFF9800),  // 在看 - orange
-    4 to Color(0xFF9E9E9E),  // 搁置 - gray
-    5 to Color(0xFFEF5350),  // 抛弃 - red
+    1 to Color(0xFF42A5F5),
+    2 to Color(0xFFFF9800),
+    3 to Color(0xFF66BB6A),
+    4 to Color(0xFF9E9E9E),
+    5 to Color(0xFFEF5350),
 )
 
 @Composable
@@ -1581,6 +1594,8 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
     val error by viewModel.error.observeAsState()
     val collections by viewModel.collections.observeAsState()
     val bgmUser by viewModel.user.observeAsState()
+    val bgmRatings by viewModel.ratings.observeAsState()
+    val ratingsMap = bgmRatings ?: emptyMap()
 
     LaunchedEffect(bgmUsername) { viewModel.loadIfNeeded(bgmUsername) }
 
@@ -1635,19 +1650,19 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
 
         // ── 骨架屏数量 ──
         val cfg = LocalConfiguration.current
-        val skeletonCount = remember { maxOf(4, ((cfg.screenHeightDp.dp - 260.dp) / (160.dp)).toInt()) }
+        val skeletonCount = remember { maxOf(4, ((cfg.screenHeightDp.dp - 260.dp) / (132.dp)).toInt()) }
         // 骨架材质（@Composable，在此处初始化供 LazyColumn 使用）
         val shimmer = ShimmerBrush()
         val skelBg = MiuixTheme.colorScheme.secondaryContainer
 
-        // ── 状态变量（提至此处，不随 item 生命周期销毁） ──
+        // ── 状态变量 ──
         val allItems = remember(collectionMap) {
             collectionMap?.entries?.flatMap { (type, list) -> list.map { Pair(it, type) } } ?: emptyList()
         }
-        var typeFilter by remember { mutableIntStateOf(-1) }
+        var typeFilter by remember { mutableIntStateOf(2) }  // 默认在看
         var searchQuery by remember { mutableStateOf("") }
         val filteredItems = remember(allItems, typeFilter, searchQuery) {
-            var list = if (typeFilter == -1) allItems else allItems.filter { it.second == typeFilter }
+            var list = allItems.filter { it.second == typeFilter }
             if (searchQuery.isNotBlank()) {
                 list = list.filter { (item, _) ->
                     val sub = item.subject
@@ -1708,7 +1723,7 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
                     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        repeat(6) {
+                        repeat(5) {
                             Box(Modifier.size(56.dp, 32.dp).clip(RoundedCornerShape(16.dp)).background(shimmer))
                         }
                     }
@@ -1746,40 +1761,22 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
 
                 // ── 收藏类型筛选横条 ──
                 item("type_filter") {
-                    Column {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Row(
                             modifier = Modifier
-                                .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
                                 .padding(horizontal = 18.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                        BangumiViewModel.typeNames.forEach { (type, nameRes) ->
                             MarkFilterChip(
-                                label = context.getString(R.string.mark_filter_all),
-                                selected = typeFilter == -1,
-                                color = null,
-                                onClick = { typeFilter = -1 }
-                            )
-                            BangumiViewModel.typeNames.forEach { (type, nameRes) ->
-                                MarkFilterChip(
-                                    label = context.getString(nameRes),
-                                    selected = typeFilter == type,
-                                    color = BANGUMI_TYPE_COLORS[type],
-                                    onClick = {
-                                        typeFilter = if (typeFilter == type) -1 else type
-                                    }
-                                )
-                            }
-                        }
-                        if (typeFilter != -1) {
-                            Text(
-                                text = context.getString(R.string.library_filter_count, filteredItems.size),
-                                fontSize = DesignTokens.TextBody2.sp,
-                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                label = context.getString(nameRes),
+                                selected = typeFilter == type,
+                                color = BANGUMI_TYPE_COLORS[type],
+                                onClick = { typeFilter = if (typeFilter == type) 2 else type }
                             )
                         }
+                    }
                     }
                 }
 
@@ -1788,7 +1785,7 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
                     if (index > 0) {
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
                     }
-                    BangumiItem(item = item, type = type, onClick = {
+                    BangumiItem(item = item, type = type, ratings = ratingsMap, onClick = {
                         android.widget.Toast.makeText(context,
                             item.subject?.name_cn ?: item.subject?.name ?: "Item ${item.subject_id}",
                             android.widget.Toast.LENGTH_SHORT).show()
@@ -1800,11 +1797,11 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
 }
 
 @Composable
-private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit) {
+private fun BangumiItem(item: BangumiCollection, type: Int, ratings: Map<Int, Any?>, onClick: () -> Unit) {
     val sub = item.subject ?: return
     val imgUrl = sub.images?.common ?: sub.images?.medium
-    val context = LocalContext.current
-    val typeLabel = BangumiViewModel.typeNames[type]?.let { context.getString(it) } ?: ""
+    val coverW = 80.dp; val coverH = 112.dp
+    val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
 
     Row(
         modifier = Modifier
@@ -1813,8 +1810,7 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
             .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // 封面 — 约占卡片 1/3，比例 5:7
-        val coverW = 100.dp; val coverH = 140.dp
+        // 左：封面
         Box(
             Modifier.size(coverW, coverH)
                 .clip(RoundedCornerShape(6.dp))
@@ -1830,8 +1826,8 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
             }
         }
         Spacer(Modifier.width(12.dp))
+        // 中：名字 + 话数/进度
         Column(Modifier.weight(1f).height(coverH).padding(vertical = 2.dp)) {
-            // 名称
             Text(
                 text = sub.name_cn ?: sub.name,
                 fontSize = DesignTokens.TextBody1.sp,
@@ -1841,33 +1837,65 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.weight(1f))
-            // 评分 + 话数
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (sub.rating?.score != null) {
-                    Text(
-                        text = "⭐${String.format("%.1f", sub.rating.score)}",
-                        fontSize = DesignTokens.TextCaption.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
-                if (sub.eps != null) {
-                    Text(
-                        text = "${sub.eps}话",
-                        fontSize = DesignTokens.TextCaption.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                    )
-                }
+            if (type != 1 && item.ep_status > 0) {
+                val total = sub.total_episodes ?: sub.eps
+                val progress = if (total != null && total > 0) "已看 ${item.ep_status}/$total 话" else "已看 ${item.ep_status} 话"
+                Text(text = progress, fontSize = 12.sp, color = dim)
+            } else if (sub.eps != null) {
+                Text(text = "${sub.eps}话", fontSize = 12.sp, color = dim)
             }
-            Spacer(Modifier.height(4.dp))
-            // 收藏状态 — 置底、纯文字、无颜色
-            Text(
-                text = typeLabel,
-                fontSize = DesignTokens.TextCaption.sp,
-                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-            )
+        }
+        // 右：评分 + 评级 + 更新日期
+        fun extractScore(r: Any?): Double? = when (r) {
+            is Map<*, *> -> {
+                val s = r["score"]
+                when (s) { is Double -> s; is Number -> s.toDouble(); else -> null }
+            }
+            else -> null
+        }
+        val ratingMode = UserPrefs.getBangumiRatingMode(LocalContext.current)
+        val myRate = if (item.rate > 0) item.rate.toDouble() else null
+        val globalScore: Double? = extractScore(ratings[item.subject_id]) ?: extractScore(sub.rating)
+        val score: Double? = when (ratingMode) {
+            1 -> myRate          // 仅我的评分
+            2 -> null            // 不展示
+            else -> globalScore  // 展示评分（默认）
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.height(coverH).padding(vertical = 2.dp), horizontalAlignment = Alignment.End) {
+            if (score != null && score > 0) {
+                val scoreText = if (ratingMode == 1) "${item.rate}" else String.format("%.1f", score)
+                Text(text = scoreText, fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold, color = bangumiScoreColor(score))
+                Spacer(Modifier.height(2.dp))
+                Text(text = bangumiGrade(score), fontSize = 10.sp, color = dim)
+            }
+            Spacer(Modifier.weight(1f))
+            val updated = item.updated_at?.take(10)
+            if (!updated.isNullOrBlank()) {
+                Text(text = updated, fontSize = 11.sp, color = dim.copy(alpha = 0.7f))
+            }
         }
     }
+}
+
+/** Bangumi 评分 → 中文评级 */
+private fun bangumiGrade(score: Double): String = when {
+    score >= 9.0 -> "超神作"
+    score >= 8.0 -> "神作"
+    score >= 7.0 -> "力荐"
+    score >= 6.0 -> "推荐"
+    score >= 5.0 -> "还行"
+    score >= 4.0 -> "较差"
+    else -> "差"
+}
+
+/** Bangumi 评分 → 颜色分级 */
+private fun bangumiScoreColor(score: Double): Color = when {
+    score >= 8.0 -> Color(0xFFE53935)
+    score >= 7.0 -> Color(0xFFFF9800)
+    score >= 5.0 -> Color(0xFF42A5F5)
+    else -> Color(0xFF9E9E9E)
 }
 
 // ── 动漫个人资料卡 ──

@@ -114,6 +114,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var grouping by remember { mutableStateOf(ThemeUtils.isGroupingEnabled(context)) }
     var sortMode by remember { mutableIntStateOf(ThemeUtils.getSortMode(context)) }
     var showSpecials by remember { mutableStateOf(ThemeUtils.isSpecialsEnabled(context)) }
+    var showBangumi by remember { mutableStateOf(ThemeUtils.isBangumiEnabled(context)) }
 
     // ── 标签管理状态 ──
     var showTagDialog by remember { mutableStateOf(false) }
@@ -244,6 +245,30 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             language = langValues[idx]; ThemeUtils.saveLanguage(context, language); onRecreate()
                         }
                     )
+
+                    DividerLine()
+
+                    // 展示特惠页
+                    SwitchRow(
+                        label = context.getString(R.string.settings_show_specials),
+                        checked = showSpecials,
+                        onCheckedChange = {
+                            showSpecials = it
+                            ThemeUtils.saveShowSpecials(context, it)
+                        }
+                    )
+
+                    DividerLine()
+
+                    // 展示动漫页
+                    SwitchRow(
+                        label = context.getString(R.string.settings_show_bangumi),
+                        checked = showBangumi,
+                        onCheckedChange = {
+                            showBangumi = it
+                            ThemeUtils.saveShowBangumi(context, it)
+                        }
+                    )
                 }
             }
         }
@@ -344,7 +369,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             }
         }
 
-        // ── 库存列表设置 ──
+        // ── 游戏列表设置 ──
         item("library_header") {
             SectionHeader(text = context.getString(R.string.settings_library))
         }
@@ -362,18 +387,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         onCheckedChange = {
                             grouping = it
                             ThemeUtils.saveGrouping(context, it)
-                        }
-                    )
-
-                    DividerLine()
-
-                    // 显示特惠
-                    SwitchRow(
-                        label = context.getString(R.string.settings_show_specials),
-                        checked = showSpecials,
-                        onCheckedChange = {
-                            showSpecials = it
-                            ThemeUtils.saveShowSpecials(context, it)
                         }
                     )
 
@@ -502,7 +515,8 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             }
         }
 
-        // ── Bangumi 用户名 ──
+        // ── Bangumi ──
+        if (showBangumi) {
         item("bangumi_header") {
             SectionHeader(text = context.getString(R.string.settings_bangumi))
         }
@@ -511,32 +525,57 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
                     var bgmUser by remember { mutableStateOf(UserPrefs.getBangumiUsername(context)) }
-                    LabeledTextField(
-                        label = context.getString(R.string.settings_bangumi),
-                        value = bgmUser,
-                        onValueChange = { bgmUser = it },
-                        hint = context.getString(R.string.settings_bangumi_hint)
+                    // 输入行：输入框 + 确认按钮同行等高
+                    Row(modifier = Modifier.height(IntrinsicSize.Max), verticalAlignment = Alignment.CenterVertically) {
+                        top.yukonga.miuix.kmp.basic.TextField(
+                            value = bgmUser,
+                            onValueChange = { bgmUser = it },
+                            modifier = Modifier.weight(0.6f),
+                            label = context.getString(R.string.settings_bangumi_hint),
+                            useLabelAsPlaceholder = true,
+                            singleLine = true
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .widthIn(min = 60.dp)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                .background(buttonBgColor())
+                                .noRippleClickable {
+                                    UserPrefs.setBangumiUsername(context, bgmUser)
+                                    Toast.makeText(context, "\u2705 " + context.getString(R.string.settings_bangumi), Toast.LENGTH_SHORT).show()
+                                }
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = context.getString(R.string.confirm),
+                                fontSize = DesignTokens.TextBody1.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    // 评分展示下拉
+                    var ratingMode by remember { mutableIntStateOf(UserPrefs.getBangumiRatingMode(context)) }
+                    val ratingOptions = listOf(
+                        context.getString(R.string.settings_bangumi_rating_all),
+                        context.getString(R.string.settings_bangumi_rating_mine),
+                        context.getString(R.string.settings_bangumi_rating_none)
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = "✓",
-                        fontSize = DesignTokens.TextSubtitle.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                            .background(buttonBgColor())
-                            .noRippleClickable {
-                                UserPrefs.setBangumiUsername(context, bgmUser)
-                                Toast.makeText(context, "\u2705 " + context.getString(R.string.settings_bangumi), Toast.LENGTH_SHORT).show()
-                            }
-                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                    DropdownSelector(
+                        label = context.getString(R.string.settings_bangumi_show_rating),
+                        options = ratingOptions,
+                        selectedIndex = ratingMode,
+                        onSelect = { ratingMode = it; UserPrefs.setBangumiRatingMode(context, it) }
                     )
                 }
             }
         }
+        } // end if (showBangumi)
 
         // ── 关于与更新 ──
         item("about_header") {

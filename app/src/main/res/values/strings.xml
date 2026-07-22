@@ -56,8 +56,9 @@
     <string name="settings_frame_hint">Must be PNG, empty to hide</string>
     <string name="settings_save_profile">Save</string>
     <string name="settings_profile_saved">Profile settings saved</string>
-    <string name="settings_library">Library Settings</string>
-    <string name="settings_show_specials">Show Specials Tab</string>
+    <string name="settings_library">Game List Settings</string>
+    <string name="settings_show_specials">Show Specials</string>
+    <string name="settings_show_bangumi">Show Anime</string>
     <string name="settings_grouping">Enable status grouping</string>
     <string name="settings_sort_mode">Default Sort Mode</string>
     <string name="settings_sort_playtime">By Playtime (High to Low)</string>
@@ -154,8 +155,13 @@
 
     <!-- Bangumi -->
     <string name="nav_bangumi">Anime</string>
-    <string name="settings_bangumi">Bangumi Username</string>
-    <string name="settings_bangumi_hint">bgm.tv username</string>
+    <string name="settings_bangumi">Bangumi</string>
+    <string name="settings_bangumi_hint">Bangumi user ID</string>
+    <string name="settings_bangumi_show_rating">Anime Rating</string>
+    <string name="settings_bangumi_rating_all">Show Rating</string>
+    <string name="settings_bangumi_rating_mine">My Rating Only</string>
+    <string name="settings_bangumi_rating_none">Hide</string>
+    <string name="confirm">Confirm</string>
     <string name="bangumi_wish">Want to Watch</string>
     <string name="bangumi_done">Watched</string>
     <string name="bangumi_doing">Watching</string>
@@ -164,6 +170,7 @@
     <string name="bangumi_no_username">Enter Bangumi username in Settings</string>
     <string name="bangumi_empty">No anime collection found</string>
     <string name="bangumi_profile_total">%d anime in collection</string>
+    <string name="bangumi_count">%d anime</string>
     <string name="bangumi_search">Search anime…</string>
 
 </resources>

@@ -20,10 +20,10 @@ import retrofit2.http.Query
 @Keep data class BangumiSubject(
     val id: Int, val name: String, val name_cn: String?, val type: Int,
     val summary: String?, val eps: Int?, val total_episodes: Int?,
-    val rating: BangumiRating?, val images: BangumiImages?
+    val rating: Any? = null, val images: BangumiImages?, val date: String?
 )
 
-@Keep data class BangumiRating(val score: Double?, val total: Int?)
+@Keep data class BangumiRating(val score: Any? = null, val total: Int? = null, val count: Any? = null, val rank: Int? = null)
 
 @Keep data class BangumiImages(
     val large: String?, val common: String?, val medium: String?, val small: String?, val grid: String?
@@ -53,4 +53,14 @@ interface BangumiService {
         @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0
     ): BangumiPagedCollection
+
+    @GET("bangumi/v0/subjects/{subject_id}")
+    suspend fun getSubject(
+        @Path("subject_id") subjectId: Int
+    ): BangumiSubjectDetail
 }
+
+/** 单条目详情（含完整 rating），只取需要的字段 */
+@Keep data class BangumiSubjectDetail(
+    val rating: Any? = null
+)
