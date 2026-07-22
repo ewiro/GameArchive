@@ -1416,6 +1416,28 @@ private fun ShimmerBrush(): Brush {
     return Brush.linearGradient(listOf(Color.Transparent, s, Color.Transparent), Offset(progress * 400f - 200f, 0f), Offset(progress * 400f + 100f, 0f))
 }
 
+
+// ── 动漫条目骨架（100×140 封面 + 文字行 + 状态行） ──
+@Composable
+private fun BangumiSkeletonCard() {
+    val bg = MiuixTheme.colorScheme.surfaceVariant
+    val shimmer = ShimmerBrush()
+    val coverW = 100.dp; val coverH = 140.dp
+    Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.Top) {
+        Box(Modifier.size(coverW, coverH).clip(RoundedCornerShape(6.dp)).background(bg))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.height(coverH).padding(vertical = 2.dp)) {
+            Box(Modifier.fillMaxWidth(0.7f).height(14.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+            Spacer(Modifier.height(6.dp))
+            Box(Modifier.fillMaxWidth(0.5f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.fillMaxWidth(0.35f).height(10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+            Spacer(Modifier.height(4.dp))
+            Box(Modifier.fillMaxWidth(0.2f).height(10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
+        }
+    }
+}
+
 @Composable
 private fun SkeletonCard() {
     val bg = MiuixTheme.colorScheme.surfaceVariant
@@ -1613,7 +1635,7 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
 
         // ── 骨架屏数量 ──
         val cfg = LocalConfiguration.current
-        val skeletonCount = remember { maxOf(4, ((cfg.screenHeightDp.dp - 260.dp) / (DesignTokens.CoverHeight + 12.dp)).toInt()) }
+        val skeletonCount = remember { maxOf(4, ((cfg.screenHeightDp.dp - 260.dp) / (160.dp)).toInt()) }
         // 骨架材质（@Composable，在此处初始化供 LazyColumn 使用）
         val shimmer = ShimmerBrush()
         val skelBg = MiuixTheme.colorScheme.secondaryContainer
@@ -1693,7 +1715,7 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
                 }
                 // 条目骨架（适配动漫页头部高度）
                 val n2 = skeletonCount
-                items(n2) { SkeletonCard() }
+                items(n2) { BangumiSkeletonCard() }
             } else if (showEmpty) {
                 // ── 空状态 ──
                 item("empty") {
@@ -1783,7 +1805,6 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
     val imgUrl = sub.images?.common ?: sub.images?.medium
     val context = LocalContext.current
     val typeLabel = BangumiViewModel.typeNames[type]?.let { context.getString(it) } ?: ""
-    val typeColor = BANGUMI_TYPE_COLORS[type] ?: Color.Gray
 
     Row(
         modifier = Modifier
@@ -1792,9 +1813,10 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
             .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // 封面
+        // 封面 — 约占卡片 1/3，比例 5:7
+        val coverW = 100.dp; val coverH = 140.dp
         Box(
-            Modifier.size(48.dp, 68.dp)
+            Modifier.size(coverW, coverH)
                 .clip(RoundedCornerShape(6.dp))
                 .background(MiuixTheme.colorScheme.surfaceVariant)
         ) {
@@ -1808,7 +1830,7 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
             }
         }
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).height(coverH).padding(vertical = 2.dp)) {
             // 名称
             Text(
                 text = sub.name_cn ?: sub.name,
@@ -1818,8 +1840,8 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(6.dp))
-            // 评分 + 话数 + 类型标签
+            Spacer(Modifier.weight(1f))
+            // 评分 + 话数
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (sub.rating?.score != null) {
                     Text(
@@ -1836,23 +1858,14 @@ private fun BangumiItem(item: BangumiCollection, type: Int, onClick: () -> Unit)
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                 }
-                Spacer(Modifier.weight(1f))
-                // 收藏类型标签
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(DesignTokens.CornerSmall))
-                        .background(typeColor.copy(alpha = DesignTokens.OpacityChipBg))
-                        .border(1.dp, typeColor, RoundedCornerShape(DesignTokens.CornerSmall))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = typeLabel,
-                        fontSize = DesignTokens.TextCaption.sp,
-                        color = typeColor,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
             }
+            Spacer(Modifier.height(4.dp))
+            // 收藏状态 — 置底、纯文字、无颜色
+            Text(
+                text = typeLabel,
+                fontSize = DesignTokens.TextCaption.sp,
+                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+            )
         }
     }
 }
