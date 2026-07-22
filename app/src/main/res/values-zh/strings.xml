@@ -56,8 +56,9 @@
     <string name="settings_frame_hint">必须为 PNG 格式，留空隐藏</string>
     <string name="settings_save_profile">保存</string>
     <string name="settings_profile_saved">个人资料设置已更新</string>
-    <string name="settings_library">库存列表设置</string>
-    <string name="settings_show_specials">展示特惠界面</string>
+    <string name="settings_library">游戏列表设置</string>
+    <string name="settings_show_specials">展示特惠页</string>
+    <string name="settings_show_bangumi">展示动漫页</string>
     <string name="settings_grouping">开启状态分组</string>
     <string name="settings_sort_mode">默认排序方式</string>
     <string name="settings_sort_playtime">按游戏时长 (从高到低)</string>
@@ -154,8 +155,13 @@
 
     <!-- Bangumi -->
     <string name="nav_bangumi">动漫</string>
-    <string name="settings_bangumi">Bangumi 用户名</string>
-    <string name="settings_bangumi_hint">bgm.tv 用户名</string>
+    <string name="settings_bangumi">Bangumi</string>
+    <string name="settings_bangumi_hint">Bangumi 用户ID</string>
+    <string name="settings_bangumi_show_rating">动漫评分</string>
+    <string name="settings_bangumi_rating_all">展示评分</string>
+    <string name="settings_bangumi_rating_mine">仅展示我的评分</string>
+    <string name="settings_bangumi_rating_none">不展示</string>
+    <string name="confirm">确认</string>
     <string name="bangumi_wish">想看</string>
     <string name="bangumi_done">看过</string>
     <string name="bangumi_doing">在看</string>
@@ -164,6 +170,7 @@
     <string name="bangumi_no_username">请在设置中填写 Bangumi 用户名</string>
     <string name="bangumi_empty">暂无动漫收藏记录</string>
     <string name="bangumi_profile_total">共收藏 %d 部动漫</string>
+    <string name="bangumi_count">%d 部动漫</string>
     <string name="bangumi_search">搜索动漫…</string>
 
 </resources>
