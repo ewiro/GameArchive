@@ -18,6 +18,7 @@ object ThemeUtils {
     private const val KEY_LANGUAGE = "language"
     private const val KEY_SHOW_SPECIALS = "show_specials"
     private const val KEY_SHOW_BANGUMI = "show_bangumi"
+    private const val KEY_BANGUMI_DISPLAY_STYLE = "bangumi_display_style"
 
     // 标记设置是否发生变化，用于通知 Activity 重启
     var isChanged = false
@@ -105,6 +106,11 @@ object ThemeUtils {
         isChanged = true
     }
     fun isBangumiEnabled(context: Context) = getPrefs(context).getBoolean(KEY_SHOW_BANGUMI, true)
+
+    // 0=list, 1=grid
+    fun getBangumiDisplayStyle(context: Context) = getPrefs(context).getInt(KEY_BANGUMI_DISPLAY_STYLE, 0)
+    fun setBangumiDisplayStyle(context: Context, style: Int) =
+        getPrefs(context).edit().putInt(KEY_BANGUMI_DISPLAY_STYLE, style).apply()
 
     /** 检测语言是否在上次应用后发生了变化（用于触发 Activity 重建） */
     fun hasLanguageChanged(context: Context): Boolean {

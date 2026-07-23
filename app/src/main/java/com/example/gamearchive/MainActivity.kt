@@ -155,6 +155,8 @@ private fun MainScreen() {
     val libraryListState = rememberLazyListState()
     val specialsListState = rememberLazyListState()
     val bangumiListState = rememberLazyListState()
+    var bangumiTypeFilter by remember { mutableIntStateOf(2) }  // 默认在看
+    var bangumiSearchQuery by remember { mutableStateOf("") }
     val activeListState = when (selectedTab) {
         0 -> libraryListState
         specialsPage -> specialsListState
@@ -238,6 +240,10 @@ private fun MainScreen() {
                     } else {
                         BangumiPage(
                             listState = bangumiListState,
+                            typeFilter = bangumiTypeFilter,
+                            onTypeFilterChange = { bangumiTypeFilter = it },
+                            searchQuery = bangumiSearchQuery,
+                            onSearchQueryChange = { bangumiSearchQuery = it },
                             onNavigateToDetail = navigateToBangumiDetail
                         )
                     }
@@ -1594,8 +1600,16 @@ private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
 )
 
 @Composable
-private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, String, String, String) -> Unit) {
+private fun BangumiPage(
+    listState: LazyListState,
+    typeFilter: Int,
+    onTypeFilterChange: (Int) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onNavigateToDetail: (Int, String, String, String) -> Unit
+) {
     val context = LocalContext.current
+    val displayStyle = ThemeUtils.getBangumiDisplayStyle(context)  // 0=list, 1=grid
     val bgmUsername = UserPrefs.getBangumiUsername(context)
     val viewModel: BangumiViewModel = viewModel()
     val loading by viewModel.loading.observeAsState()
@@ -1667,8 +1681,6 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
         val allItems = remember(collectionMap) {
             collectionMap?.entries?.flatMap { (type, list) -> list.map { Pair(it, type) } } ?: emptyList()
         }
-        var typeFilter by remember { mutableIntStateOf(2) }  // 默认在看
-        var searchQuery by remember { mutableStateOf("") }
         val filteredItems = remember(allItems, typeFilter, searchQuery) {
             var list = allItems.filter { it.second == typeFilter }
             if (searchQuery.isNotBlank()) {
@@ -1759,7 +1771,7 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
                     var textFieldValue by remember(searchQuery) { mutableStateOf(searchQuery) }
                     TextField(
                         value = textFieldValue,
-                        onValueChange = { v -> textFieldValue = v; searchQuery = v.trim() },
+                        onValueChange = { v -> textFieldValue = v; onSearchQueryChange(v.trim()) },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
                         label = context.getString(R.string.bangumi_search),
                         useLabelAsPlaceholder = true,
@@ -1781,24 +1793,54 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
                                 label = context.getString(nameRes),
                                 selected = typeFilter == type,
                                 color = BANGUMI_TYPE_COLORS[type],
-                                onClick = { typeFilter = if (typeFilter == type) 2 else type }
+                                onClick = { onTypeFilterChange(if (typeFilter == type) 2 else type) }
                             )
                         }
                     }
                     }
                 }
 
-                // ── 动漫列表（扁平，横线分割） ──
-                itemsIndexed(filteredItems, key = { _, pair -> "bgm_${pair.first.subject_id}" }) { index, (item, type) ->
-                    if (index > 0) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
+                // ── 动漫列表 ──
+                if (displayStyle == 1) {
+                    // 网格模式：每行4个封面
+                    val chunked = filteredItems.chunked(4)
+                    items(chunked.size, key = { "grid_row_$it" }) { rowIndex ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            chunked[rowIndex].forEach { (item, _) ->
+                                val sub = item.subject
+                                BangumiGridItem(
+                                    imageUrl = sub?.images?.common ?: sub?.images?.medium,
+                                    modifier = Modifier.weight(1f),
+                                    onClick = {
+                                        onNavigateToDetail(item.subject_id,
+                                            sub?.name ?: "",
+                                            sub?.name_cn ?: "",
+                                            sub?.images?.large ?: "")
+                                    }
+                                )
+                            }
+                            // 填充空位
+                            repeat(4 - chunked[rowIndex].size) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
                     }
-                    BangumiItem(item = item, type = type, ratings = ratingsMap, onClick = {
-                        onNavigateToDetail(item.subject_id,
-                            item.subject?.name ?: "",
-                            item.subject?.name_cn ?: "",
-                            item.subject?.images?.large ?: "")
-                    })
+                } else {
+                    // 列表模式（扁平，横线分割）
+                    itemsIndexed(filteredItems, key = { _, pair -> "bgm_${pair.first.subject_id}" }) { index, (item, type) ->
+                        if (index > 0) {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
+                        }
+                        BangumiItem(item = item, type = type, ratings = ratingsMap, onClick = {
+                            onNavigateToDetail(item.subject_id,
+                                item.subject?.name ?: "",
+                                item.subject?.name_cn ?: "",
+                                item.subject?.images?.large ?: "")
+                        })
+                    }
                 }
             }
         }
@@ -1884,6 +1926,29 @@ private fun BangumiItem(item: BangumiCollection, type: Int, ratings: Map<Int, An
             if (!updated.isNullOrBlank()) {
                 Text(text = updated, fontSize = 11.sp, color = dim.copy(alpha = 0.7f))
             }
+        }
+    }
+}
+
+/** 网格模式封面（仅封面，无文字） */
+@Composable
+private fun BangumiGridItem(imageUrl: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val aspectRatio = 0.7f  // 标准海报比例
+    Box(
+        modifier = modifier
+            .aspectRatio(aspectRatio)
+            .clip(RoundedCornerShape(6.dp))
+            .background(MiuixTheme.colorScheme.surfaceVariant)
+            .noRippleClickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
         }
     }
 }

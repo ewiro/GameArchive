@@ -621,6 +621,19 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         selectedIndex = ratingMode,
                         onSelect = { ratingMode = it; UserPrefs.setBangumiRatingMode(context, it) }
                     )
+
+                    // 展示风格下拉
+                    var displayStyle by remember { mutableIntStateOf(ThemeUtils.getBangumiDisplayStyle(context)) }
+                    val displayOptions = listOf(
+                        context.getString(R.string.settings_bangumi_display_list),
+                        context.getString(R.string.settings_bangumi_display_grid)
+                    )
+                    DropdownSelector(
+                        label = context.getString(R.string.settings_bangumi_display_style),
+                        options = displayOptions,
+                        selectedIndex = displayStyle,
+                        onSelect = { displayStyle = it; ThemeUtils.setBangumiDisplayStyle(context, it) }
+                    )
                 }
             }
         }
