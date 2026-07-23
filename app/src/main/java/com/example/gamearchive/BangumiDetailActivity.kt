@@ -82,6 +82,8 @@ private fun BangumiDetailScreen(
 
     val displayName = subjectNameCn.ifEmpty { subjectName }
     val score = extractScore(detail?.rating)
+    val ratingMode = UserPrefs.getBangumiRatingMode(context)
+    val showRating = ratingMode == 0  // 0=展示评分, 1=仅我的评分(详情页无), 2=不展示
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
 
     Box(Modifier.fillMaxSize()) {
@@ -166,7 +168,7 @@ private fun BangumiDetailScreen(
                                 Spacer(Modifier.height(8.dp))
 
                                 // 评分
-                                if (score != null && score > 0) {
+                                if (showRating && score != null && score > 0) {
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
                                             text = String.format("%.1f", score),
@@ -265,12 +267,18 @@ private fun BangumiDetailScreen(
                                         isVerticalScrollBarEnabled = false
                                         settings.javaScriptEnabled = false
                                         val cssText = if (isDarkWebView) "#CCCCCC" else "#333333"
+                                        val summaryHtml = d.summary
+                                            ?.replace("\r\n", "\n")
+                                            ?.split("\n")
+                                            ?.filter { it.isNotBlank() }
+                                            ?.joinToString("") { "<p style=\"text-indent:1em;margin:0.5em 0\">$it</p>" }
+                                            ?: ""
                                         val html = """
                                             <html><head><style>
                                                 body { font-size: 14px; line-height:1.6; color:$cssText; background:transparent;
-                                                    padding:8px 0; margin:0; font-family:sans-serif; text-indent:1em; }
+                                                    padding:8px 0; margin:0; font-family:sans-serif; }
                                                 a { color:#3482FF; }
-                                            </style></head><body>${d.summary}</body></html>
+                                            </style></head><body>$summaryHtml</body></html>
                                         """.trimIndent()
                                         loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
                                     }

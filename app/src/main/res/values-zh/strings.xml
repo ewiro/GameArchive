@@ -161,6 +161,9 @@
     <string name="settings_bangumi_rating_all">展示评分</string>
     <string name="settings_bangumi_rating_mine">仅展示我的评分</string>
     <string name="settings_bangumi_rating_none">不展示</string>
+    <string name="settings_bangumi_display_style">展示风格</string>
+    <string name="settings_bangumi_display_list">列表展示</string>
+    <string name="settings_bangumi_display_grid">网格展示</string>
     <string name="confirm">确认</string>
     <string name="bangumi_wish">想看</string>
     <string name="bangumi_done">看过</string>

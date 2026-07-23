@@ -161,6 +161,9 @@
     <string name="settings_bangumi_rating_all">Show Rating</string>
     <string name="settings_bangumi_rating_mine">My Rating Only</string>
     <string name="settings_bangumi_rating_none">Hide</string>
+    <string name="settings_bangumi_display_style">Display Style</string>
+    <string name="settings_bangumi_display_list">List</string>
+    <string name="settings_bangumi_display_grid">Grid</string>
     <string name="confirm">Confirm</string>
     <string name="bangumi_wish">Want to Watch</string>
     <string name="bangumi_done">Watched</string>
