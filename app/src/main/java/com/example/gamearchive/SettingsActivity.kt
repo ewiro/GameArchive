@@ -559,6 +559,55 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             )
                         }
                     }
+                    DividerLine()
+                    // OAuth 授权状态
+                    val isAuthorized = remember { UserPrefs.isBangumiAuthorized(context) }
+                    val authUserId = remember { UserPrefs.getBangumiUserId(context) }
+                    var authState by remember { mutableStateOf(isAuthorized) }
+                    var authUid by remember { mutableIntStateOf(authUserId) }
+                    if (authState) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "\u2705 已授权 (UID: $authUid)",
+                                fontSize = DesignTokens.TextBody1.sp,
+                                color = MiuixTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = context.getString(R.string.cancel),
+                                fontSize = DesignTokens.TextBody2.sp,
+                                color = Color.Red,
+                                modifier = Modifier.noRippleClickable {
+                                    UserPrefs.clearBangumiToken(context)
+                                    authState = false
+                                    Toast.makeText(context, "已取消授权", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                .background(buttonBgColor())
+                                .noRippleClickable {
+                                    context.startActivity(Intent(context, BangumiAuthActivity::class.java))
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "授权登录 Bangumi",
+                                fontSize = DesignTokens.TextBody1.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    DividerLine()
                     // 评分展示下拉
                     var ratingMode by remember { mutableIntStateOf(UserPrefs.getBangumiRatingMode(context)) }
                     val ratingOptions = listOf(

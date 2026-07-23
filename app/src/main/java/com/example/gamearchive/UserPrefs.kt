@@ -167,4 +167,38 @@ object UserPrefs {
     fun setBangumiRatingMode(context: Context, mode: Int) {
         getPrefs(context).edit().putInt(KEY_BANGUMI_RATING_MODE, mode).apply()
     }
+
+    // ── Bangumi OAuth Token ──
+    private const val KEY_BANGUMI_ACCESS_TOKEN = "bangumi_access_token"
+    private const val KEY_BANGUMI_REFRESH_TOKEN = "bangumi_refresh_token"
+    private const val KEY_BANGUMI_USER_ID = "bangumi_user_id"
+
+    fun getBangumiAccessToken(context: Context): String {
+        return getPrefs(context).getString(KEY_BANGUMI_ACCESS_TOKEN, "") ?: ""
+    }
+    fun setBangumiAccessToken(context: Context, token: String) {
+        getPrefs(context).edit().putString(KEY_BANGUMI_ACCESS_TOKEN, token).apply()
+    }
+    fun getBangumiRefreshToken(context: Context): String {
+        return getPrefs(context).getString(KEY_BANGUMI_REFRESH_TOKEN, "") ?: ""
+    }
+    fun setBangumiRefreshToken(context: Context, token: String) {
+        getPrefs(context).edit().putString(KEY_BANGUMI_REFRESH_TOKEN, token).apply()
+    }
+    fun getBangumiUserId(context: Context): Int {
+        return getPrefs(context).getInt(KEY_BANGUMI_USER_ID, 0)
+    }
+    fun setBangumiUserId(context: Context, id: Int) {
+        getPrefs(context).edit().putInt(KEY_BANGUMI_USER_ID, id).apply()
+    }
+    fun isBangumiAuthorized(context: Context): Boolean {
+        return getBangumiAccessToken(context).isNotEmpty()
+    }
+    fun clearBangumiToken(context: Context) {
+        getPrefs(context).edit()
+            .remove(KEY_BANGUMI_ACCESS_TOKEN)
+            .remove(KEY_BANGUMI_REFRESH_TOKEN)
+            .remove(KEY_BANGUMI_USER_ID)
+            .apply()
+    }
 }

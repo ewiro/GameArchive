@@ -173,4 +173,5 @@
     <string name="bangumi_count">%d anime</string>
     <string name="bangumi_search">Search anime…</string>
 
+    <string name="cancel">Cancel</string>
 </resources>

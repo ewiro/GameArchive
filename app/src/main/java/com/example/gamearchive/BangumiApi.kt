@@ -2,8 +2,20 @@ package com.example.gamearchive
 
 import androidx.annotation.Keep
 import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Field
+import retrofit2.http.FormUrlEncoded
 import retrofit2.http.Path
 import retrofit2.http.Query
+
+// --- OAuth 令牌 ---
+@Keep data class BangumiOAuthToken(
+    val access_token: String, val expires_in: Int, val token_type: String,
+    val scope: String?, val refresh_token: String, val user_id: Int
+)
+@Keep data class BangumiOAuthError(
+    val error: String?, val error_description: String?
+)
 
 // --- Bangumi 条目收藏 ---
 @Keep data class BangumiPagedCollection(
@@ -58,9 +70,51 @@ interface BangumiService {
     suspend fun getSubject(
         @Path("subject_id") subjectId: Int
     ): BangumiSubjectDetail
+
+    @GET("bangumi/v0/subjects/{subject_id}/persons")
+    suspend fun getSubjectPersons(
+        @Path("subject_id") subjectId: Int
+    ): List<BangumiPerson>
 }
 
 /** 单条目详情（含完整 rating），只取需要的字段 */
 @Keep data class BangumiSubjectDetail(
-    val rating: Any? = null
+    val id: Int? = null,
+    val name: String? = null,
+    val name_cn: String? = null,
+    val type: Int? = null,
+    val summary: String? = null,
+    val nsfw: Boolean? = null,
+    val date: String? = null,
+    val eps: Int? = null,
+    val total_episodes: Int? = null,
+    val rating: Any? = null,
+    val images: BangumiImages? = null,
+    val collection: Any? = null,
+    val tags: List<BangumiTag>? = null,
+    val infobox: List<BangumiInfoboxItem>? = null
 )
+@Keep data class BangumiTag(val name: String, val count: Int)
+@Keep data class BangumiInfoboxItem(val key: String, val value: Any?)
+@Keep data class BangumiPerson(
+    val id: Int? = null,
+    val name: String? = null,
+    val relation: String? = null,
+    val type: Int? = null,
+    val career: List<String>? = null,
+    val images: BangumiImages? = null
+)
+
+// --- OAuth 接口（直连 bgm.tv）---
+interface BangumiOAuthService {
+    @FormUrlEncoded
+    @POST("oauth/access_token")
+    suspend fun getToken(
+        @Field("grant_type") grantType: String,
+        @Field("client_id") clientId: String,
+        @Field("client_secret") clientSecret: String,
+        @Field("code") code: String? = null,
+        @Field("refresh_token") refreshToken: String? = null,
+        @Field("redirect_uri") redirectUri: String
+    ): BangumiOAuthToken
+}
