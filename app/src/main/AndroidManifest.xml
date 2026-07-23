@@ -53,6 +53,25 @@
             android:name=".MediaViewerActivity"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Bangumi OAuth 回调 -->
+        <activity
+            android:name=".BangumiAuthActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gamearchive" android:host="oauth" android:path="/bangumi" />
+            </intent-filter>
+        </activity>
+
+        <!-- 动漫详情页 -->
+        <activity
+            android:name=".BangumiDetailActivity"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="false" />
+
     </application>
 
 </manifest>

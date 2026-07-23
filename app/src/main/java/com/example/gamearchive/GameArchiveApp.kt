@@ -42,6 +42,16 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
                 .build()
                 .create(BangumiService::class.java)
         }
+
+        /** Bangumi OAuth 服务（直连 bgm.tv） */
+        val bgmOAuthService: BangumiOAuthService by lazy {
+            Retrofit.Builder()
+                .baseUrl("https://bgm.tv/")
+                .client(okHttpClient)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+                .create(BangumiOAuthService::class.java)
+        }
     }
 
     override fun newImageLoader(): ImageLoader {

@@ -210,6 +210,14 @@ private fun MainScreen() {
                 })
                 (context as? android.app.Activity)?.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             }
+            val navigateToBangumiDetail: (Int, String, String, String) -> Unit = { id, name, nameCn, imageUrl ->
+                context.startActivity(Intent(context, BangumiDetailActivity::class.java).apply {
+                    putExtra("SUBJECT_ID", id)
+                    putExtra("SUBJECT_NAME", name)
+                    putExtra("SUBJECT_NAME_CN", nameCn)
+                    putExtra("SUBJECT_IMAGE", imageUrl)
+                })
+            }
 
             when (page) {
                 0 -> LibraryScreen(
@@ -230,7 +238,7 @@ private fun MainScreen() {
                     } else {
                         BangumiPage(
                             listState = bangumiListState,
-                            onNavigateToDetail = navigateToDetail
+                            onNavigateToDetail = navigateToBangumiDetail
                         )
                     }
                 }
@@ -1586,7 +1594,7 @@ private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
 )
 
 @Composable
-private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, String, String) -> Unit) {
+private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, String, String, String) -> Unit) {
     val context = LocalContext.current
     val bgmUsername = UserPrefs.getBangumiUsername(context)
     val viewModel: BangumiViewModel = viewModel()
@@ -1786,9 +1794,10 @@ private fun BangumiPage(listState: LazyListState, onNavigateToDetail: (Int, Stri
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
                     }
                     BangumiItem(item = item, type = type, ratings = ratingsMap, onClick = {
-                        android.widget.Toast.makeText(context,
-                            item.subject?.name_cn ?: item.subject?.name ?: "Item ${item.subject_id}",
-                            android.widget.Toast.LENGTH_SHORT).show()
+                        onNavigateToDetail(item.subject_id,
+                            item.subject?.name ?: "",
+                            item.subject?.name_cn ?: "",
+                            item.subject?.images?.large ?: "")
                     })
                 }
             }
