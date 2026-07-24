@@ -5,6 +5,13 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -16,10 +23,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +97,9 @@ private fun BangumiDetailScreen(
     var isEpisodeProgressUnavailable by remember { mutableStateOf(false) }
     var savedEpisodeProgress by remember { mutableIntStateOf(0) }
     var draftEpisodeProgress by remember { mutableIntStateOf(0) }
+    var isStatusDropdownVisible by remember { mutableStateOf(false) }
+    var statusDropdownRect by remember { mutableStateOf(Rect.Zero) }
+    var isProgressExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(subjectId) {
         try {
@@ -209,6 +224,13 @@ private fun BangumiDetailScreen(
     val ratingMode = UserPrefs.getBangumiRatingMode(context)
     val showRating = ratingMode == 0  // 0=展示评分, 1=仅我的评分(详情页无), 2=不展示
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+    val typeLabels = listOf(
+        1 to context.getString(R.string.bangumi_wish),
+        3 to context.getString(R.string.bangumi_doing),
+        2 to context.getString(R.string.bangumi_done),
+        4 to context.getString(R.string.bangumi_on_hold),
+        5 to context.getString(R.string.bangumi_dropped)
+    )
 
     Box(Modifier.fillMaxSize()) {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -335,102 +357,90 @@ private fun BangumiDetailScreen(
                         // 我的评价（需授权）
                         val authorized = UserPrefs.getBangumiAccessToken(context).isNotEmpty()
                         if (authorized && isCollectionLoaded) {
-                            val typeLabels = listOf(
-                                1 to context.getString(R.string.bangumi_wish),
-                                3 to context.getString(R.string.bangumi_doing),
-                                2 to context.getString(R.string.bangumi_done),
-                                4 to context.getString(R.string.bangumi_on_hold),
-                                5 to context.getString(R.string.bangumi_dropped)
-                            )
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                cornerRadius = DesignTokens.CornerLarge
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Column(modifier = Modifier.padding(DesignTokens.SpaceXl)) {
-                                    Text(
-                                        text = context.getString(R.string.bangumi_my_collection),
-                                        fontSize = DesignTokens.TextTitle.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MiuixTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = context.getString(R.string.bangumi_collection_sync_hint),
-                                        fontSize = DesignTokens.TextBody2.sp,
-                                        color = dim
-                                    )
-                                    Spacer(Modifier.height(DesignTokens.SpaceXxl))
-
-                                    Text(
-                                        text = context.getString(R.string.bangumi_collection_status),
-                                        fontSize = DesignTokens.TextBody1.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MiuixTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(Modifier.height(DesignTokens.SpaceMd))
-                                    FlowRow(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd),
-                                        verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd)
+                                ProgressSectionHeader(
+                                    expanded = isProgressExpanded,
+                                    onToggle = { isProgressExpanded = !isProgressExpanded }
+                                )
+                                AnimatedVisibility(
+                                    visible = isProgressExpanded,
+                                    enter = expandVertically(
+                                        animationSpec = tween(durationMillis = 280),
+                                        expandFrom = Alignment.Top
+                                    ) + fadeIn(animationSpec = tween(durationMillis = 180)),
+                                    exit = shrinkVertically(
+                                        animationSpec = tween(durationMillis = 220),
+                                        shrinkTowards = Alignment.Top
+                                    ) + fadeOut(animationSpec = tween(durationMillis = 140))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(
+                                            start = DesignTokens.SpaceXl,
+                                            end = DesignTokens.SpaceXl,
+                                            bottom = DesignTokens.SpaceXl
+                                        )
                                     ) {
-                                        typeLabels.forEach { (apiType, label) ->
-                                            val selected = apiType == draftType
-                                            Box(
-                                                modifier = Modifier
-                                                    .height(DesignTokens.ButtonHeight)
-                                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                                    .background(
-                                                        if (selected) MiuixTheme.colorScheme.primary
-                                                        else MiuixTheme.colorScheme.secondaryContainer
+                                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .onGloballyPositioned { coords ->
+                                                statusDropdownRect = coords.positionInWindow().let {
+                                                    Rect(
+                                                        it.x,
+                                                        it.y,
+                                                        it.x + coords.size.width,
+                                                        it.y + coords.size.height
                                                     )
-                                                    .noRippleClickable { draftType = apiType }
-                                                    .padding(horizontal = DesignTokens.SpaceXl),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = label,
-                                                    fontSize = DesignTokens.TextBody1.sp,
-                                                    color = if (selected) Color.White
-                                                        else MiuixTheme.colorScheme.onSurface,
-                                                    fontWeight = if (selected) FontWeight.Bold
-                                                        else FontWeight.Normal
-                                                )
+                                                }
                                             }
-                                        }
+                                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                            .noRippleClickable { isStatusDropdownVisible = true }
+                                            .padding(vertical = DesignTokens.SpaceLg),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = context.getString(R.string.bangumi_collection_status),
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MiuixTheme.colorScheme.onSurface,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = typeLabels.first { it.first == draftType }.second,
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            color = dim
+                                        )
+                                        Spacer(Modifier.width(DesignTokens.SpaceXs))
+                                        DropdownArrowEndAction(actionColor = dim)
                                     }
 
                                     if (mainEpisodes.isNotEmpty()) {
-                                        Spacer(Modifier.height(DesignTokens.SpaceXxl))
-                                        Text(
-                                            text = context.getString(R.string.bangumi_episode_progress),
-                                            fontSize = DesignTokens.TextBody1.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MiuixTheme.colorScheme.onSurface
-                                        )
-                                        Spacer(Modifier.height(DesignTokens.SpaceMd))
-                                        Box(
+                                        Spacer(Modifier.height(DesignTokens.SpaceXxl / 4f))
+                                        Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                                .background(MiuixTheme.colorScheme.secondaryContainer)
-                                                .padding(DesignTokens.SpaceLg)
+                                                .height(DesignTokens.ButtonHeight),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Column {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween
-                                                ) {
+                                            Text(
+                                                text = context.getString(R.string.bangumi_episode_progress),
+                                                fontSize = DesignTokens.TextBody1.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MiuixTheme.colorScheme.onSurface,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Box(
+                                                contentAlignment = Alignment.CenterEnd
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
                                                     val canDecrease = draftEpisodeProgress > 0
                                                     Box(
                                                         modifier = Modifier
                                                             .size(DesignTokens.ButtonHeight)
-                                                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                                            .background(
-                                                                MiuixTheme.colorScheme.surface.copy(
-                                                                    alpha = if (canDecrease) 1f
-                                                                    else DesignTokens.OpacityDisabled
-                                                                )
-                                                            )
                                                             .semantics {
                                                                 contentDescription = context.getString(
                                                                     R.string.bangumi_episode_decrease
@@ -445,129 +455,135 @@ private fun BangumiDetailScreen(
                                                             text = "−",
                                                             fontSize = DesignTokens.TextHeadline.sp,
                                                             fontWeight = FontWeight.Bold,
-                                                            color = MiuixTheme.colorScheme.onSurface
+                                                            color = MiuixTheme.colorScheme.onSurface.copy(
+                                                                alpha = if (canDecrease) 1f
+                                                                else DesignTokens.OpacityDisabled
+                                                            )
                                                         )
                                                     }
-                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                        Text(
-                                                            text = context.getString(
-                                                                R.string.bangumi_episode_seen,
-                                                                draftEpisodeProgress
-                                                            ),
-                                                            fontSize = DesignTokens.TextSubtitle.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = MiuixTheme.colorScheme.onSurface
-                                                        )
-                                                        Text(
-                                                            text = context.getString(
-                                                                R.string.bangumi_episode_total,
-                                                                mainEpisodes.size
-                                                            ),
-                                                            fontSize = DesignTokens.TextBody2.sp,
-                                                            color = dim
-                                                        )
-                                                    }
-                                                    val canIncrease = draftEpisodeProgress < mainEpisodes.size
+                                                    Text(
+                                                        text = context.getString(
+                                                            R.string.bangumi_episode_compact,
+                                                            draftEpisodeProgress,
+                                                            mainEpisodes.size
+                                                        ),
+                                                        fontSize = DesignTokens.TextBody1.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = dim
+                                                    )
+                                                    val canIncrease =
+                                                        draftEpisodeProgress < mainEpisodes.size
                                                     Box(
                                                         modifier = Modifier
-                                                            .size(DesignTokens.ButtonHeight)
-                                                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                                            .background(
-                                                                MiuixTheme.colorScheme.surface.copy(
-                                                                    alpha = if (canIncrease) 1f
-                                                                    else DesignTokens.OpacityDisabled
-                                                                )
-                                                            )
-                                                            .semantics {
-                                                                contentDescription = context.getString(
-                                                                    R.string.bangumi_episode_increase
-                                                                )
-                                                            }
-                                                            .noRippleClickable {
-                                                                if (canIncrease) draftEpisodeProgress++
-                                                            },
-                                                        contentAlignment = Alignment.Center
+                                                            .width(DesignTokens.IconXl)
+                                                            .height(DesignTokens.ButtonHeight),
+                                                        contentAlignment = Alignment.CenterEnd
                                                     ) {
                                                         Text(
                                                             text = "+",
                                                             fontSize = DesignTokens.TextHeadline.sp,
                                                             fontWeight = FontWeight.Bold,
-                                                            color = MiuixTheme.colorScheme.onSurface
+                                                            color = MiuixTheme.colorScheme.onSurface.copy(
+                                                                alpha = if (canIncrease) 1f
+                                                                else DesignTokens.OpacityDisabled
+                                                            )
                                                         )
                                                     }
                                                 }
-                                                Spacer(Modifier.height(DesignTokens.SpaceLg))
+                                                val canIncrease =
+                                                    draftEpisodeProgress < mainEpisodes.size
                                                 Box(
                                                     modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(DesignTokens.SpaceSm)
-                                                        .clip(RoundedCornerShape(DesignTokens.CornerSmall))
-                                                        .background(MiuixTheme.colorScheme.surface)
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth(
-                                                                draftEpisodeProgress.toFloat() /
-                                                                    mainEpisodes.size.toFloat()
+                                                        .size(DesignTokens.ButtonHeight)
+                                                        .align(Alignment.CenterEnd)
+                                                        .semantics {
+                                                            contentDescription = context.getString(
+                                                                R.string.bangumi_episode_increase
                                                             )
-                                                            .fillMaxHeight()
-                                                            .background(MiuixTheme.colorScheme.primary)
-                                                    )
-                                                }
+                                                        }
+                                                        .noRippleClickable {
+                                                            if (canIncrease) draftEpisodeProgress++
+                                                        }
+                                                )
                                             }
                                         }
                                     } else if (isEpisodeProgressUnavailable) {
-                                        Spacer(Modifier.height(DesignTokens.SpaceXxl))
+                                        Spacer(Modifier.height(DesignTokens.SpaceXxl / 4f))
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(DesignTokens.ButtonHeight),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = context.getString(R.string.bangumi_episode_progress),
+                                                fontSize = DesignTokens.TextBody1.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MiuixTheme.colorScheme.onSurface,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Text(
+                                                text = context.getString(
+                                                    R.string.bangumi_episode_progress_unavailable
+                                                ),
+                                                fontSize = DesignTokens.TextBody2.sp,
+                                                color = dim
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(DesignTokens.SpaceXxl / 4f))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         Text(
-                                            text = context.getString(R.string.bangumi_episode_progress),
+                                            text = context.getString(R.string.bangumi_my_rating),
                                             fontSize = DesignTokens.TextBody1.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = MiuixTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            text = context.getString(
-                                                R.string.bangumi_episode_progress_unavailable
-                                            ),
-                                            fontSize = DesignTokens.TextBody2.sp,
-                                            color = dim
-                                        )
-                                    }
-
-                                    Spacer(Modifier.height(DesignTokens.SpaceXxl))
-                                    Text(
-                                        text = context.getString(R.string.bangumi_my_rating),
-                                        fontSize = DesignTokens.TextBody1.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MiuixTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(Modifier.height(DesignTokens.SpaceMd))
-                                    FlowRow(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd),
-                                        verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd)
-                                    ) {
-                                        for (i in 0..10) {
-                                            val label = if (i == 0) "—" else "$i"
-                                            val selected = i == draftRate
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(DesignTokens.ButtonHeight)
-                                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                                    .background(
-                                                        if (selected) MiuixTheme.colorScheme.primary
-                                                        else MiuixTheme.colorScheme.secondaryContainer
+                                        Spacer(Modifier.width(DesignTokens.SpaceMd))
+                                        Row(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(DesignTokens.ButtonHeight)
+                                        ) {
+                                            val selectedRatingColor = when (draftRate) {
+                                                in 1..4 -> DesignTokens.ReviewMixed
+                                                in 5..6 -> DesignTokens.AccentBlue
+                                                in 7..8 -> DesignTokens.PriceOrange
+                                                else -> DesignTokens.ErrorRed
+                                            }
+                                            for (i in 1..10) {
+                                                val selected = i <= draftRate
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .fillMaxHeight()
+                                                        .semantics {
+                                                            contentDescription = context.getString(
+                                                                R.string.bangumi_rating_value,
+                                                                i
+                                                            )
+                                                        }
+                                                        .noRippleClickable {
+                                                            draftRate = if (draftRate == i) 0 else i
+                                                        },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = if (selected) "★" else "☆",
+                                                        fontSize = DesignTokens.TextHeadline.sp,
+                                                        color = if (selected) {
+                                                            selectedRatingColor
+                                                        } else {
+                                                            MiuixTheme.colorScheme.onSurface.copy(
+                                                                alpha = DesignTokens.OpacityDisabled
+                                                            )
+                                                        }
                                                     )
-                                                    .noRippleClickable { draftRate = i },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = label,
-                                                    fontSize = DesignTokens.TextBody1.sp,
-                                                    color = if (selected) Color.White
-                                                        else MiuixTheme.colorScheme.onSurface,
-                                                    fontWeight = if (selected) FontWeight.Bold
-                                                        else FontWeight.Normal
-                                                )
+                                                }
                                             }
                                         }
                                     }
@@ -619,6 +635,7 @@ private fun BangumiDetailScreen(
                                             color = Color.White,
                                             fontWeight = FontWeight.Bold
                                         )
+                                    }
                                     }
                                 }
                             }
@@ -751,6 +768,125 @@ private fun BangumiDetailScreen(
                 }
             }
         }
+
+        if (isStatusDropdownVisible) {
+            val density = LocalDensity.current
+            val triggerBottomDp = with(density) {
+                (statusDropdownRect.bottom / density.density).dp
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .noRippleClickable { isStatusDropdownVisible = false },
+                contentAlignment = Alignment.TopStart
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = triggerBottomDp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    val screenWidthDp = with(density) {
+                        (context.resources.displayMetrics.widthPixels / density.density).dp
+                    }
+                    val triggerRightDp = with(density) {
+                        (statusDropdownRect.right / density.density).dp
+                    }
+                    Card(
+                        modifier = Modifier
+                            .padding(end = maxOf(0.dp, screenWidthDp - triggerRightDp))
+                            .wrapContentWidth(),
+                        cornerRadius = DesignTokens.CornerLarge
+                    ) {
+                        Column(Modifier.width(IntrinsicSize.Max)) {
+                            typeLabels.forEach { (apiType, label) ->
+                                val selected = apiType == draftType
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .noRippleClickable {
+                                            draftType = apiType
+                                            isStatusDropdownVisible = false
+                                        }
+                                        .padding(
+                                            horizontal = DesignTokens.SpaceXl,
+                                            vertical = DesignTokens.SpaceLg
+                                        ),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = DesignTokens.TextSubtitle.sp,
+                                        fontWeight = if (selected) FontWeight.Bold
+                                            else FontWeight.Normal,
+                                        color = if (selected) MiuixTheme.colorScheme.primary
+                                            else MiuixTheme.colorScheme.onSurface,
+                                        softWrap = false
+                                    )
+                                    Spacer(Modifier.weight(1f))
+                                    Spacer(Modifier.width(DesignTokens.SpaceMassive))
+                                    Image(
+                                        imageVector = MiuixIcons.Basic.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(DesignTokens.IconMd),
+                                        colorFilter = ColorFilter.tint(
+                                            if (selected) MiuixTheme.colorScheme.primary
+                                            else Color.Transparent
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressSectionHeader(
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val context = LocalContext.current
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 90f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "progressArrow"
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(DesignTokens.ButtonHeight)
+            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+            .semantics {
+                contentDescription = context.getString(
+                    if (expanded) R.string.bangumi_progress_collapse
+                    else R.string.bangumi_progress_expand
+                )
+            }
+            .noRippleClickable { onToggle() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = context.getString(R.string.bangumi_my_collection),
+            fontSize = DesignTokens.TextSubtitle.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Image(
+            imageVector = MiuixIcons.Regular.ChevronForward,
+            contentDescription = null,
+            modifier = Modifier
+                .size(DesignTokens.IconMd)
+                .rotate(arrowRotation),
+            colorFilter = ColorFilter.tint(
+                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+            )
+        )
     }
 }
 
