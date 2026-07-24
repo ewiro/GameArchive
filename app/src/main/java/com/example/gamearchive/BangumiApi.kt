@@ -35,7 +35,8 @@ import retrofit2.http.Query
 @Keep data class BangumiSubject(
     val id: Int, val name: String, val name_cn: String?, val type: Int,
     val summary: String?, val eps: Int?, val total_episodes: Int?,
-    val rating: Any? = null, val images: BangumiImages?, val date: String?
+    val rating: Any? = null, val images: BangumiImages?, val date: String?,
+    val tags: List<BangumiTag>? = null
 )
 
 @Keep data class BangumiRating(val score: Any? = null, val total: Int? = null, val count: Any? = null, val rank: Int? = null)
@@ -78,6 +79,14 @@ interface BangumiService {
     suspend fun getSubjectPersons(
         @Path("subject_id") subjectId: Int
     ): List<BangumiPerson>
+
+    @GET("bangumi/v0/episodes")
+    suspend fun getSubjectEpisodes(
+        @Query("subject_id") subjectId: Int,
+        @Query("type") episodeType: Int = 0,
+        @Query("limit") limit: Int = 1,
+        @Query("offset") offset: Int = 0
+    ): BangumiPagedEpisodes
 }
 
 /** 单条目详情（含完整 rating），只取需要的字段 */
@@ -152,6 +161,13 @@ interface BangumiOAuthService {
     val name_cn: String? = null,
     val sort: Double? = null,
     val ep: Double? = null
+)
+
+@Keep data class BangumiPagedEpisodes(
+    val total: Int,
+    val limit: Int,
+    val offset: Int,
+    val data: List<BangumiEpisode>? = null
 )
 
 @Keep data class BangumiUserEpisodeCollection(

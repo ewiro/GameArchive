@@ -14,6 +14,7 @@
     <!-- Bottom Navigation -->
     <string name="nav_library">游戏</string>
     <string name="nav_specials">特惠</string>
+    <string name="nav_activity">记录</string>
 
     <!-- Library -->
     <string name="library_group_recent">近期活跃 (%d)</string>
@@ -114,6 +115,7 @@
 
     <!-- Game Marks -->
     <string name="mark_unplayed">未开始</string>
+    <string name="mark_playing">在玩</string>
     <string name="mark_completed">通关一周目</string>
     <string name="mark_multi_completed">多周目通关</string>
     <string name="mark_perfected">完美通关</string>
@@ -123,6 +125,16 @@
     <string name="mark_filter_all">全部</string>
     <string name="mark_select_status">选择状态</string>
     <string name="mark_clear">清除标记</string>
+
+    <!-- Activity -->
+    <string name="activity_previous_year">上一年</string>
+    <string name="activity_next_year">下一年</string>
+    <string name="activity_heatmap_description">%d 年活动热力图</string>
+    <string name="activity_empty">当天还没有记录</string>
+    <string name="activity_baseline_ready">已建立基线，下次刷新后开始统计</string>
+    <string name="activity_refresh">刷新记录</string>
+    <string name="activity_game_cover">%s 的游戏封面</string>
+    <string name="activity_anime_cover">%s 的动漫封面</string>
 
     <!-- Tags -->
     <string name="tag_manage">标签管理</string>
@@ -183,7 +195,11 @@
     <string name="bangumi_collection_status">状态</string>
     <string name="bangumi_episode_progress">章节</string>
     <string name="bangumi_episode_seen">看到第 %d 集</string>
-    <string name="bangumi_episode_total">共 %d 集</string>
+    <string name="bangumi_episode_total">共 %d 话</string>
+    <string name="bangumi_card_episode_progress">已看 %1$d/%2$d 话</string>
+    <string name="bangumi_card_episode_seen">已看 %d 话</string>
+    <string name="bangumi_card_episode_count">%d话</string>
+    <string name="bangumi_detail_episode_count_label">话数</string>
     <string name="bangumi_episode_compact">%1$d / %2$d</string>
     <string name="bangumi_episode_decrease">减少已看集数</string>
     <string name="bangumi_episode_increase">增加已看集数</string>

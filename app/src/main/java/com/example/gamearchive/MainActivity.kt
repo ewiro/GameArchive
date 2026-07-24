@@ -11,18 +11,22 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -42,14 +46,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -64,13 +74,14 @@ import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import java.util.Calendar
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -147,21 +158,34 @@ private fun MainScreen() {
     val bangumiEnabled = ThemeUtils.isBangumiEnabled(context)
     val specialsPage = if (specialsEnabled) 1 else -1
     val bangumiPage = if (bangumiEnabled) (if (specialsEnabled) 2 else 1) else -1
-    val pagerState = rememberPagerState(pageCount = { 1 + (if (specialsEnabled) 1 else 0) + (if (bangumiEnabled) 1 else 0) })
+    val activityPage = 1 + (if (specialsEnabled) 1 else 0) + (if (bangumiEnabled) 1 else 0)
+    val pagerState = rememberPagerState(pageCount = { activityPage + 1 })
     var bottomBarVisible by remember { mutableStateOf(true) }
     var topBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
 
+    val libraryViewModel: LibraryViewModel = viewModel()
+    val bangumiViewModel: BangumiViewModel = viewModel()
     val libraryListState = rememberLazyListState()
     val specialsListState = rememberLazyListState()
     val bangumiListState = rememberLazyListState()
+    val activityListState = rememberLazyListState()
     var bangumiTypeFilter by remember { mutableIntStateOf(2) }  // 默认在看
     var bangumiSearchQuery by remember { mutableStateOf("") }
     val activeListState = when (selectedTab) {
         0 -> libraryListState
         specialsPage -> specialsListState
         bangumiPage -> bangumiListState
+        activityPage -> activityListState
         else -> libraryListState
+    }
+
+    val bgmUsername = UserPrefs.getBangumiUsername(context)
+    val bgmAccessToken = UserPrefs.getBangumiAccessToken(context)
+    LaunchedEffect(bangumiEnabled, bgmUsername, bgmAccessToken) {
+        if (bangumiEnabled && bgmUsername.isNotBlank()) {
+            bangumiViewModel.loadIfNeeded(bgmUsername, bgmAccessToken, context)
+        }
     }
 
     // 滑动检测：仅顶部显示栏，离开顶部即隐藏，回到顶部显示
@@ -227,7 +251,15 @@ private fun MainScreen() {
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToSettings = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
-                    }
+                    },
+                    viewModel = libraryViewModel
+                )
+                activityPage -> ActivityPage(
+                    listState = activityListState,
+                    libraryViewModel = libraryViewModel,
+                    bangumiViewModel = bangumiViewModel,
+                    onNavigateToDetail = navigateToDetail,
+                    onNavigateToBangumiDetail = navigateToBangumiDetail
                 )
                 else -> {
                     if (specialsEnabled && page == 1) {
@@ -244,7 +276,8 @@ private fun MainScreen() {
                             onTypeFilterChange = { bangumiTypeFilter = it },
                             searchQuery = bangumiSearchQuery,
                             onSearchQueryChange = { bangumiSearchQuery = it },
-                            onNavigateToDetail = navigateToBangumiDetail
+                            onNavigateToDetail = navigateToBangumiDetail,
+                            viewModel = bangumiViewModel
                         )
                     }
                 }
@@ -274,6 +307,7 @@ private fun MainScreen() {
                         when {
                             selectedTab == specialsPage -> R.string.nav_specials
                             selectedTab == bangumiPage -> R.string.nav_bangumi
+                            selectedTab == activityPage -> R.string.nav_activity
                             else -> R.string.nav_library
                         }
                     ),
@@ -281,7 +315,7 @@ private fun MainScreen() {
                     fontSize = DesignTokens.TextTitle.sp,
                     modifier = Modifier.weight(1f)
                 )
-                if (selectedTab == 0 || selectedTab == bangumiPage) {
+                if (selectedTab == 0 || selectedTab == bangumiPage || selectedTab == activityPage) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }) {
@@ -306,7 +340,6 @@ private fun MainScreen() {
         }
 
         // ── 底栏叠加层（至少2页时显示） ──
-        if (specialsEnabled || bangumiEnabled) {
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -333,8 +366,21 @@ private fun MainScreen() {
                 )
                 Column(
                     modifier = Modifier
-                        .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnim0; scaleY = 0.85f + 0.15f * tabAnim0 }
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(0) } }
+                        .graphicsLayer {
+                            scaleX = 0.85f + 0.15f * tabAnim0
+                            scaleY = 0.85f + 0.15f * tabAnim0
+                        }
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            scope.launch {
+                                pagerState.animateScrollToPage(
+                                    page = 0,
+                                    animationSpec = tween(
+                                        durationMillis = DesignTokens.AnimDuration,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                )
+                            }
+                        }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -356,8 +402,21 @@ private fun MainScreen() {
                     )
                     Column(
                         modifier = Modifier
-                            .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnim1; scaleY = 0.85f + 0.15f * tabAnim1 }
-                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(1) } }
+                            .graphicsLayer {
+                                scaleX = 0.85f + 0.15f * tabAnim1
+                                scaleY = 0.85f + 0.15f * tabAnim1
+                            }
+                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(
+                                        page = 1,
+                                        animationSpec = tween(
+                                            durationMillis = DesignTokens.AnimDuration,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
+                                }
+                            }
                             .padding(horizontal = 24.dp, vertical = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -380,8 +439,21 @@ private fun MainScreen() {
                 )
                 Column(
                     modifier = Modifier
-                        .graphicsLayer { scaleX = 0.85f + 0.15f * tabAnimBgm; scaleY = 0.85f + 0.15f * tabAnimBgm }
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { scope.launch { pagerState.animateScrollToPage(bangumiPage) } }
+                        .graphicsLayer {
+                            scaleX = 0.85f + 0.15f * tabAnimBgm
+                            scaleY = 0.85f + 0.15f * tabAnimBgm
+                        }
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            scope.launch {
+                                pagerState.animateScrollToPage(
+                                    page = bangumiPage,
+                                    animationSpec = tween(
+                                        durationMillis = DesignTokens.AnimDuration,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                )
+                            }
+                        }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -395,11 +467,64 @@ private fun MainScreen() {
                         color = if (selectedTab == bangumiPage) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
                 }
+                val tabAnimActivity by animateFloatAsState(
+                    targetValue = if (selectedTab == activityPage) 1f else 0f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+                    label = "tab_anim_activity"
+                )
+                Column(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = 0.85f + 0.15f * tabAnimActivity
+                            scaleY = 0.85f + 0.15f * tabAnimActivity
+                        }
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            scope.launch {
+                                pagerState.animateScrollToPage(
+                                    page = activityPage,
+                                    animationSpec = tween(
+                                        durationMillis = DesignTokens.AnimDuration,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                )
+                            }
+                        }
+                        .padding(horizontal = 24.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        imageVector = if (selectedTab == activityPage) {
+                            MiuixIcons.Demibold.Recent
+                        } else {
+                            MiuixIcons.Light.Recent
+                        },
+                        contentDescription = context.getString(R.string.nav_activity),
+                        modifier = Modifier.size(DesignTokens.IconXl),
+                        colorFilter = ColorFilter.tint(
+                            if (selectedTab == activityPage) {
+                                DesignTokens.AccentBlue
+                            } else {
+                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive)
+                            }
+                        )
+                    )
+                    Text(
+                        text = context.getString(R.string.nav_activity),
+                        fontSize = DesignTokens.TextCaption.sp,
+                        color = if (selectedTab == activityPage) {
+                            DesignTokens.AccentBlue
+                        } else {
+                            MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive)
+                        }
+                    )
+                }
             }
         }
     } // Box
     } // Surface
-        } // end if bottom bar
 }
 
 // ────────── 库存页 ──────────
@@ -1590,6 +1715,346 @@ private fun BangumiLoadingSkeleton(topInsetDp: androidx.compose.ui.unit.Dp) {
     }
 }
 
+// ────────── 记录页 ──────────
+
+@Composable
+private fun ActivityPage(
+    listState: LazyListState,
+    libraryViewModel: LibraryViewModel,
+    bangumiViewModel: BangumiViewModel,
+    onNavigateToDetail: (Int, String, String) -> Unit,
+    onNavigateToBangumiDetail: (Int, String, String, String) -> Unit
+) {
+    val context = LocalContext.current
+    val steamLoading by libraryViewModel.loading.observeAsState()
+    val bangumiLoading by bangumiViewModel.loading.observeAsState()
+    val revision by ActivityStats.revision.observeAsState()
+    val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
+    val today = remember { activityDateString(Calendar.getInstance()) }
+    var selectedYear by remember { mutableIntStateOf(currentYear) }
+    var selectedDate by remember { mutableStateOf(today) }
+    var yearStats by remember { mutableStateOf<Map<String, DailyActivity>>(emptyMap()) }
+    var availableYears by remember { mutableStateOf(setOf(currentYear)) }
+
+    LaunchedEffect(revision, selectedYear) {
+        val loaded = withContext(Dispatchers.IO) {
+            ActivityStats.getYearStats(context, selectedYear) to
+                (ActivityStats.getAvailableYears(context) + currentYear)
+        }
+        yearStats = loaded.first
+        availableYears = loaded.second
+        if (!selectedDate.startsWith("$selectedYear-")) {
+            selectedDate = if (selectedYear == currentYear) {
+                today
+            } else {
+                yearStats.keys.maxOrNull() ?: "$selectedYear-12-31"
+            }
+        }
+    }
+
+    val selectedDay = yearStats[selectedDate]
+        ?: DailyActivity(selectedDate, 0, 0, emptyList())
+    val minYear = availableYears.minOrNull() ?: currentYear
+    val apiKey = UserPrefs.getApiKey(context)
+    val steamId = UserPrefs.getSteamId(context)
+    val bgmUsername = UserPrefs.getBangumiUsername(context)
+    val bgmAccessToken = UserPrefs.getBangumiAccessToken(context)
+    val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
+
+    PullToRefresh(
+        isRefreshing = steamLoading == true || bangumiLoading == true,
+        onRefresh = {
+            libraryViewModel.refresh(apiKey, steamId, context)
+            if (
+                ThemeUtils.isBangumiEnabled(context) &&
+                bgmUsername.isNotBlank() &&
+                bgmAccessToken.isNotBlank()
+            ) {
+                bangumiViewModel.refresh(bgmUsername, bgmAccessToken, context)
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = topBarInsetDp),
+        refreshTexts = listOf(
+            context.getString(R.string.general_pull_down),
+            context.getString(R.string.general_release),
+            context.getString(R.string.general_refreshing),
+            context.getString(R.string.general_refreshed)
+        )
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 72.dp)
+        ) {
+            item("activity_top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
+            item("activity_year") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    IconButton(
+                        onClick = { selectedYear-- },
+                        enabled = selectedYear > minYear
+                    ) {
+                        Image(
+                            imageVector = MiuixIcons.Light.ChevronBackward,
+                            contentDescription = context.getString(R.string.activity_previous_year),
+                            modifier = Modifier.size(DesignTokens.IconLg),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(
+                                    alpha = if (selectedYear > minYear) 1f else DesignTokens.OpacityInactive
+                                )
+                            )
+                        )
+                    }
+                    Text(
+                        text = selectedYear.toString(),
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DesignTokens.AccentBlue
+                    )
+                    IconButton(
+                        onClick = { selectedYear++ },
+                        enabled = selectedYear < currentYear
+                    ) {
+                        Image(
+                            imageVector = MiuixIcons.Light.ChevronForward,
+                            contentDescription = context.getString(R.string.activity_next_year),
+                            modifier = Modifier.size(DesignTokens.IconLg),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(
+                                    alpha = if (selectedYear < currentYear) 1f else DesignTokens.OpacityInactive
+                                )
+                            )
+                        )
+                    }
+                }
+            }
+            item("activity_heatmap") {
+                ActivityHeatmap(
+                    year = selectedYear,
+                    today = today,
+                    selectedDate = selectedDate,
+                    stats = yearStats,
+                    onDateSelected = { selectedDate = it }
+                )
+            }
+            item("activity_summary") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = selectedDate,
+                        fontSize = DesignTokens.TextSubtitle.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            if (selectedDay.entries.isEmpty()) {
+                item("activity_empty") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = context.getString(
+                                if (ActivityStats.isBaselineOnly(context)) {
+                                    R.string.activity_baseline_ready
+                                } else {
+                                    R.string.activity_empty
+                                }
+                            ),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                        )
+                    }
+                }
+            } else {
+                val rows = selectedDay.entries.chunked(4)
+                items(rows.size, key = { "activity_cover_row_$it" }) { rowIndex ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rows[rowIndex].forEach { entry ->
+                            ActivityCover(
+                                entry = entry,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    when (entry.kind) {
+                                        ActivityKind.GAME ->
+                                            onNavigateToDetail(entry.id, entry.title, "")
+                                        ActivityKind.ANIME ->
+                                            onNavigateToBangumiDetail(
+                                                entry.id,
+                                                entry.title,
+                                                entry.secondaryTitle,
+                                                entry.imageUrl
+                                            )
+                                    }
+                                }
+                            )
+                        }
+                        repeat(4 - rows[rowIndex].size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityHeatmap(
+    year: Int,
+    today: String,
+    selectedDate: String,
+    stats: Map<String, DailyActivity>,
+    onDateSelected: (String) -> Unit
+) {
+    val dates = remember(year) { activityDatesForYear(year) }
+    val rows = remember(dates) { (dates.size + 24) / 25 }
+    val context = LocalContext.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val gapPx = with(density) { 2.dp.toPx() }
+    val cornerPx = with(density) { 3.dp.toPx() }
+    val borderPx = with(density) { DesignTokens.BorderThick.toPx() }
+    val emptyColor = MiuixTheme.colorScheme.surfaceVariant
+    val selectedBorderColor = MiuixTheme.colorScheme.onSurface
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp)
+            .aspectRatio(25f / rows)
+            .onSizeChanged { canvasSize = it }
+            .semantics {
+                contentDescription =
+                    context.getString(R.string.activity_heatmap_description, year)
+            }
+            .pointerInput(dates, today, canvasSize) {
+                detectTapGestures { offset ->
+                    if (canvasSize.width <= 0 || canvasSize.height <= 0) return@detectTapGestures
+                    val column = (offset.x / (canvasSize.width / 25f)).toInt()
+                    val row = (offset.y / (canvasSize.height / rows.toFloat())).toInt()
+                    val index = row * 25 + column
+                    val date = dates.getOrNull(index) ?: return@detectTapGestures
+                    if (date <= today) onDateSelected(date)
+                }
+            }
+    ) {
+        val slotWidth = size.width / 25f
+        val slotHeight = size.height / rows
+        val cellSize = minOf(slotWidth, slotHeight) - gapPx
+        dates.forEachIndexed { index, date ->
+            val column = index % 25
+            val row = index / 25
+            val score = stats[date]?.score ?: 0.0
+            val cellColor = when {
+                score <= 0.0 -> emptyColor
+                score <= 2.0 -> DesignTokens.AccentBlue.copy(alpha = 0.32f)
+                score <= 4.0 -> DesignTokens.AccentBlue.copy(alpha = 0.52f)
+                score <= 6.0 -> DesignTokens.AccentBlue.copy(alpha = 0.74f)
+                else -> DesignTokens.AccentBlue
+            }
+            val topLeft = Offset(
+                x = column * slotWidth + (slotWidth - cellSize) / 2,
+                y = row * slotHeight + (slotHeight - cellSize) / 2
+            )
+            drawRoundRect(
+                color = cellColor,
+                topLeft = topLeft,
+                size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerPx, cornerPx)
+            )
+            if (date == selectedDate) {
+                drawRoundRect(
+                    color = selectedBorderColor,
+                    topLeft = topLeft,
+                    size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerPx, cornerPx),
+                    style = Stroke(width = borderPx)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityCover(entry: ActivityEntry, modifier: Modifier, onClick: () -> Unit) {
+    val context = LocalContext.current
+    var imageModel by remember(entry.kind, entry.id, entry.imageUrl) {
+        mutableStateOf<Any>(entry.imageUrl)
+    }
+    val description = context.getString(
+        if (entry.kind == ActivityKind.GAME) {
+            R.string.activity_game_cover
+        } else {
+            R.string.activity_anime_cover
+        },
+        entry.secondaryTitle.ifBlank { entry.title }
+    )
+    Box(
+        modifier = modifier
+            .aspectRatio(0.67f)
+            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+            .background(MiuixTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(imageModel)
+                .crossfade(true)
+                .listener(
+                    onError = { _, _ ->
+                        if (entry.kind == ActivityKind.GAME && imageModel == entry.imageUrl) {
+                            imageModel = buildHeaderUrl(context, entry.id)
+                        }
+                    }
+                )
+                .build(),
+            contentDescription = description,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+    }
+}
+
+private fun activityDatesForYear(year: Int): List<String> {
+    val calendar = Calendar.getInstance().apply {
+        clear()
+        set(Calendar.YEAR, year)
+        set(Calendar.DAY_OF_YEAR, 1)
+    }
+    val days = calendar.getActualMaximum(Calendar.DAY_OF_YEAR)
+    return buildList(days) {
+        repeat(days) {
+            add(activityDateString(calendar))
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        }
+    }
+}
+
+private fun activityDateString(calendar: Calendar): String = String.format(
+    Locale.US,
+    "%04d-%02d-%02d",
+    calendar.get(Calendar.YEAR),
+    calendar.get(Calendar.MONTH) + 1,
+    calendar.get(Calendar.DAY_OF_MONTH)
+)
+
 /** Bangumi 收藏类型 → 标签颜色 */
 private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
     1 to Color(0xFF42A5F5),
@@ -1606,21 +2071,28 @@ private fun BangumiPage(
     onTypeFilterChange: (Int) -> Unit,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    onNavigateToDetail: (Int, String, String, String) -> Unit
+    onNavigateToDetail: (Int, String, String, String) -> Unit,
+    viewModel: BangumiViewModel
 ) {
     val context = LocalContext.current
     val displayStyle = ThemeUtils.getBangumiDisplayStyle(context)  // 0=list, 1=grid
     val bgmUsername = UserPrefs.getBangumiUsername(context)
-    val viewModel: BangumiViewModel = viewModel()
+    val bgmAccessToken = UserPrefs.getBangumiAccessToken(context)
     val lifecycleOwner = LocalLifecycleOwner.current
     val loading by viewModel.loading.observeAsState()
     val error by viewModel.error.observeAsState()
     val collections by viewModel.collections.observeAsState()
     val bgmUser by viewModel.user.observeAsState()
     val bgmRatings by viewModel.ratings.observeAsState()
+    val bgmEpisodeTotals by viewModel.episodeTotals.observeAsState()
+    val bgmWatchedEpisodeCounts by viewModel.watchedEpisodeCounts.observeAsState()
     val ratingsMap = bgmRatings ?: emptyMap()
+    val episodeTotalsMap = bgmEpisodeTotals ?: emptyMap()
+    val watchedEpisodeCountsMap = bgmWatchedEpisodeCounts ?: emptyMap()
 
-    LaunchedEffect(bgmUsername) { viewModel.loadIfNeeded(bgmUsername) }
+    LaunchedEffect(bgmUsername, bgmAccessToken) {
+        viewModel.loadIfNeeded(bgmUsername, bgmAccessToken, context)
+    }
 
     DisposableEffect(lifecycleOwner, bgmUsername) {
         val observer = LifecycleEventObserver { _, event ->
@@ -1630,7 +2102,7 @@ private fun BangumiPage(
                 bgmUsername.isNotBlank()
             ) {
                 BangumiViewModel.collectionChanged = false
-                viewModel.refresh(bgmUsername)
+                viewModel.refresh(bgmUsername, bgmAccessToken, context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -1672,7 +2144,7 @@ private fun BangumiPage(
 
     PullToRefresh(
         isRefreshing = loading == true,
-        onRefresh = { viewModel.refresh(bgmUsername) },
+        onRefresh = { viewModel.refresh(bgmUsername, bgmAccessToken, context) },
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = topBarInsetDp),
         refreshTexts = listOf(
@@ -1850,12 +2322,19 @@ private fun BangumiPage(
                         if (index > 0) {
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
                         }
-                        BangumiItem(item = item, type = type, ratings = ratingsMap, onClick = {
+                        BangumiItem(
+                            item = item,
+                            type = type,
+                            ratings = ratingsMap,
+                            episodeTotals = episodeTotalsMap,
+                            watchedEpisodeCounts = watchedEpisodeCountsMap,
+                            onClick = {
                             onNavigateToDetail(item.subject_id,
                                 item.subject?.name ?: "",
                                 item.subject?.name_cn ?: "",
                                 item.subject?.images?.large ?: "")
-                        })
+                            }
+                        )
                     }
                 }
             }
@@ -1864,11 +2343,50 @@ private fun BangumiPage(
 }
 
 @Composable
-private fun BangumiItem(item: BangumiCollection, type: Int, ratings: Map<Int, Any?>, onClick: () -> Unit) {
+private fun BangumiItem(
+    item: BangumiCollection,
+    type: Int,
+    ratings: Map<Int, Any?>,
+    episodeTotals: Map<Int, Int>,
+    watchedEpisodeCounts: Map<Int, Int>,
+    onClick: () -> Unit
+) {
     val sub = item.subject ?: return
+    val context = LocalContext.current
     val imgUrl = sub.images?.common ?: sub.images?.medium
     val coverW = 80.dp; val coverH = 112.dp
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+    val displayTags = item.tags.orEmpty()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .ifEmpty {
+            sub.tags.orEmpty()
+                .map { it.name.trim() }
+                .filter(String::isNotEmpty)
+        }
+        .distinctBy { it.lowercase() }
+        .take(6)
+    val episodeTotal = episodeTotals[item.subject_id]
+        ?: sub.eps?.takeIf { it > 0 }
+    val watchedEpisodeCount = watchedEpisodeCounts[item.subject_id]
+        ?: item.ep_status.coerceAtMost(episodeTotal ?: item.ep_status)
+    val episodeText = when {
+        type == 1 && episodeTotal != null ->
+            context.getString(R.string.bangumi_episode_total, episodeTotal)
+        type != 1 && watchedEpisodeCount > 0 ->
+            if (episodeTotal != null) {
+                context.getString(
+                    R.string.bangumi_card_episode_progress,
+                    watchedEpisodeCount,
+                    episodeTotal
+                )
+            } else {
+                context.getString(R.string.bangumi_card_episode_seen, watchedEpisodeCount)
+            }
+        type != 1 && episodeTotal != null ->
+            context.getString(R.string.bangumi_card_episode_count, episodeTotal)
+        else -> null
+    }
 
     Row(
         modifier = Modifier
@@ -1903,13 +2421,32 @@ private fun BangumiItem(item: BangumiCollection, type: Int, ratings: Map<Int, An
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            if (displayTags.isNotEmpty()) {
+                Spacer(Modifier.height(DesignTokens.SpaceMd))
+                displayTags.chunked(3).forEachIndexed { rowIndex, rowTags ->
+                    if (rowIndex > 0) Spacer(Modifier.height(DesignTokens.SpaceXs))
+                    Row(horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceXs)) {
+                        rowTags.forEach { tag ->
+                            Text(
+                                text = tag,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                    .background(MiuixTheme.colorScheme.secondaryContainer)
+                                    .padding(
+                                        horizontal = DesignTokens.SpaceXs,
+                                        vertical = DesignTokens.SpaceXxs
+                                    ),
+                                color = dim,
+                                fontSize = DesignTokens.TextCaption.sp,
+                                softWrap = false
+                            )
+                        }
+                    }
+                }
+            }
             Spacer(Modifier.weight(1f))
-            if (type != 1 && item.ep_status > 0) {
-                val total = sub.total_episodes ?: sub.eps
-                val progress = if (total != null && total > 0) "已看 ${item.ep_status}/$total 话" else "已看 ${item.ep_status} 话"
-                Text(text = progress, fontSize = 12.sp, color = dim)
-            } else if (sub.eps != null) {
-                Text(text = "${sub.eps}话", fontSize = 12.sp, color = dim)
+            if (episodeText != null) {
+                Text(text = episodeText, fontSize = 12.sp, color = dim)
             }
         }
         // 右：评分 + 评级 + 更新日期
@@ -1920,7 +2457,7 @@ private fun BangumiItem(item: BangumiCollection, type: Int, ratings: Map<Int, An
             }
             else -> null
         }
-        val ratingMode = UserPrefs.getBangumiRatingMode(LocalContext.current)
+        val ratingMode = UserPrefs.getBangumiRatingMode(context)
         val myRate = if (item.rate > 0) item.rate.toDouble() else null
         val globalScore: Double? = extractScore(ratings[item.subject_id]) ?: extractScore(sub.rating)
         val score: Double? = when (ratingMode) {

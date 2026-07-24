@@ -41,7 +41,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -85,6 +87,7 @@ private fun BangumiDetailScreen(
     val statusBarDp = statusBarHeightDp()
 
     var detail by remember { mutableStateOf<BangumiSubjectDetail?>(null) }
+    var subjectPersons by remember { mutableStateOf<List<BangumiPerson>>(emptyList()) }
     var myCollection by remember { mutableStateOf<BangumiMyCollection?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isCollectionLoaded by remember { mutableStateOf(false) }
@@ -93,9 +96,11 @@ private fun BangumiDetailScreen(
     var draftRate by remember { mutableIntStateOf(0) }
     var draftTags by remember { mutableStateOf("") }
     var draftComment by remember { mutableStateOf("") }
+    var mainEpisodeCount by remember { mutableStateOf<Int?>(null) }
     var mainEpisodes by remember { mutableStateOf<List<BangumiUserEpisodeCollection>>(emptyList()) }
     var isEpisodeProgressUnavailable by remember { mutableStateOf(false) }
     var savedEpisodeProgress by remember { mutableIntStateOf(0) }
+    var savedRegularEpisodeProgress by remember { mutableIntStateOf(0) }
     var draftEpisodeProgress by remember { mutableIntStateOf(0) }
     var isStatusDropdownVisible by remember { mutableStateOf(false) }
     var statusDropdownRect by remember { mutableStateOf(Rect.Zero) }
@@ -106,6 +111,19 @@ private fun BangumiDetailScreen(
             detail = GameArchiveApp.bgmService.getSubject(subjectId)
         } catch (_: Exception) {
             Toast.makeText(context, context.getString(R.string.bangumi_detail_load_failed), Toast.LENGTH_SHORT).show()
+        }
+        try {
+            subjectPersons = GameArchiveApp.bgmService.getSubjectPersons(subjectId)
+        } catch (_: Exception) {
+            subjectPersons = emptyList()
+        }
+        try {
+            mainEpisodeCount = GameArchiveApp.bgmService
+                .getSubjectEpisodes(subjectId)
+                .total
+                .takeIf { it > 0 }
+        } catch (_: Exception) {
+            mainEpisodeCount = null
         }
         val token = UserPrefs.getBangumiAccessToken(context)
         if (token.isNotEmpty()) {
@@ -123,6 +141,7 @@ private fun BangumiDetailScreen(
                 draftTags = collection.tags.orEmpty().joinToString(", ")
                 draftComment = collection.comment.orEmpty()
                 savedEpisodeProgress = collection.ep_status ?: 0
+                savedRegularEpisodeProgress = savedEpisodeProgress
                 draftEpisodeProgress = savedEpisodeProgress
                 try {
                     mainEpisodes = service.getEpisodeCollections(subjectId).data.orEmpty()
@@ -130,6 +149,9 @@ private fun BangumiDetailScreen(
                             { it.episode.ep ?: Double.MAX_VALUE },
                             { it.episode.sort ?: Double.MAX_VALUE }
                         ))
+                    savedRegularEpisodeProgress = mainEpisodes.count { it.type == 2 }
+                    savedEpisodeProgress = savedRegularEpisodeProgress
+                    draftEpisodeProgress = savedRegularEpisodeProgress
                 } catch (_: Exception) {
                     isEpisodeProgressUnavailable = true
                 }
@@ -157,6 +179,9 @@ private fun BangumiDetailScreen(
             .map { it.trim() }
             .filter { it.isNotEmpty() }
             .distinctBy { it.lowercase() }
+        val previousApiType = myCollection?.type ?: draftType
+        val targetApiType = draftType
+        val previousRegularProgress = savedRegularEpisodeProgress
         isSaving = true
         coroutineScope.launch {
             try {
@@ -164,7 +189,7 @@ private fun BangumiDetailScreen(
                 val response = service.updateCollection(
                     subjectId,
                     BangumiCollectionUpdate(
-                        type = draftType,
+                        type = targetApiType,
                         rate = draftRate,
                         comment = draftComment.trim(),
                         tags = tags,
@@ -199,7 +224,23 @@ private fun BangumiDetailScreen(
                     UserPrefs.setBangumiUsername(context, username)
                 }
                 myCollection = service.getMyCollection(username, subjectId)
-                savedEpisodeProgress = myCollection?.ep_status ?: boundedEpisodeProgress
+                withContext(Dispatchers.IO) {
+                    ActivityStats.recordBangumiSave(
+                        context = context,
+                        subjectId = subjectId,
+                        title = detail?.name ?: subjectName,
+                        secondaryTitle = detail?.name_cn ?: subjectNameCn,
+                        imageUrl = detail?.images?.large
+                            ?: detail?.images?.common
+                            ?: subjectImage,
+                        previousApiType = previousApiType,
+                        currentApiType = targetApiType,
+                        previousEpisodes = previousRegularProgress,
+                        currentEpisodes = boundedEpisodeProgress
+                    )
+                }
+                savedRegularEpisodeProgress = boundedEpisodeProgress
+                savedEpisodeProgress = boundedEpisodeProgress
                 draftEpisodeProgress = savedEpisodeProgress
                 BangumiViewModel.collectionChanged = true
                 Toast.makeText(
@@ -266,6 +307,57 @@ private fun BangumiDetailScreen(
                     }
                 } else if (detail != null) {
                     val d = detail!!
+                    val chapterCount = mainEpisodes.size.takeIf { it > 0 }
+                        ?: mainEpisodeCount
+                        ?: d.eps?.takeIf { it > 0 }
+                    val detailRows = remember(d, subjectPersons, chapterCount, context) {
+                        val infoboxRows = d.infobox.orEmpty().mapNotNull { item ->
+                            val value = when (item.value) {
+                                is String -> item.value
+                                is Number -> item.value.toString()
+                                else -> ""
+                            }.trim()
+                            if (value.isEmpty()) null else item.key.trim() to value
+                        }.toMutableList()
+                        if (chapterCount != null) {
+                            val episodeKeys = setOf("话数", "話数", "集数", "episode", "episodes")
+                            val episodeValue = context.getString(
+                                R.string.bangumi_card_episode_count,
+                                chapterCount
+                            )
+                            val episodeIndex = infoboxRows.indexOfFirst {
+                                it.first.lowercase() in episodeKeys
+                            }
+                            if (episodeIndex >= 0) {
+                                infoboxRows[episodeIndex] =
+                                    infoboxRows[episodeIndex].first to episodeValue
+                            } else {
+                                infoboxRows.add(
+                                    context.getString(R.string.bangumi_detail_episode_count_label) to
+                                        episodeValue
+                                )
+                            }
+                        }
+                        val existingKeys = infoboxRows
+                            .map { it.first.lowercase() }
+                            .toSet()
+                        val personRows = subjectPersons
+                            .asSequence()
+                            .filter { !it.relation.isNullOrBlank() && !it.name.isNullOrBlank() }
+                            .groupBy { it.relation!!.trim() }
+                            .mapNotNull { (relation, persons) ->
+                                if (relation.lowercase() in existingKeys) {
+                                    null
+                                } else {
+                                    val names = persons
+                                        .mapNotNull { it.name?.trim() }
+                                        .filter { it.isNotEmpty() }
+                                        .distinct()
+                                    if (names.isEmpty()) null else relation to names.joinToString("、")
+                                }
+                            }
+                        infoboxRows + personRows
+                    }
                     Column(
                         modifier = Modifier.fillMaxSize()
                             .verticalScroll(rememberScrollState())
@@ -335,11 +427,16 @@ private fun BangumiDetailScreen(
 
                                 Spacer(Modifier.weight(1f))
 
-                                // 日期 + 话数（置底，用eps正集数不含番外）
-                                if (d.eps != null && d.eps!! > 0) {
-                                    Text(text = "共 ${d.eps} 话", fontSize = DesignTokens.TextBody1.sp, color = dim)
-                                } else {
-                                    Text(text = "连载中", fontSize = DesignTokens.TextBody1.sp, color = dim)
+                                // 日期 + 话数（置底，优先使用章节列表数量）
+                                if (chapterCount != null) {
+                                    Text(
+                                        text = context.getString(
+                                            R.string.bangumi_episode_total,
+                                            chapterCount
+                                        ),
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        color = dim
+                                    )
                                 }
                                 if (!d.date.isNullOrEmpty()) {
                                     val isMovie = d.name?.contains("剧场版") == true ||
@@ -724,7 +821,7 @@ private fun BangumiDetailScreen(
                         }
 
                         // 详情
-                        if (!d.infobox.isNullOrEmpty()) {
+                        if (detailRows.isNotEmpty()) {
                             Spacer(Modifier.height(20.dp))
                             Text(
                                 text = "详情",
@@ -733,28 +830,21 @@ private fun BangumiDetailScreen(
                                 color = MiuixTheme.colorScheme.onSurface
                             )
                             Spacer(Modifier.height(8.dp))
-                            d.infobox!!.forEach { item ->
-                                val v = when (item.value) {
-                                    is String -> item.value as String
-                                    is Number -> item.value.toString()
-                                    else -> ""
-                                }
-                                if (v.isNotEmpty()) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = item.key,
-                                            fontSize = 13.sp,
-                                            color = dim,
-                                            modifier = Modifier.width(72.dp)
-                                        )
-                                        Text(
-                                            text = v,
-                                            fontSize = 13.sp,
-                                            color = MiuixTheme.colorScheme.onSurface
-                                        )
-                                    }
+                            detailRows.forEach { (key, value) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = key,
+                                        fontSize = 13.sp,
+                                        color = dim,
+                                        modifier = Modifier.width(100.dp)
+                                    )
+                                    Text(
+                                        text = value,
+                                        fontSize = 13.sp,
+                                        color = MiuixTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
                         }
