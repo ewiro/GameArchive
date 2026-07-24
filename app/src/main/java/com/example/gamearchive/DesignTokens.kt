@@ -1,5 +1,7 @@
 package com.example.gamearchive
 
+import android.os.Build
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -19,6 +23,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -235,12 +241,8 @@ fun tagBgColor(): Color =
 /** 获取状态栏高度（dp），消除 5 处重复代码 */
 @Composable
 fun statusBarHeightDp(): Dp {
-    val context = LocalContext.current
-    return remember {
-        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        val px = if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
-        (px / context.resources.displayMetrics.density).dp
-    }
+    val density = LocalDensity.current
+    return with(density) { WindowInsets.statusBars.getTop(density).toDp() }
 }
 
 /** 评价分数 → 语义颜色 */
@@ -254,7 +256,12 @@ fun reviewColor(percent: Int): Color = when {
 /** 读取系统"粗体文字"辅助功能设置（Android 12+），返回适配后的字重 */
 @Composable
 fun systemFontWeight(): FontWeight {
-    val adjustment = LocalContext.current.resources.configuration.fontWeightAdjustment
+    val configuration = LocalConfiguration.current
+    val adjustment = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        configuration.fontWeightAdjustment
+    } else {
+        0
+    }
     return when {
         adjustment >= 300 -> FontWeight(1000)
         adjustment >= 200 -> FontWeight.Bold

@@ -1,70 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-
-    <!-- ===== MIUIX 经典蓝 (强调色) ===== -->
-    <color name="miuix_blue">#FF3482FF</color>
-    <color name="miuix_blue_dark">#FF5E9BFF</color>
-    <color name="miuix_blue_pressed">#FF2B6FDB</color>
-
-    <!-- ===== MIUIX 浅色模式 ===== -->
-    <!-- 页面底：极浅灰；卡片：纯白 -->
     <color name="miuix_bg_light">#FFF5F5F7</color>
-    <color name="miuix_card_light">#FFFFFFFF</color>
-    <color name="miuix_card_light_alt">#FFFAFAFB</color>
     <color name="miuix_text_primary_light">#FF000000</color>
     <color name="miuix_text_secondary_light">#FF8A8A8F</color>
-    <color name="miuix_text_tertiary_light">#FFB0B0B5</color>
-    <color name="miuix_divider_light">#FFEDEDF0</color>
-    <color name="miuix_placeholder_light">#FFEAEAEE</color>
-
-    <!-- ===== MIUIX 深色模式 ===== -->
-    <!-- 页面底：近黑；卡片：略亮的深灰 -->
     <color name="miuix_bg_dark">#FF101013</color>
-    <color name="miuix_card_dark">#FF1C1C1E</color>
-    <color name="miuix_card_dark_alt">#FF242428</color>
     <color name="miuix_text_primary_dark">#FFF2F2F2</color>
     <color name="miuix_text_secondary_dark">#FF9A9A9F</color>
-    <color name="miuix_text_tertiary_dark">#FF6A6A70</color>
-    <color name="miuix_divider_dark">#FF2C2C30</color>
-    <color name="miuix_placeholder_dark">#FF2A2A2E</color>
-
-    <!-- ===== 语义色 ===== -->
-    <color name="miuix_success">#FF4CAF50</color>
-    <color name="miuix_error">#FFD32F2F</color>
-    <color name="miuix_discount_bg">#FFA1CD44</color>
-    <color name="miuix_discount_text">#FF000400</color>
-    <color name="miuix_review_blue">#FF66C0F4</color>
-    <color name="miuix_history_low">#FFFF9800</color>
-    <color name="miuix_destructive_bg">#1AFF3B30</color>
-
-    <!-- Steam 评测等级色 -->
-    <color name="miuix_review_tier_great">#FFE65100</color>
-    <color name="miuix_review_tier_good">#FF1565C0</color>
-    <color name="miuix_review_tier_mixed">#FF616161</color>
-    <color name="miuix_review_tier_poor">#FFD32F2F</color>
-
-    <!-- 在线状态 -->
-    <color name="miuix_status_online">#FFB3E5FC</color>
-    <color name="miuix_status_offline">#FFE0E0E0</color>
-    <color name="miuix_status_ingame">#FFA3CF06</color>
-
-    <!-- 时长徽章色阶 -->
-    <color name="miuix_badge_zero">#FFCCCCD6</color>
-    <color name="miuix_badge_200plus">#FFD42517</color>
-    <color name="miuix_badge_100plus">#FFFB8B05</color>
-    <color name="miuix_badge_50plus">#FF7E1671</color>
-    <color name="miuix_badge_20plus">#FF1772B4</color>
-    <color name="miuix_badge_default">#FF20894D</color>
-
-    <!-- 弹窗分割线 -->
-    <color name="miuix_dialog_divider">#10000000</color>
-
-    <!-- 开关未选中轨道 -->
-    <color name="miuix_switch_track_off">#FFD1D1D6</color>
-
-    <!-- ===== 列表页纯白底 / 详情页内嵌卡 (浅色) ===== -->
-    <color name="list_page_bg">#FFFFFFFF</color>
-    <color name="miuix_inset_card">#FFF4F5F7</color>
 </resources>

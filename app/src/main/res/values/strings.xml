@@ -71,7 +71,6 @@
     <string name="account_remove">Remove</string>
     <string name="account_steam_id_hint">Steam ID</string>
     <string name="account_api_key_hint">API Key</string>
-    <string name="account_primary">Primary</string>
 
     <!-- Detail -->
     <string name="detail_about">ABOUT THIS GAME</string>
@@ -132,7 +131,6 @@
     <string name="activity_heatmap_description">%d activity heatmap</string>
     <string name="activity_empty">No activity recorded that day</string>
     <string name="activity_baseline_ready">Baseline ready. Refresh again to start tracking.</string>
-    <string name="activity_refresh">Refresh activity</string>
     <string name="activity_game_cover">Game cover for %s</string>
     <string name="activity_anime_cover">Anime cover for %s</string>
 
@@ -163,7 +161,6 @@
     <string name="tag_exists">Tag already exists</string>
     <string name="game_rename">Rename Game</string>
     <string name="game_restore_default">Restore Default</string>
-    <string name="general_cancel">Cancel</string>
 
     <!-- Bangumi -->
     <string name="nav_bangumi">Anime</string>
@@ -185,7 +182,6 @@
     <string name="bangumi_no_username">Enter Bangumi username in Settings</string>
     <string name="bangumi_empty">No anime collection found</string>
     <string name="bangumi_profile_total">%d anime in collection</string>
-    <string name="bangumi_count">%d anime</string>
     <string name="bangumi_search">Search anime…</string>
     <string name="bangumi_detail_load_failed">Failed to load anime details</string>
     <string name="bangumi_collection_load_failed">Failed to load your Bangumi collection</string>
@@ -194,7 +190,6 @@
     <string name="bangumi_progress_collapse">Collapse My Progress</string>
     <string name="bangumi_collection_status">Status</string>
     <string name="bangumi_episode_progress">Episodes</string>
-    <string name="bangumi_episode_seen">Watched through episode %d</string>
     <string name="bangumi_episode_total">%d episodes total</string>
     <string name="bangumi_card_episode_progress">Watched %1$d/%2$d episodes</string>
     <string name="bangumi_card_episode_seen">Watched %d episodes</string>
@@ -216,4 +211,19 @@
     <string name="bangumi_authorization_required">Authorize Bangumi in Settings to edit this collection</string>
 
     <string name="cancel">Cancel</string>
+    <string name="general_back">Back</string>
+    <string name="general_close">Close</string>
+    <string name="general_delete">Delete</string>
+    <string name="general_loading">Loading…</string>
+    <string name="general_load_failed">Failed to load</string>
+    <string name="general_sort">Sort</string>
+    <string name="tag_create">Create</string>
+    <string name="bangumi_tags_title">Tags</string>
+    <string name="bangumi_summary_title">Summary</string>
+    <string name="bangumi_details_title">Details</string>
+    <string name="media_play">Play</string>
+    <string name="bangumi_oauth_config_missing">Configure Bangumi OAuth credentials in AppConfig.kt first</string>
+    <string name="bangumi_oauth_canceled">Authorization canceled</string>
+    <string name="bangumi_oauth_success">Authorized. User ID: %1$d</string>
+    <string name="bangumi_oauth_failed">Authorization failed: %1$s</string>
 </resources>

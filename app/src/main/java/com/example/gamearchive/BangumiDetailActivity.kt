@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +43,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -107,23 +110,34 @@ private fun BangumiDetailScreen(
     var isProgressExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(subjectId) {
-        try {
-            detail = GameArchiveApp.bgmService.getSubject(subjectId)
-        } catch (_: Exception) {
+        val (loadedDetail, loadedPersons, loadedEpisodeCount) = coroutineScope {
+            val detailDeferred = async {
+                runCatching { GameArchiveApp.bgmService.getSubject(subjectId) }.getOrNull()
+            }
+            val personsDeferred = async {
+                runCatching {
+                    GameArchiveApp.bgmService.getSubjectPersons(subjectId)
+                }.getOrDefault(emptyList())
+            }
+            val episodesDeferred = async {
+                runCatching {
+                    GameArchiveApp.bgmService
+                        .getSubjectEpisodes(subjectId)
+                        .total
+                        .takeIf { it > 0 }
+                }.getOrNull()
+            }
+            Triple(
+                detailDeferred.await(),
+                personsDeferred.await(),
+                episodesDeferred.await()
+            )
+        }
+        detail = loadedDetail
+        subjectPersons = loadedPersons
+        mainEpisodeCount = loadedEpisodeCount
+        if (loadedDetail == null) {
             Toast.makeText(context, context.getString(R.string.bangumi_detail_load_failed), Toast.LENGTH_SHORT).show()
-        }
-        try {
-            subjectPersons = GameArchiveApp.bgmService.getSubjectPersons(subjectId)
-        } catch (_: Exception) {
-            subjectPersons = emptyList()
-        }
-        try {
-            mainEpisodeCount = GameArchiveApp.bgmService
-                .getSubjectEpisodes(subjectId)
-                .total
-                .takeIf { it > 0 }
-        } catch (_: Exception) {
-            mainEpisodeCount = null
         }
         val token = UserPrefs.getBangumiAccessToken(context)
         if (token.isNotEmpty()) {
@@ -134,7 +148,15 @@ private fun BangumiDetailScreen(
                     username = service.getCurrentUser().username
                     UserPrefs.setBangumiUsername(context, username)
                 }
-                val collection = service.getMyCollection(username, subjectId)
+                val collectionDeferred = async {
+                    service.getMyCollection(username, subjectId)
+                }
+                val episodesDeferred = async {
+                    runCatching {
+                        service.getEpisodeCollections(subjectId).data.orEmpty()
+                    }.getOrNull()
+                }
+                val collection = collectionDeferred.await()
                 myCollection = collection
                 draftType = collection.type ?: 1
                 draftRate = collection.rate ?: 0
@@ -143,8 +165,9 @@ private fun BangumiDetailScreen(
                 savedEpisodeProgress = collection.ep_status ?: 0
                 savedRegularEpisodeProgress = savedEpisodeProgress
                 draftEpisodeProgress = savedEpisodeProgress
-                try {
-                    mainEpisodes = service.getEpisodeCollections(subjectId).data.orEmpty()
+                val loadedEpisodes = episodesDeferred.await()
+                if (loadedEpisodes != null) {
+                    mainEpisodes = loadedEpisodes
                         .sortedWith(compareBy(
                             { it.episode.ep ?: Double.MAX_VALUE },
                             { it.episode.sort ?: Double.MAX_VALUE }
@@ -152,7 +175,7 @@ private fun BangumiDetailScreen(
                     savedRegularEpisodeProgress = mainEpisodes.count { it.type == 2 }
                     savedEpisodeProgress = savedRegularEpisodeProgress
                     draftEpisodeProgress = savedRegularEpisodeProgress
-                } catch (_: Exception) {
+                } else {
                     isEpisodeProgressUnavailable = true
                 }
             } catch (e: Exception) {
@@ -285,7 +308,7 @@ private fun BangumiDetailScreen(
                     IconButton(onClick = onBack) {
                         Image(
                             imageVector = MiuixIcons.Demibold.Back,
-                            contentDescription = "Back",
+                            contentDescription = context.getString(R.string.general_back),
                             modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
@@ -303,7 +326,7 @@ private fun BangumiDetailScreen(
 
                 if (isLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("加载中...", color = dim)
+                        Text(context.getString(R.string.general_loading), color = dim)
                     }
                 } else if (detail != null) {
                     val d = detail!!
@@ -749,7 +772,7 @@ private fun BangumiDetailScreen(
                         // 标签
                         if (!d.tags.isNullOrEmpty()) {
                             Text(
-                                text = "标签",
+                                text = context.getString(R.string.bangumi_tags_title),
                                 fontSize = DesignTokens.TextSubtitle.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MiuixTheme.colorScheme.onSurface
@@ -760,7 +783,7 @@ private fun BangumiDetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                d.tags!!.forEach { tag ->
+                                d.tags.orEmpty().forEach { tag ->
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(DesignTokens.CornerMedium))
@@ -781,7 +804,7 @@ private fun BangumiDetailScreen(
                         // 简介
                         if (!d.summary.isNullOrEmpty()) {
                             Text(
-                                text = "简介",
+                                text = context.getString(R.string.bangumi_summary_title),
                                 fontSize = DesignTokens.TextSubtitle.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MiuixTheme.colorScheme.onSurface
@@ -789,9 +812,19 @@ private fun BangumiDetailScreen(
                             Spacer(Modifier.height(6.dp))
                             // WebView 渲染简介
                             val isDarkWebView = isSystemInDarkTheme()
+                            val summaryWebView = remember(d.id) {
+                                mutableStateOf<android.webkit.WebView?>(null)
+                            }
+                            DisposableEffect(d.id) {
+                                onDispose {
+                                    summaryWebView.value?.destroy()
+                                    summaryWebView.value = null
+                                }
+                            }
                             AndroidView(
                                 factory = { ctx ->
                                     android.webkit.WebView(ctx).apply {
+                                        summaryWebView.value = this
                                         layoutParams = android.view.ViewGroup.LayoutParams(
                                             android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                                             android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -801,11 +834,10 @@ private fun BangumiDetailScreen(
                                         settings.javaScriptEnabled = false
                                         val cssText = if (isDarkWebView) "#CCCCCC" else "#333333"
                                         val summaryHtml = d.summary
-                                            ?.replace("\r\n", "\n")
-                                            ?.split("\n")
-                                            ?.filter { it.isNotBlank() }
-                                            ?.joinToString("") { "<p style=\"text-indent:1em;margin:0.5em 0\">$it</p>" }
-                                            ?: ""
+                                            .replace("\r\n", "\n")
+                                            .split("\n")
+                                            .filter { it.isNotBlank() }
+                                            .joinToString("") { "<p style=\"text-indent:1em;margin:0.5em 0\">$it</p>" }
                                         val html = """
                                             <html><head><style>
                                                 body { font-size: 14px; line-height:1.6; color:$cssText; background:transparent;
@@ -824,7 +856,7 @@ private fun BangumiDetailScreen(
                         if (detailRows.isNotEmpty()) {
                             Spacer(Modifier.height(20.dp))
                             Text(
-                                text = "详情",
+                                text = context.getString(R.string.bangumi_details_title),
                                 fontSize = DesignTokens.TextSubtitle.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MiuixTheme.colorScheme.onSurface
@@ -853,7 +885,7 @@ private fun BangumiDetailScreen(
                     }
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("加载失败", color = dim)
+                        Text(context.getString(R.string.general_load_failed), color = dim)
                     }
                 }
             }
@@ -878,7 +910,7 @@ private fun BangumiDetailScreen(
                     contentAlignment = Alignment.TopEnd
                 ) {
                     val screenWidthDp = with(density) {
-                        (context.resources.displayMetrics.widthPixels / density.density).dp
+                        LocalWindowInfo.current.containerSize.width.toDp()
                     }
                     val triggerRightDp = with(density) {
                         (statusDropdownRect.right / density.density).dp

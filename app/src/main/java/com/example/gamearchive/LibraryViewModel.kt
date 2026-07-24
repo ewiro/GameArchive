@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -9,7 +10,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import retrofit2.HttpException
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 库存页的"数据管家"。
@@ -33,6 +37,9 @@ class LibraryViewModel : ViewModel() {
     // 价格表：游戏ID -> 价格文字
     val priceMap = mutableMapOf<Int, String>()
 
+    private val reviewStates = ConcurrentHashMap<String, MutableLiveData<String?>>()
+    private val reviewSemaphore = Semaphore(4)
+
     // 是否正在加载
     private val _loading = MutableLiveData<Boolean>()
     val loading: LiveData<Boolean> = _loading
@@ -45,6 +52,58 @@ class LibraryViewModel : ViewModel() {
     private var hasLoaded = false
     // 上次加载时使用的语言，切换语言时强制重新抓取
     private var lastLanguage: String? = null
+
+    /**
+     * 返回单个游戏的评价状态。请求按 AppID/语言去重并限制并发，生命周期跟随 ViewModel。
+     */
+    fun reviewScore(context: Context, appId: Int): LiveData<String?> {
+        val language = LocaleHelper.currentApiLanguage
+        val key = "${appId}_$language"
+        return reviewStates.getOrPut(key) {
+            MutableLiveData<String?>().also { state ->
+                val appContext = context.applicationContext
+                viewModelScope.launch(Dispatchers.IO) {
+                    val prefs = appContext.getSharedPreferences(
+                        "steam_reviews_cache",
+                        Context.MODE_PRIVATE
+                    )
+                    val cacheKey = "review_$key"
+                    val cached = readTimedCache(
+                        prefs.getString(cacheKey, null),
+                        30L * 24 * 60 * 60 * 1000
+                    )
+                    if (cached != null) {
+                        state.postValue(cached)
+                        return@launch
+                    }
+                    reviewSemaphore.withPermit {
+                        try {
+                            val summary = GameArchiveApp.apiService
+                                .getGameReviews(appId, l = language)
+                                .query_summary
+                            if (summary != null && summary.total_reviews > 0) {
+                                val rate = (
+                                    summary.total_positive.toDouble() /
+                                        summary.total_reviews * 100
+                                    ).toInt()
+                                val text = appContext.getString(
+                                    R.string.review_score_format,
+                                    rate
+                                )
+                                prefs.edit().putString(
+                                    cacheKey,
+                                    "$text|${System.currentTimeMillis()}"
+                                ).apply()
+                                state.postValue(text)
+                            }
+                        } catch (_: Exception) {
+                            // 卡片评价属于附加信息，失败时保持为空。
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     /** 界面首次进入时调用：已经有数据就不重复加载（语言未变时） */
     fun loadIfNeeded(apiKey: String, steamId: String, context: android.content.Context? = null) {
@@ -63,6 +122,21 @@ class LibraryViewModel : ViewModel() {
             _loading.value = true
             try {
                 supervisorScope {
+                    val playerDeferred = async {
+                        runCatching {
+                            GameArchiveApp.apiService
+                                .getPlayerSummaries(apiKey, steamId)
+                                .response.players
+                                .firstOrNull()
+                        }.getOrNull()
+                    }
+                    val levelDeferred = async {
+                        runCatching {
+                            GameArchiveApp.apiService
+                                .getSteamLevel(apiKey, steamId)
+                                .response.player_level ?: 0
+                        }.getOrDefault(0)
+                    }
                     // 收集所有账号
                     val allAccounts = if (context != null) {
                         val extra = UserPrefs.getAdditionalAccounts(context)
@@ -102,16 +176,18 @@ class LibraryViewModel : ViewModel() {
                     MainActivity.ownedGameIds.addAll(merged.map { it.appid })
 
                     // 玩家信息（仅主账号）
-                    val userRes = async { GameArchiveApp.apiService.getPlayerSummaries(apiKey, steamId) }.await()
-                    val playerInfo = if (userRes.response.players.isNotEmpty()) userRes.response.players[0] else null
+                    val priceDeferred = async {
+                        fetchBatchPrices(
+                            merged.sortedByDescending { it.playtime_forever }.take(20)
+                        )
+                    }
+                    val playerInfo = playerDeferred.await()
 
                     // Steam 等级（仅主账号）
-                    val playerLevel = try {
-                        GameArchiveApp.apiService.getSteamLevel(apiKey, steamId)?.response?.player_level ?: 0
-                    } catch (e: Exception) { 0 }
+                    val playerLevel = levelDeferred.await()
 
                     // 批量获取前20个游戏的价格
-                    fetchBatchPrices(merged.sortedByDescending { it.playtime_forever }.take(20))
+                    priceDeferred.await()
 
                     _games.value = merged
                     _player.value = playerInfo
@@ -166,5 +242,13 @@ class LibraryViewModel : ViewModel() {
     /** 错误提示已显示，清空避免重复弹出 */
     fun clearError() {
         _error.value = null
+    }
+
+    private fun readTimedCache(entry: String?, ttlMs: Long): String? {
+        entry ?: return null
+        val parts = entry.split("|", limit = 2)
+        if (parts.size != 2) return null
+        val timestamp = parts[1].toLongOrNull() ?: return null
+        return parts[0].takeIf { System.currentTimeMillis() - timestamp <= ttlMs }
     }
 }

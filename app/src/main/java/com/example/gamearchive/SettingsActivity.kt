@@ -47,6 +47,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -56,6 +57,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
+@Suppress("DEPRECATION")
 class SettingsActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context?) {
@@ -120,14 +122,21 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var showTagDialog by remember { mutableStateOf(false) }
     var newTagName by remember { mutableStateOf("") }
     var tagListRefresh by remember { mutableIntStateOf(0) }
-    val allTags = remember(tagListRefresh) { GameTags.getAllTags(context).distinctBy { it.lowercase() }.sortedByDescending { GameTags.getTagUsageCount(context, it) } }
+    val tagData = remember(tagListRefresh) {
+        val usageCounts = GameTags.getTagUsageCounts(context)
+        val tags = GameTags.getAllTags(context)
+            .distinctBy { it.lowercase() }
+            .sortedByDescending { usageCounts[it] ?: 0 }
+        tags to usageCounts
+    }
+    val allTags = tagData.first
+    val tagUsageCounts = tagData.second
 
     // ── 账号管理状态 ──
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var newSteamId by remember { mutableStateOf("") }
     var newApiKey by remember { mutableStateOf("") }
     var accounts by remember { mutableStateOf(UserPrefs.getAdditionalAccounts(context)) }
-    var listRefreshTrigger by remember { mutableIntStateOf(0) }
 
     // ── 导出/导入文件选择器 ──
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
@@ -137,11 +146,19 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         val json = pendingExportJson ?: return@rememberLauncherForActivityResult
         pendingExportJson = null
         if (uri != null) {
-            try {
-                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
-                Toast.makeText(context, R.string.settings_export_ok, Toast.LENGTH_SHORT).show()
-            } catch (_: Exception) {
-                Toast.makeText(context, R.string.settings_export_fail, Toast.LENGTH_SHORT).show()
+            scope.launch {
+                val succeeded = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri)?.use {
+                            it.write(json.toByteArray(Charsets.UTF_8))
+                        } ?: error("Unable to open output stream")
+                    }.isSuccess
+                }
+                Toast.makeText(
+                    context,
+                    if (succeeded) R.string.settings_export_ok else R.string.settings_export_fail,
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -150,16 +167,22 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            try {
-                val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() ?: ""
-                if (DataBackup.importFromJson(context, json)) {
+            scope.launch {
+                val imported = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val json = context.contentResolver.openInputStream(uri)
+                            ?.bufferedReader()
+                            ?.use { it.readText() }
+                            .orEmpty()
+                        DataBackup.importFromJson(context, json)
+                    }.getOrDefault(false)
+                }
+                if (imported) {
                     Toast.makeText(context, R.string.settings_import_ok, Toast.LENGTH_SHORT).show()
                     onRecreate()
                 } else {
                     Toast.makeText(context, R.string.settings_import_fail, Toast.LENGTH_SHORT).show()
                 }
-            } catch (_: Exception) {
-                Toast.makeText(context, R.string.settings_import_fail, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -183,7 +206,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 IconButton(onClick = onBack) {
                     Image(
                         imageVector = MiuixIcons.Demibold.Back,
-                        contentDescription = "Back",
+                        contentDescription = context.getString(R.string.general_back),
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                     )
@@ -462,8 +485,12 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                             .noRippleClickable {
-                                pendingExportJson = DataBackup.exportToJson(context)
-                                exportLauncher.launch("gamearchive_backup.json")
+                                scope.launch {
+                                    pendingExportJson = withContext(Dispatchers.IO) {
+                                        DataBackup.exportToJson(context)
+                                    }
+                                    exportLauncher.launch("gamearchive_backup.json")
+                                }
                             }
                             .padding(vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -546,7 +573,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 .background(buttonBgColor())
                                 .noRippleClickable {
                                     UserPrefs.setBangumiUsername(context, bgmUser)
-                                    Toast.makeText(context, "\u2705 " + context.getString(R.string.settings_bangumi), Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, R.string.settings_bangumi, Toast.LENGTH_SHORT).show()
                                 }
                                 .padding(horizontal = 12.dp),
                             contentAlignment = Alignment.Center
@@ -584,7 +611,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 modifier = Modifier.noRippleClickable {
                                     UserPrefs.clearBangumiToken(context)
                                     authState = false
-                                    Toast.makeText(context, "已取消授权", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, R.string.bangumi_oauth_canceled, Toast.LENGTH_SHORT).show()
                                 }
                             )
                         }
@@ -780,7 +807,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     .noRippleClickable {
                                         UserPrefs.removeAccount(context, idx)
                                         accounts = UserPrefs.getAdditionalAccounts(context)
-                                        listRefreshTrigger++
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             )
@@ -875,7 +901,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     .verticalScroll(rememberScrollState())
                             ) {
                                 allTags.forEach { tag ->
-                                    val count = GameTags.getTagUsageCount(context, tag)
+                                    val count = tagUsageCounts[tag] ?: 0
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -956,7 +982,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                 .then(if (canAdd) Modifier.noRippleClickable {
                                     if (UserPrefs.addAccount(context, newSteamId.trim(), newApiKey.trim())) {
                                         accounts = UserPrefs.getAdditionalAccounts(context)
-                                        listRefreshTrigger++
                                         showAddAccountDialog = false
                                         newSteamId = ""
                                         newApiKey = ""
@@ -998,7 +1023,9 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         .padding(top = triggerBottomDp),
                     contentAlignment = Alignment.TopEnd
                 ) {
-                    val screenWidthDp = with(density) { (context.resources.displayMetrics.widthPixels / density.density).dp }
+                    val screenWidthDp = with(density) {
+                        LocalWindowInfo.current.containerSize.width.toDp()
+                    }
                     val triggerRightDp = with(density) { (popup.triggerRect.right / density.density).dp }
                     val paddingEnd = maxOf(0.dp, screenWidthDp - triggerRightDp)
                     Card(
@@ -1075,7 +1102,13 @@ private fun DividerLine() {
 }
 
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+private fun SwitchRow(
+    label: String,
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
