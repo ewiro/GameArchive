@@ -16,6 +16,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -38,7 +41,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -53,6 +58,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -67,6 +73,7 @@ import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.icon.basic.*
 import androidx.compose.ui.state.ToggleableState
 
+@Suppress("DEPRECATION")
 class DetailActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context?) {
@@ -134,10 +141,15 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
 
     // 状态栏高度
     val statusBarDp = statusBarHeightDp()
+    val isNightMode =
+        (LocalConfiguration.current.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
 
     // 屏幕宽度（用于媒体画廊高度计算）
-    val screenWidth = context.resources.displayMetrics.widthPixels
-    val mediaHeight = with(LocalDensity.current) { (screenWidth * 9 / 16).toDp() }
+    val mediaHeight = with(LocalDensity.current) {
+        (LocalWindowInfo.current.containerSize.width * 9 / 16).toDp()
+    }
 
     // 加载数据
     LaunchedEffect(appId) {
@@ -192,13 +204,9 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*&nbsp;\\s*</p>"), "")
                 rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*</p>"), "")
 
-                val isNight = (context.resources.configuration.uiMode and
-                        android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                        android.content.res.Configuration.UI_MODE_NIGHT_YES
-
-                val bodyColor = String.format("#%06X", (if (isNight) 0xFFB0B0B5.toInt() else 0xFF6A6A6F.toInt()) and 0xFFFFFF)
-                val headColor = String.format("#%06X", (if (isNight) 0xFFF2F2F2.toInt() else 0xFF000000.toInt()) and 0xFFFFFF)
-                val linkColor = String.format("#%06X", (if (isNight) 0xFF5E9BFF.toInt() else 0xFF3482FF.toInt()) and 0xFFFFFF)
+                val bodyColor = String.format("#%06X", (if (isNightMode) 0xFFB0B0B5.toInt() else 0xFF6A6A6F.toInt()) and 0xFFFFFF)
+                val headColor = String.format("#%06X", (if (isNightMode) 0xFFF2F2F2.toInt() else 0xFF000000.toInt()) and 0xFFFFFF)
+                val linkColor = String.format("#%06X", (if (isNightMode) 0xFF5E9BFF.toInt() else 0xFF3482FF.toInt()) and 0xFFFFFF)
 
                 val css = """
                     <style>
@@ -251,19 +259,25 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     }
 
     // ── UI ──
-    val scrollState = rememberScrollState()
+    val scrollState = rememberLazyListState()
 
     // 顶栏滑动显隐
     var topBarVisible by remember { mutableStateOf(true) }
-    val lastScrollY = remember { mutableStateOf(0f) }
-    LaunchedEffect(scrollState.value) {
-        val currentY = scrollState.value.toFloat()
-        if (currentY > lastScrollY.value + 20f && currentY > 100f) {
-            topBarVisible = false
-        } else if (currentY < lastScrollY.value - 20f) {
-            topBarVisible = true
+    var lastScrollY by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(scrollState) {
+        snapshotFlow {
+            scrollState.firstVisibleItemIndex to scrollState.firstVisibleItemScrollOffset
         }
-        lastScrollY.value = currentY
+            .distinctUntilChanged()
+            .collect { (index, offset) ->
+                val currentY = index * 100_000f + offset
+                if (currentY > lastScrollY + 20f && currentY > 100f) {
+                    topBarVisible = false
+                } else if (currentY < lastScrollY - 20f) {
+                    topBarVisible = true
+                }
+                lastScrollY = currentY
+            }
     }
 
     val topBarHeightDp = 52.dp + statusBarDp + 4.dp
@@ -281,12 +295,16 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 InfiniteProgressIndicator()
             }
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(top = topBarHeightDp + 4.dp, bottom = 48.dp)
+            LazyColumn(
+                state = scrollState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = topBarHeightDp + 4.dp,
+                    bottom = 48.dp
+                )
             ) {
+                item("detail_content") {
+                Column {
                 // ── 媒体画廊 ──
                 if (mediaList.isNotEmpty()) {
                     val pagerState = rememberPagerState(pageCount = { mediaList.size })
@@ -323,7 +341,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
                                 Image(
                                     imageVector = MiuixIcons.Demibold.Play,
-                                    contentDescription = "Play",
+                                    contentDescription = context.getString(R.string.media_play),
                                     modifier = Modifier.size(DesignTokens.IconPlay),
                                     colorFilter = ColorFilter.tint(Color.White)
                                 )
@@ -671,7 +689,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 }
 
                 // ── 评价标题 ──
+                }
+                }
                 if (reviews.isNotEmpty()) {
+                    item("reviews_header") {
                     Text(
                         text = context.getString(R.string.detail_reviews_title),
                         fontWeight = FontWeight.Bold,
@@ -680,13 +701,14 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     )
 
                     // ── 评价列表 ──
-                    reviews.forEach { review ->
+                    }
+                    items(reviews, key = { it.recommendationid }) { review ->
                         ReviewItem(review = review)
                     }
                 }
 
                 // 底部间距
-                Spacer(Modifier.height(32.dp))
+                item("bottom_spacer") { Spacer(Modifier.height(32.dp)) }
             }
         }
 
@@ -708,7 +730,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 IconButton(onClick = onBack) {
                     Image(
                         imageVector = MiuixIcons.Demibold.Back,
-                        contentDescription = "Back",
+                        contentDescription = context.getString(R.string.general_back),
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                     )
@@ -879,7 +901,7 @@ Box(
                                     .padding(horizontal = DesignTokens.SpaceXl),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "新建", fontSize = DesignTokens.TextBody1.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(text = context.getString(R.string.tag_create), fontSize = DesignTokens.TextBody1.sp, color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                         Spacer(Modifier.height(12.dp))
@@ -922,7 +944,7 @@ Box(
                                         )
                                         Image(
                                             imageVector = MiuixIcons.Demibold.Close,
-                                            contentDescription = "Delete",
+                                            contentDescription = context.getString(R.string.general_delete),
                                             colorFilter = ColorFilter.tint(DesignTokens.ErrorRed),
                                             modifier = Modifier
                                                 .size(DesignTokens.IconXl)

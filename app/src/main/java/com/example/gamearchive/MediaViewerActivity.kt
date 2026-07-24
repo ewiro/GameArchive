@@ -109,7 +109,7 @@ private fun MediaViewerScreen(
         ) {
             Image(
                 imageVector = MiuixIcons.Demibold.Close,
-                contentDescription = "Close",
+                contentDescription = context.getString(R.string.general_close),
                 modifier = Modifier.size(DesignTokens.IconHuge),
                 colorFilter = ColorFilter.tint(Color.White)
             )

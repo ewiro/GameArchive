@@ -76,12 +76,12 @@ class BangumiViewModel : ViewModel() {
             _loading.value = true
             try {
                 // 并发：用户信息 + 所有分类收藏同时拉取
-                val userDeferred = viewModelScope.async {
+                val userDeferred = async {
                     try { GameArchiveApp.bgmService.getUserInfo(username) } catch (_: Exception) { null }
                 }
                 // 5 个分类并发拉取
                 val typeDeferreds = (1..5).map { type ->
-                    viewModelScope.async {
+                    async {
                         try {
                             val bucket = when (type) { 2 -> 3; 3 -> 2; else -> type }
                             val list = mutableListOf<BangumiCollection>()
@@ -106,7 +106,7 @@ class BangumiViewModel : ViewModel() {
                 typeDeferreds.awaitAll().filterNotNull().forEach { (bucket, list) ->
                     allData[bucket] = list
                 }
-                _user.value = userDeferred.await()
+                userDeferred.await()?.let { _user.value = it }
                 _collections.value = allData
                 // 批量拉取 subject 详情评分（并发 8 个一组）
                 val existingRatings = mutableMapOf<Int, Any?>()

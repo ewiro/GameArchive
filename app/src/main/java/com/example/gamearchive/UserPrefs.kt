@@ -92,6 +92,7 @@ object UserPrefs {
     // 退出登录，清空所有保存的数据
     fun logout(context: Context) {
         getPrefs(context).edit().clear().apply()
+        GameArchiveApp.clearAuthenticatedBgmService()
     }
 
     // ── 多账号管理 ──
@@ -200,5 +201,6 @@ object UserPrefs {
             .remove(KEY_BANGUMI_REFRESH_TOKEN)
             .remove(KEY_BANGUMI_USER_ID)
             .apply()
+        GameArchiveApp.clearAuthenticatedBgmService()
     }
 }

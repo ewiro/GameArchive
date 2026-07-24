@@ -15,22 +15,13 @@ object DataBackup {
         root.put("version", VERSION)
 
         // ── 游戏标记 ──
-        val marks = JSONObject()
-        context.getSharedPreferences(GameMarks.PREF_NAME, Context.MODE_PRIVATE).all
-            .forEach { (key, value) -> marks.put(key, value) }
-        root.put("game_marks", marks)
+        root.put("game_marks", preferencesToJson(context, GameMarks.PREF_NAME))
 
         // ── 标签库 ──
-        val tagsLib = JSONObject()
-        context.getSharedPreferences(GameTags.LIB_PREF, Context.MODE_PRIVATE).all
-            .forEach { (key, value) -> tagsLib.put(key, value) }
-        root.put("game_tags_lib", tagsLib)
+        root.put("game_tags_lib", preferencesToJson(context, GameTags.LIB_PREF))
 
         // ── 游戏标签映射 ──
-        val tagsMap = JSONObject()
-        context.getSharedPreferences(GameTags.MAP_PREF, Context.MODE_PRIVATE).all
-            .forEach { (key, value) -> tagsMap.put(key, value) }
-        root.put("game_tags_map", tagsMap)
+        root.put("game_tags_map", preferencesToJson(context, GameTags.MAP_PREF))
 
         // ── 用户资料（仅导出外观 URL，排除凭证） ──
         val userData = JSONObject()
@@ -42,22 +33,13 @@ object DataBackup {
         root.put("steam_user_data", userData)
 
         // ── 游戏备注 ──
-        val notes = JSONObject()
-        context.getSharedPreferences(GameNotes.PREF_NAME, Context.MODE_PRIVATE).all
-            .forEach { (key, value) -> notes.put(key, value) }
-        root.put("game_notes", notes)
+        root.put("game_notes", preferencesToJson(context, GameNotes.PREF_NAME))
 
         // ── 自定义游戏名 ──
-        val gameNames = JSONObject()
-        context.getSharedPreferences(GameNames.PREF_NAME, Context.MODE_PRIVATE).all
-            .forEach { (key, value) -> gameNames.put(key, value) }
-        root.put("game_names", gameNames)
+        root.put("game_names", preferencesToJson(context, GameNames.PREF_NAME))
 
         // ── 活动统计（不包含任何账号凭证） ──
-        val activityStats = JSONObject()
-        context.getSharedPreferences(ActivityStats.PREF_NAME, Context.MODE_PRIVATE).all
-            .forEach { (key, value) -> activityStats.put(key, value) }
-        root.put("activity_stats", activityStats)
+        root.put("activity_stats", preferencesToJson(context, ActivityStats.PREF_NAME))
 
         // ── 偏好设置 ──
         val prefs = JSONObject()
@@ -158,4 +140,10 @@ object DataBackup {
             false
         }
     }
+
+    private fun preferencesToJson(context: Context, preferenceName: String): JSONObject =
+        JSONObject().also { json ->
+            context.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).all
+                .forEach { (key, value) -> json.put(key, value) }
+        }
 }

@@ -1,7 +1,6 @@
 package com.example.gamearchive
 
 import android.content.Context
-import android.os.Build
 import java.util.Locale
 
 /**
@@ -31,7 +30,7 @@ object LocaleHelper {
     }
 
     private fun setLocaleForLanguage(context: Context, language: String): Context {
-        val locale = Locale(language)
+        val locale = Locale.forLanguageTag(language)
         Locale.setDefault(locale)
         val config = context.resources.configuration.let {
             val c = android.content.res.Configuration(it)
@@ -49,12 +48,7 @@ object LocaleHelper {
             LANG_ENGLISH -> "english"
             else -> {
                 // 跟随系统：判断系统语言
-                val sysLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    context.resources.configuration.locales[0]
-                } else {
-                    @Suppress("DEPRECATION")
-                    context.resources.configuration.locale
-                }
+                val sysLocale = context.resources.configuration.locales[0]
                 if (sysLocale.language == Locale.CHINESE.language) "schinese" else "english"
             }
         }

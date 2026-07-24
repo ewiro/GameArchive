@@ -71,7 +71,6 @@
     <string name="account_remove">删除</string>
     <string name="account_steam_id_hint">Steam ID</string>
     <string name="account_api_key_hint">API Key</string>
-    <string name="account_primary">主账号</string>
 
     <!-- Detail -->
     <string name="detail_about">游戏简介</string>
@@ -132,7 +131,6 @@
     <string name="activity_heatmap_description">%d 年活动热力图</string>
     <string name="activity_empty">当天还没有记录</string>
     <string name="activity_baseline_ready">已建立基线，下次刷新后开始统计</string>
-    <string name="activity_refresh">刷新记录</string>
     <string name="activity_game_cover">%s 的游戏封面</string>
     <string name="activity_anime_cover">%s 的动漫封面</string>
 
@@ -163,7 +161,6 @@
     <string name="tag_exists">已存在相同标签</string>
     <string name="game_rename">重命名游戏</string>
     <string name="game_restore_default">恢复默认</string>
-    <string name="general_cancel">取消</string>
 
     <!-- Bangumi -->
     <string name="nav_bangumi">动漫</string>
@@ -185,7 +182,6 @@
     <string name="bangumi_no_username">请在设置中填写 Bangumi 用户名</string>
     <string name="bangumi_empty">暂无动漫收藏记录</string>
     <string name="bangumi_profile_total">共收藏 %d 部动漫</string>
-    <string name="bangumi_count">%d 部动漫</string>
     <string name="bangumi_search">搜索动漫…</string>
     <string name="bangumi_detail_load_failed">动漫详情加载失败</string>
     <string name="bangumi_collection_load_failed">无法读取你的 Bangumi 收藏信息</string>
@@ -194,7 +190,6 @@
     <string name="bangumi_progress_collapse">收起我的进度</string>
     <string name="bangumi_collection_status">状态</string>
     <string name="bangumi_episode_progress">章节</string>
-    <string name="bangumi_episode_seen">看到第 %d 集</string>
     <string name="bangumi_episode_total">共 %d 话</string>
     <string name="bangumi_card_episode_progress">已看 %1$d/%2$d 话</string>
     <string name="bangumi_card_episode_seen">已看 %d 话</string>
@@ -216,4 +211,19 @@
     <string name="bangumi_authorization_required">请先在设置中授权 Bangumi，之后即可编辑收藏</string>
 
     <string name="cancel">取消</string>
+    <string name="general_back">返回</string>
+    <string name="general_close">关闭</string>
+    <string name="general_delete">删除</string>
+    <string name="general_loading">加载中…</string>
+    <string name="general_load_failed">加载失败</string>
+    <string name="general_sort">排序</string>
+    <string name="tag_create">新建</string>
+    <string name="bangumi_tags_title">标签</string>
+    <string name="bangumi_summary_title">简介</string>
+    <string name="bangumi_details_title">详情</string>
+    <string name="media_play">播放</string>
+    <string name="bangumi_oauth_config_missing">请先在 AppConfig.kt 中填入 Bangumi OAuth 凭证</string>
+    <string name="bangumi_oauth_canceled">授权已取消</string>
+    <string name="bangumi_oauth_success">授权成功，用户 ID：%1$d</string>
+    <string name="bangumi_oauth_failed">授权失败：%1$s</string>
 </resources>

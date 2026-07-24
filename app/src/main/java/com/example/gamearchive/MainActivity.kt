@@ -50,9 +50,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -73,6 +73,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
@@ -82,7 +83,9 @@ import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.abs
 
+@Suppress("DEPRECATION")
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -152,6 +155,7 @@ private fun <T> LiveData<T>.observeAsState(): State<T?> {
 }
 
 @Composable
+@Suppress("DEPRECATION")
 private fun MainScreen() {
     val context = LocalContext.current
     val specialsEnabled = ThemeUtils.isSpecialsEnabled(context)
@@ -189,19 +193,35 @@ private fun MainScreen() {
     }
 
     // 滑动检测：仅顶部显示栏，离开顶部即隐藏，回到顶部显示
-    val lastTab = remember { mutableIntStateOf(selectedTab) }
-    LaunchedEffect(activeListState.firstVisibleItemIndex, selectedTab) {
-        val idx = activeListState.firstVisibleItemIndex
-        if (selectedTab != lastTab.intValue) {
-            lastTab.intValue = selectedTab
-            bottomBarVisible = true; topBarVisible = true
-        } else {
-            bottomBarVisible = idx == 0
-            topBarVisible = idx == 0
-        }
+    LaunchedEffect(activeListState, selectedTab) {
+        bottomBarVisible = true
+        topBarVisible = true
+        snapshotFlow { activeListState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { index ->
+                bottomBarVisible = index == 0
+                topBarVisible = index == 0
+            }
     }
 
     val scope = rememberCoroutineScope()
+    val navigateToPage: (Int) -> Unit = { targetPage ->
+        if (targetPage != pagerState.currentPage) {
+            scope.launch {
+                if (abs(targetPage - pagerState.currentPage) == 1) {
+                    pagerState.animateScrollToPage(
+                        page = targetPage,
+                        animationSpec = tween(
+                            durationMillis = DesignTokens.AnimDuration,
+                            easing = FastOutSlowInEasing
+                        )
+                    )
+                } else {
+                    pagerState.scrollToPage(targetPage)
+                }
+            }
+        }
+    }
 
     // 状态栏高度（顶栏叠加层需要）
     val statusBarDp = statusBarHeightDp()
@@ -330,7 +350,7 @@ private fun MainScreen() {
                     IconButton(onClick = { showSortDialog = true }) {
                         Image(
                             imageVector = MiuixIcons.Demibold.Filter,
-                            contentDescription = "Sort",
+                            contentDescription = context.getString(R.string.general_sort),
                             modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
@@ -371,15 +391,7 @@ private fun MainScreen() {
                             scaleY = 0.85f + 0.15f * tabAnim0
                         }
                         .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                            scope.launch {
-                                pagerState.animateScrollToPage(
-                                    page = 0,
-                                    animationSpec = tween(
-                                        durationMillis = DesignTokens.AnimDuration,
-                                        easing = FastOutSlowInEasing
-                                    )
-                                )
-                            }
+                            navigateToPage(0)
                         }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -407,15 +419,7 @@ private fun MainScreen() {
                                 scaleY = 0.85f + 0.15f * tabAnim1
                             }
                             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                                scope.launch {
-                                    pagerState.animateScrollToPage(
-                                        page = 1,
-                                        animationSpec = tween(
-                                            durationMillis = DesignTokens.AnimDuration,
-                                            easing = FastOutSlowInEasing
-                                        )
-                                    )
-                                }
+                                navigateToPage(1)
                             }
                             .padding(horizontal = 24.dp, vertical = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -444,15 +448,7 @@ private fun MainScreen() {
                             scaleY = 0.85f + 0.15f * tabAnimBgm
                         }
                         .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                            scope.launch {
-                                pagerState.animateScrollToPage(
-                                    page = bangumiPage,
-                                    animationSpec = tween(
-                                        durationMillis = DesignTokens.AnimDuration,
-                                        easing = FastOutSlowInEasing
-                                    )
-                                )
-                            }
+                            navigateToPage(bangumiPage)
                         }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -482,15 +478,7 @@ private fun MainScreen() {
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() }
                         ) {
-                            scope.launch {
-                                pagerState.animateScrollToPage(
-                                    page = activityPage,
-                                    animationSpec = tween(
-                                        durationMillis = DesignTokens.AnimDuration,
-                                        easing = FastOutSlowInEasing
-                                    )
-                                )
-                            }
+                            navigateToPage(activityPage)
                         }
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -594,15 +582,20 @@ private fun LibraryScreen(
     // 标记筛选状态（-1 = 全部）
     var markFilter by remember { mutableIntStateOf(-1) }
     var searchQuery by remember { mutableStateOf("") }
+    val markSnapshot = remember(listRefreshTrigger) { GameMarks.getAllMarks(context) }
+    val nameSnapshot = remember(listRefreshTrigger) { GameNames.getAllNames(context) }
 
     // 应用搜索 + 标记筛选
-    val filteredGames = remember(sortedGames, markFilter, searchQuery, listRefreshTrigger) {
+    val filteredGames = remember(sortedGames, markFilter, searchQuery, markSnapshot) {
         var list = sortedGames
         if (searchQuery.isNotBlank()) {
             list = list.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
-        if (markFilter != -1) list = list.filter { GameMarks.getMark(context, it.appid) == markFilter }
-        else list = list.filter { GameMarks.getMark(context, it.appid) != R.string.mark_abandoned }
+        if (markFilter != -1) {
+            list = list.filter { markSnapshot[it.appid] == markFilter }
+        } else {
+            list = list.filter { markSnapshot[it.appid] != R.string.mark_abandoned }
+        }
         list
     }
 
@@ -639,7 +632,6 @@ private fun LibraryScreen(
 
             // 搜索栏
             item("search_bar") {
-                val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
                 var textFieldValue by remember(searchQuery) { mutableStateOf(searchQuery) }
                 TextField(
                     value = textFieldValue,
@@ -700,14 +692,23 @@ private fun LibraryScreen(
 
             if (!isGrouping || markFilter != -1) {
                 items(filteredGames, key = { "g_${it.appid}" }) { game ->
-                    GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger, onClick = {
+                    GameItem(
+                        game = game,
+                        price = priceMap[game.appid] ?: "",
+                        customName = nameSnapshot[game.appid],
+                        markRes = markSnapshot[game.appid] ?: -1,
+                        viewModel = viewModel,
+                        onClick = {
                         onNavigateToDetail(game.appid, game.name,
                             priceMap[game.appid] ?: "Free / Unknown")
                     })
                 }
             } else {
                 val recent = filteredGames.filter { (it.playtime_2weeks ?: 0) > 0 }
-                val played = filteredGames.filter { it.playtime_forever > 0 && !recent.any { r -> r.appid == it.appid } }
+                val recentIds = recent.mapTo(hashSetOf()) { it.appid }
+                val played = filteredGames.filter {
+                    it.playtime_forever > 0 && it.appid !in recentIds
+                }
                 val unplayed = filteredGames.filter { it.playtime_forever == 0 }
 
                 if (recent.isNotEmpty()) {
@@ -720,7 +721,7 @@ private fun LibraryScreen(
                     }
                     if (recentExpanded) {
                         items(recent, key = { "r_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -734,7 +735,7 @@ private fun LibraryScreen(
                     }
                     if (playedExpanded) {
                         items(played, key = { "p_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -748,7 +749,7 @@ private fun LibraryScreen(
                     }
                     if (unplayedExpanded) {
                         items(unplayed, key = { "u_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", refreshVersion = listRefreshTrigger) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -1011,7 +1012,14 @@ private fun addToSpecialsWhitelist(context: Context, appId: Int) {
 
 // ── 游戏卡片（库存） ──
 @Composable
-private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onClick: () -> Unit) {
+private fun GameItem(
+    game: GameInfo,
+    price: String,
+    customName: String?,
+    markRes: Int,
+    viewModel: LibraryViewModel,
+    onClick: () -> Unit
+) {
     val h = game.playtime_forever / 60.0
     val badgeColor = DesignTokens.badgeColor(h)
     val context = LocalContext.current
@@ -1027,7 +1035,8 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
         // 封面：130dp×61dp, 6dp 圆角（含 BF6 本地封面 + 404 回退）
         val headerUrl = buildHeaderUrl(context, game.appid)
         AsyncImage(
-            model = ImageRequest.Builder(context)
+            model = remember(headerUrl, game.appid) {
+                ImageRequest.Builder(context)
                 .data(headerUrl)
                 .crossfade(true)
                 .memoryCacheKey(game.appid.toString())
@@ -1053,7 +1062,8 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
                         }
                     }
                 )
-                .build(),
+                    .build()
+            },
             contentDescription = null,
             modifier = Modifier
                 .width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight)
@@ -1066,7 +1076,7 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
             // 第一行：游戏名 + 时长徽章（近期时长在徽章下方）
             Row(verticalAlignment = Alignment.Top) {
                 Text(
-                    text = GameNames.getName(context, game.appid) ?: game.name,
+                    text = customName ?: game.name,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Bold,
@@ -1109,34 +1119,10 @@ private fun GameItem(game: GameInfo, price: String, refreshVersion: Int = 0, onC
             }
             Spacer(Modifier.weight(1f))
             // 游玩标记 + 好评率 — 底部同行，左标右评
-            val REVIEW_CACHE_TTL_MS = 30L * 24 * 3600 * 1000
-            val reviewCache = context.getSharedPreferences("steam_reviews_cache", Context.MODE_PRIVATE)
-            var reviewText by remember { mutableStateOf(
-                readCacheWithExpiry(reviewCache, "review_${game.appid}_${LocaleHelper.currentApiLanguage}", REVIEW_CACHE_TTL_MS)
-            ) }
-            LaunchedEffect(game.appid) {
-                if (reviewText != null) return@LaunchedEffect
-                try {
-                    kotlinx.coroutines.delay(100L)
-                    val resp = GameArchiveApp.apiService.getGameReviews(
-                        game.appid, l = LocaleHelper.currentApiLanguage
-                    )
-                    val summary = resp.query_summary
-                    if (summary != null && summary.total_reviews > 0) {
-                        val rate = (summary.total_positive.toDouble() / summary.total_reviews * 100).toInt()
-                        val text = context.getString(R.string.review_score_format, rate)
-                        reviewText = text
-                        reviewCache.edit().putString(
-                            "review_${game.appid}_${LocaleHelper.currentApiLanguage}",
-                            "$text|${System.currentTimeMillis()}"
-                        ).apply()
-                    }
-                } catch (_: Exception) {}
-            }
+            val reviewText by viewModel.reviewScore(context, game.appid).observeAsState()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ReviewScore(reviewText)
                 Spacer(Modifier.weight(1f))
-                val markRes = GameMarks.getMark(context, game.appid)
                 if (markRes in GameMarks.markResIds) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
@@ -1213,8 +1199,8 @@ private fun SpecialsScreen(
     }
 
     val gameList = rawList ?: emptyList()
-    var filteredList by remember { mutableStateOf<List<MarketGame>>(emptyList()) }
-    LaunchedEffect(gameList, viewModel.isFilteringOwned, viewModel.sortMode, viewModel.priceFilter) {
+    val filteredList by remember(gameList) {
+        derivedStateOf {
         var list = gameList.toList()
         if (viewModel.isFilteringOwned) list = list.filter { !MainActivity.ownedGameIds.contains(it.id) }
         // 价格筛选
@@ -1234,7 +1220,8 @@ private fun SpecialsScreen(
             4 -> list.sortedByDescending { it.reviewScore }
             else -> list
         }
-        filteredList = list
+        list
+        }
     }
 
     // 顶栏叠加层占位高度
@@ -1554,7 +1541,7 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
 
 // ── 骨架屏 ──
 @Composable
-private fun ShimmerBrush(): Brush {
+private fun shimmerBrush(): Brush {
     var target by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) { while (true) { target = 1f; delay(800); target = 0f; delay(800) } }
     val progress by animateFloatAsState(target, tween(1600))
@@ -1567,7 +1554,7 @@ private fun ShimmerBrush(): Brush {
 @Composable
 private fun BangumiSkeletonCard() {
     val bg = MiuixTheme.colorScheme.surfaceVariant
-    val shimmer = ShimmerBrush()
+    val shimmer = shimmerBrush()
     val coverW = 80.dp; val coverH = 112.dp
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.size(coverW, coverH).clip(RoundedCornerShape(6.dp)).background(bg))
@@ -1593,7 +1580,7 @@ private fun BangumiSkeletonCard() {
 @Composable
 private fun SkeletonCard() {
     val bg = MiuixTheme.colorScheme.surfaceVariant
-    val shimmer = ShimmerBrush()
+    val shimmer = shimmerBrush()
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight).clip(RoundedCornerShape(DesignTokens.CornerMedium)).background(bg))
         Column(Modifier.padding(start = 12.dp).height(DesignTokens.CoverHeight)) {
@@ -1607,8 +1594,13 @@ private fun SkeletonCard() {
 }
 
 @Composable
-private fun ShimmerBox(w: Dp, h: Dp, corner: Dp = 4.dp, mod: Modifier = Modifier) {
-    Box(mod.width(w).height(h).clip(RoundedCornerShape(corner)).background(ShimmerBrush()))
+private fun ShimmerBox(
+    w: Dp,
+    h: Dp,
+    modifier: Modifier = Modifier,
+    corner: Dp = 4.dp
+) {
+    Box(modifier.width(w).height(h).clip(RoundedCornerShape(corner)).background(shimmerBrush()))
 }
 
 // 库存页顶部骨架
@@ -1623,9 +1615,9 @@ private fun LibraryTopSkeleton(showProfile: Boolean) {
             ) {
                 Column(Modifier.fillMaxSize().padding(20.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(DesignTokens.AvatarOuter).clip(CircleShape).background(ShimmerBrush()))
+                        Box(Modifier.size(DesignTokens.AvatarOuter).clip(CircleShape).background(shimmerBrush()))
                         Spacer(Modifier.width(24.dp))
-                        Column(Modifier.weight(1f)) { ShimmerBox(120.dp, 16.dp); Spacer(Modifier.height(8.dp)); ShimmerBox(60.dp, 14.dp, 10.dp) }
+                        Column(Modifier.weight(1f)) { ShimmerBox(120.dp, 16.dp); Spacer(Modifier.height(8.dp)); ShimmerBox(60.dp, 14.dp, corner = 10.dp) }
                     }
                     Spacer(Modifier.height(20.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -1635,84 +1627,29 @@ private fun LibraryTopSkeleton(showProfile: Boolean) {
             }
         }
         Box(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 18.dp, vertical = 6.dp).clip(RoundedCornerShape(DesignTokens.CornerMedium)).background(bg))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(8) { ShimmerBox(60.dp, 32.dp, 20.dp) } }
-        repeat(2) { ShimmerBox(100.dp, 16.dp, mod = Modifier.padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 8.dp)); repeat(2) { SkeletonCard() } }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(8) { ShimmerBox(60.dp, 32.dp, corner = 20.dp) } }
+        repeat(2) { ShimmerBox(100.dp, 16.dp, modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 8.dp)); repeat(2) { SkeletonCard() } }
     }
 }
 
 @Composable
 private fun LibraryLoadingSkeleton(topInsetDp: androidx.compose.ui.unit.Dp, showProfile: Boolean) {
-    val cfg = LocalConfiguration.current; val h = cfg.screenHeightDp.dp; val ch = DesignTokens.CoverHeight + 12.dp
+    val h = with(androidx.compose.ui.platform.LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.height.toDp()
+    }
+    val ch = DesignTokens.CoverHeight + 12.dp
     val top = if (showProfile) 310.dp else 110.dp; val n = maxOf(4, ((h - top) / ch).toInt())
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topInsetDp, bottom = 72.dp)) { item("top") { LibraryTopSkeleton(showProfile) }; items(n) { SkeletonCard() } }
 }
 
 @Composable
 private fun SpecialsSkeleton(topInsetDp: androidx.compose.ui.unit.Dp) {
-    val cfg = LocalConfiguration.current; val h = cfg.screenHeightDp.dp; val ch = DesignTokens.CoverHeight + 12.dp
+    val h = with(androidx.compose.ui.platform.LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.height.toDp()
+    }
+    val ch = DesignTokens.CoverHeight + 12.dp
     val n = maxOf(6, ((h + topInsetDp) / ch).toInt())
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topInsetDp, bottom = 72.dp)) { items(n) { SkeletonCard() } }
-}
-
-// ── 动漫页加载骨架 ──
-@Composable
-private fun BangumiLoadingSkeleton(topInsetDp: androidx.compose.ui.unit.Dp) {
-    val bg = MiuixTheme.colorScheme.secondaryContainer  // 匹配真实卡片背景
-    val shimmer = ShimmerBrush()
-    val cfg = LocalConfiguration.current; val h = cfg.screenHeightDp.dp
-    val headerH = 280.dp  // 骨架头部估算高度
-    val ch = DesignTokens.CoverHeight + 12.dp
-    val n = maxOf(4, ((h - headerH) / ch).toInt())
-
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topInsetDp, bottom = 72.dp)) {
-        // ── 个人资料卡骨架 ──
-        item("skel_profile") {
-            Box(
-                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(DesignTokens.CornerXLarge)).background(bg)
-            ) {
-                Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(56.dp).clip(CircleShape).background(shimmer))
-                        Spacer(Modifier.width(24.dp))
-                        Column(Modifier.weight(1f)) {
-                            Box(Modifier.fillMaxWidth(0.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                            Spacer(Modifier.height(8.dp))
-                            Box(Modifier.fillMaxWidth(0.25f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                        }
-                    }
-                    Spacer(Modifier.height(24.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        repeat(5) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(Modifier.size(24.dp, 14.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                                Spacer(Modifier.height(6.dp))
-                                Box(Modifier.size(32.dp, 10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        // ── 搜索栏骨架 ──
-        item("skel_search") {
-            Box(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 18.dp, vertical = 4.dp)
-                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                .background(MiuixTheme.colorScheme.surfaceVariant))
-        }
-        // ── 筛选条骨架 ──
-        item("skel_filters") {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                repeat(6) {
-                    Box(Modifier.size(56.dp, 32.dp).clip(RoundedCornerShape(16.dp)).background(shimmer))
-                }
-            }
-        }
-        // ── 条目骨架 ──
-        items(n) { SkeletonCard() }
-    }
 }
 
 // ────────── 记录页 ──────────
@@ -1735,14 +1672,15 @@ private fun ActivityPage(
     var selectedDate by remember { mutableStateOf(today) }
     var yearStats by remember { mutableStateOf<Map<String, DailyActivity>>(emptyMap()) }
     var availableYears by remember { mutableStateOf(setOf(currentYear)) }
+    var baselineOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(revision, selectedYear) {
-        val loaded = withContext(Dispatchers.IO) {
-            ActivityStats.getYearStats(context, selectedYear) to
-                (ActivityStats.getAvailableYears(context) + currentYear)
+        val snapshot = withContext(Dispatchers.IO) {
+            ActivityStats.getYearSnapshot(context, selectedYear)
         }
-        yearStats = loaded.first
-        availableYears = loaded.second
+        yearStats = snapshot.stats
+        availableYears = snapshot.availableYears + currentYear
+        baselineOnly = snapshot.baselineOnly
         if (!selectedDate.startsWith("$selectedYear-")) {
             selectedDate = if (selectedYear == currentYear) {
                 today
@@ -1869,7 +1807,7 @@ private fun ActivityPage(
                     ) {
                         Text(
                             text = context.getString(
-                                if (ActivityStats.isBaselineOnly(context)) {
+                                if (baselineOnly) {
                                     R.string.activity_baseline_ready
                                 } else {
                                     R.string.activity_empty
@@ -1882,7 +1820,15 @@ private fun ActivityPage(
                 }
             } else {
                 val rows = selectedDay.entries.chunked(4)
-                items(rows.size, key = { "activity_cover_row_$it" }) { rowIndex ->
+                items(
+                    count = rows.size,
+                    key = { rowIndex ->
+                        rows[rowIndex].joinToString(
+                            prefix = "activity_cover_row_",
+                            separator = "_"
+                        ) { "${it.kind.name}_${it.id}" }
+                    }
+                ) { rowIndex ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2013,8 +1959,8 @@ private fun ActivityCover(entry: ActivityEntry, modifier: Modifier, onClick: () 
             .background(MiuixTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
+        val imageRequest = remember(imageModel, entry.kind, entry.id) {
+            ImageRequest.Builder(context)
                 .data(imageModel)
                 .crossfade(true)
                 .listener(
@@ -2024,7 +1970,10 @@ private fun ActivityCover(entry: ActivityEntry, modifier: Modifier, onClick: () 
                         }
                     }
                 )
-                .build(),
+                .build()
+        }
+        AsyncImage(
+            model = imageRequest,
             contentDescription = description,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -2076,6 +2025,7 @@ private fun BangumiPage(
 ) {
     val context = LocalContext.current
     val displayStyle = ThemeUtils.getBangumiDisplayStyle(context)  // 0=list, 1=grid
+    val ratingMode = UserPrefs.getBangumiRatingMode(context)
     val bgmUsername = UserPrefs.getBangumiUsername(context)
     val bgmAccessToken = UserPrefs.getBangumiAccessToken(context)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -2111,11 +2061,9 @@ private fun BangumiPage(
 
     // 错误提示
     LaunchedEffect(error) {
-        val e = error ?: return@LaunchedEffect
-        if (e is Pair<*, *>) {
-            val resId = e.first as? Int ?: return@LaunchedEffect
-            android.widget.Toast.makeText(context, context.getString(resId, (e.second as? String) ?: ""), android.widget.Toast.LENGTH_LONG).show()
-        }
+        val (resId, arg) = error ?: return@LaunchedEffect
+        val message = if (arg == null) context.getString(resId) else context.getString(resId, arg)
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
         viewModel.clearError()
     }
 
@@ -2159,10 +2107,14 @@ private fun BangumiPage(
         val showEmpty = !showSkeleton && (collectionMap == null || collectionMap.isEmpty())
 
         // ── 骨架屏数量 ──
-        val cfg = LocalConfiguration.current
-        val skeletonCount = remember { maxOf(4, ((cfg.screenHeightDp.dp - 260.dp) / (132.dp)).toInt()) }
+        val windowHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.height.toDp()
+        }
+        val skeletonCount = remember(windowHeight) {
+            maxOf(4, ((windowHeight - 260.dp) / 132.dp).toInt())
+        }
         // 骨架材质（@Composable，在此处初始化供 LazyColumn 使用）
-        val shimmer = ShimmerBrush()
+        val shimmer = shimmerBrush()
         val skelBg = MiuixTheme.colorScheme.secondaryContainer
 
         // ── 状态变量 ──
@@ -2292,7 +2244,15 @@ private fun BangumiPage(
                 if (displayStyle == 1) {
                     // 网格模式：每行4个封面
                     val chunked = filteredItems.chunked(4)
-                    items(chunked.size, key = { "grid_row_$it" }) { rowIndex ->
+                    items(
+                        count = chunked.size,
+                        key = { rowIndex ->
+                            chunked[rowIndex].joinToString(
+                                prefix = "grid_row_",
+                                separator = "_"
+                            ) { it.first.subject_id.toString() }
+                        }
+                    ) { rowIndex ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2325,6 +2285,7 @@ private fun BangumiPage(
                         BangumiItem(
                             item = item,
                             type = type,
+                            ratingMode = ratingMode,
                             ratings = ratingsMap,
                             episodeTotals = episodeTotalsMap,
                             watchedEpisodeCounts = watchedEpisodeCountsMap,
@@ -2346,6 +2307,7 @@ private fun BangumiPage(
 private fun BangumiItem(
     item: BangumiCollection,
     type: Int,
+    ratingMode: Int,
     ratings: Map<Int, Any?>,
     episodeTotals: Map<Int, Int>,
     watchedEpisodeCounts: Map<Int, Int>,
@@ -2457,7 +2419,6 @@ private fun BangumiItem(
             }
             else -> null
         }
-        val ratingMode = UserPrefs.getBangumiRatingMode(context)
         val myRate = if (item.rate > 0) item.rate.toDouble() else null
         val globalScore: Double? = extractScore(ratings[item.subject_id]) ?: extractScore(sub.rating)
         val score: Double? = when (ratingMode) {

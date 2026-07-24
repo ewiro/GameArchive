@@ -31,6 +31,12 @@ data class DailyActivity(
     val score: Double get() = gameMinutes / 60.0 + animeEpisodes
 }
 
+data class ActivityYearSnapshot(
+    val stats: Map<String, DailyActivity>,
+    val availableYears: Set<Int>,
+    val baselineOnly: Boolean
+)
+
 object ActivityStats {
     const val PREF_NAME = "activity_stats"
 
@@ -218,6 +224,36 @@ object ActivityStats {
         val keys = days.keys()
         while (keys.hasNext()) keys.next().take(4).toIntOrNull()?.let(years::add)
         return years
+    }
+
+    /** 一次解析统计 JSON，同时返回记录页需要的全部年度状态。 */
+    @Synchronized
+    fun getYearSnapshot(context: Context, year: Int): ActivityYearSnapshot {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
+        val prefix = "$year-"
+        val stats = linkedMapOf<String, DailyActivity>()
+        val years = mutableSetOf<Int>()
+        val keys = days.keys()
+        while (keys.hasNext()) {
+            val date = keys.next()
+            date.take(4).toIntOrNull()?.let(years::add)
+            if (date.startsWith(prefix)) {
+                stats[date] = decodeDay(date, days.optJSONObject(date))
+            }
+        }
+        val hasBaseline =
+            parseObject(prefs.getString(KEY_GAME_BASELINES, null)).length() > 0 ||
+                parseObject(prefs.getString(KEY_ANIME_BASELINES, null)).length() > 0
+        val gameObservations =
+            prefs.getString(KEY_GAME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0
+        val animeObservations =
+            prefs.getString(KEY_ANIME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0
+        return ActivityYearSnapshot(
+            stats = stats,
+            availableYears = years,
+            baselineOnly = hasBaseline && gameObservations < 2 && animeObservations < 2
+        )
     }
 
     fun hasBaseline(context: Context): Boolean {

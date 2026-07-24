@@ -63,6 +63,17 @@ object GameMarks {
         return keyToResId[key] ?: -1
     }
 
+    /** 一次读取全部标记，供列表筛选和卡片复用，避免逐项访问 SharedPreferences。 */
+    fun getAllMarks(context: Context): Map<Int, Int> =
+        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).all
+            .mapNotNull { (key, value) ->
+                val appId = key.removePrefix("mark_").takeIf { key.startsWith("mark_") }
+                    ?.toIntOrNull() ?: return@mapNotNull null
+                val resId = keyToResId[value as? String] ?: return@mapNotNull null
+                appId to resId
+            }
+            .toMap()
+
     /** 设置标记（传入资源 ID 或 -1 清除） */
     fun setMark(context: Context, appId: Int, markResId: Int) {
         val editor = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()

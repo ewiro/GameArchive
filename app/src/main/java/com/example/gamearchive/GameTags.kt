@@ -96,11 +96,15 @@ object GameTags {
         editor.apply()
     }
 
-    /** 获取标签被使用的游戏数 */
-    fun getTagUsageCount(context: Context, tag: String): Int {
-        val mapPrefs = context.getSharedPreferences(MAP_PREF, Context.MODE_PRIVATE)
-        val allKeys = mapPrefs.all.keys.filter { it.startsWith("tags_") }
-        return allKeys.count { key -> getTagsForGameRaw(mapPrefs, key).contains(tag) }
+    /** 单次解析全部游戏标签，避免设置页按“标签数 × 游戏数”反复读取 JSON。 */
+    fun getTagUsageCounts(context: Context): Map<String, Int> {
+        val prefs = context.getSharedPreferences(MAP_PREF, Context.MODE_PRIVATE)
+        val counts = mutableMapOf<String, Int>()
+        prefs.all.keys.asSequence()
+            .filter { it.startsWith("tags_") }
+            .flatMap { getTagsForGameRaw(prefs, it).distinct().asSequence() }
+            .forEach { tag -> counts[tag] = (counts[tag] ?: 0) + 1 }
+        return counts
     }
 
     private fun getTagsForGameRaw(prefs: android.content.SharedPreferences, key: String): List<String> {

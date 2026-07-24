@@ -9,11 +9,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class GameArchiveApp : Application(), ImageLoaderFactory {
 
-    override fun onCreate() {
-        super.onCreate()
-    }
-
     companion object {
+        @Volatile
+        private var authenticatedToken: String? = null
+        @Volatile
+        private var authenticatedBgmService: BangumiCollectionService? = null
         /** 全局共享 OkHttpClient（30s 超时，兼顾特惠页） */
         val okHttpClient: OkHttpClient by lazy {
             OkHttpClient.Builder()
@@ -54,7 +54,11 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
         }
 
         /** 创建带 Bearer Token 的 Bangumi 收藏编辑服务（走代理） */
+        @Synchronized
         fun createAuthenticatedBgmService(token: String): BangumiCollectionService {
+            if (authenticatedToken == token) {
+                authenticatedBgmService?.let { return it }
+            }
             val authClient = okHttpClient.newBuilder()
                 .addInterceptor { chain ->
                     chain.proceed(chain.request().newBuilder()
@@ -70,6 +74,16 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
                 .create(BangumiCollectionService::class.java)
+                .also {
+                    authenticatedToken = token
+                    authenticatedBgmService = it
+                }
+        }
+
+        @Synchronized
+        fun clearAuthenticatedBgmService() {
+            authenticatedToken = null
+            authenticatedBgmService = null
         }
     }
 

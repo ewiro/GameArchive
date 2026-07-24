@@ -22,7 +22,7 @@ class BangumiAuthActivity : ComponentActivity() {
         val redirectUri = AppConfig.BANGUMI_REDIRECT_URI
 
         if (clientId.isEmpty() || clientSecret.isEmpty()) {
-            Toast.makeText(this, "请先在 AppConfig.kt 中填入 Bangumi OAuth 凭证", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.bangumi_oauth_config_missing, Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -34,7 +34,7 @@ class BangumiAuthActivity : ComponentActivity() {
             if (code != null) {
                 exchangeCodeForToken(code, clientId, clientSecret, redirectUri)
             } else {
-                Toast.makeText(this, "授权已取消", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.bangumi_oauth_canceled, Toast.LENGTH_SHORT).show()
                 finish()
             }
         } else {
@@ -54,7 +54,7 @@ class BangumiAuthActivity : ComponentActivity() {
                 if (code != null) {
                     exchangeCodeForToken(code, AppConfig.BANGUMI_CLIENT_ID, AppConfig.BANGUMI_CLIENT_SECRET, AppConfig.BANGUMI_REDIRECT_URI)
                 } else {
-                    Toast.makeText(this, "授权已取消", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, R.string.bangumi_oauth_canceled, Toast.LENGTH_SHORT).show()
                     finish()
                 }
             }
@@ -84,9 +84,17 @@ class BangumiAuthActivity : ComponentActivity() {
                     // Token 已成功取得；用户名仍可在设置页手动填写。
                 }
                 ThemeUtils.isChanged = true
-                Toast.makeText(this@BangumiAuthActivity, "授权成功！用户 ID: ${token.user_id}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@BangumiAuthActivity,
+                    getString(R.string.bangumi_oauth_success, token.user_id),
+                    Toast.LENGTH_LONG
+                ).show()
             } catch (e: Exception) {
-                Toast.makeText(this@BangumiAuthActivity, "授权失败: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@BangumiAuthActivity,
+                    getString(R.string.bangumi_oauth_failed, e.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
             }
             finish()
         }
