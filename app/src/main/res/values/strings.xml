@@ -14,6 +14,7 @@
     <!-- Bottom Navigation -->
     <string name="nav_library">Games</string>
     <string name="nav_specials">Specials</string>
+    <string name="nav_activity">Activity</string>
 
     <!-- Library -->
     <string name="library_group_recent">Recently Active (%d)</string>
@@ -114,6 +115,7 @@
 
     <!-- Game Marks -->
     <string name="mark_unplayed">Unplayed</string>
+    <string name="mark_playing">Playing</string>
     <string name="mark_completed">Completed</string>
     <string name="mark_multi_completed">Multiple Playthroughs</string>
     <string name="mark_perfected">Perfected / 100%</string>
@@ -123,6 +125,16 @@
     <string name="mark_filter_all">All</string>
     <string name="mark_select_status">Select Status</string>
     <string name="mark_clear">Clear Mark</string>
+
+    <!-- Activity -->
+    <string name="activity_previous_year">Previous year</string>
+    <string name="activity_next_year">Next year</string>
+    <string name="activity_heatmap_description">%d activity heatmap</string>
+    <string name="activity_empty">No activity recorded that day</string>
+    <string name="activity_baseline_ready">Baseline ready. Refresh again to start tracking.</string>
+    <string name="activity_refresh">Refresh activity</string>
+    <string name="activity_game_cover">Game cover for %s</string>
+    <string name="activity_anime_cover">Anime cover for %s</string>
 
     <!-- Tags -->
     <string name="tag_manage">Manage Tags</string>
@@ -184,6 +196,10 @@
     <string name="bangumi_episode_progress">Episodes</string>
     <string name="bangumi_episode_seen">Watched through episode %d</string>
     <string name="bangumi_episode_total">%d episodes total</string>
+    <string name="bangumi_card_episode_progress">Watched %1$d/%2$d episodes</string>
+    <string name="bangumi_card_episode_seen">Watched %d episodes</string>
+    <string name="bangumi_card_episode_count">%d episodes</string>
+    <string name="bangumi_detail_episode_count_label">Episodes</string>
     <string name="bangumi_episode_compact">%1$d / %2$d</string>
     <string name="bangumi_episode_decrease">Decrease watched episode</string>
     <string name="bangumi_episode_increase">Increase watched episode</string>

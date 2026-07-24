@@ -5,8 +5,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 
 /**
@@ -80,10 +82,18 @@ class LibraryViewModel : ViewModel() {
                     // 合并去重（按appid）
                     val seen = mutableSetOf<Int>()
                     val merged = mutableListOf<GameInfo>()
-                    for (deferred in allGamesDeferred) {
-                        val games = deferred.await()
+                    val accountGameResults = allGamesDeferred.map { it.await() }
+                    val accountGames = accountGameResults.filterNotNull()
+                    for (games in accountGames) {
                         for (g in games) {
                             if (seen.add(g.appid)) merged.add(g)
+                        }
+                    }
+
+                    // 统计使用所有账号的累计时长，同一 AppID 先求和；库存展示仍保持现有去重逻辑
+                    if (context != null && accountGames.size == allAccounts.size) {
+                        withContext(Dispatchers.IO) {
+                            ActivityStats.syncSteam(context, accountGames.flatten())
                         }
                     }
 
@@ -125,11 +135,15 @@ class LibraryViewModel : ViewModel() {
         }
     }
 
-    private suspend fun fetchGamesForAccount(apiKey: String, steamId: String, blackListIds: Set<Int>): List<GameInfo> {
+    private suspend fun fetchGamesForAccount(
+        apiKey: String,
+        steamId: String,
+        blackListIds: Set<Int>
+    ): List<GameInfo>? {
         return try {
             val gameRes = GameArchiveApp.apiService.getOwnedGames(apiKey, steamId)
             gameRes.response.games.filter { !blackListIds.contains(it.appid) }
-        } catch (e: Exception) { emptyList() }
+        } catch (e: Exception) { null }
     }
 
     private suspend fun fetchBatchPrices(games: List<GameInfo>) {

@@ -53,6 +53,12 @@ object DataBackup {
             .forEach { (key, value) -> gameNames.put(key, value) }
         root.put("game_names", gameNames)
 
+        // ── 活动统计（不包含任何账号凭证） ──
+        val activityStats = JSONObject()
+        context.getSharedPreferences(ActivityStats.PREF_NAME, Context.MODE_PRIVATE).all
+            .forEach { (key, value) -> activityStats.put(key, value) }
+        root.put("activity_stats", activityStats)
+
         // ── 偏好设置 ──
         val prefs = JSONObject()
         val themePrefs = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE)
@@ -120,6 +126,17 @@ object DataBackup {
                 val names = root.getJSONObject("game_names")
                 names.keys().forEach { key -> editor.putString(key, names.getString(key)) }
                 editor.apply()
+            }
+
+            // ── 恢复活动统计 ──
+            if (root.has("activity_stats")) {
+                val editor = context.getSharedPreferences(ActivityStats.PREF_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .clear()
+                val stats = root.getJSONObject("activity_stats")
+                stats.keys().forEach { key -> editor.putString(key, stats.getString(key)) }
+                editor.apply()
+                ActivityStats.notifyChanged()
             }
 
             // ── 恢复偏好设置 ──

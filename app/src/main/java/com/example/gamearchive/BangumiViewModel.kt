@@ -1,12 +1,15 @@
 package com.example.gamearchive
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Bangumi（番组计划）动漫收藏页的"数据管家"。
@@ -26,6 +29,14 @@ class BangumiViewModel : ViewModel() {
     private val _ratings = MutableLiveData<Map<Int, Any?>>()
     val ratings: LiveData<Map<Int, Any?>> = _ratings
 
+    // subject_id → 正篇章节总数（eps 缺失时由 type=0 章节接口补拉）
+    private val _episodeTotals = MutableLiveData<Map<Int, Int>>()
+    val episodeTotals: LiveData<Map<Int, Int>> = _episodeTotals
+
+    // subject_id → 仅正篇中已看章节数
+    private val _watchedEpisodeCounts = MutableLiveData<Map<Int, Int>>()
+    val watchedEpisodeCounts: LiveData<Map<Int, Int>> = _watchedEpisodeCounts
+
     private val _loading = MutableLiveData<Boolean>()
     val loading: LiveData<Boolean> = _loading
 
@@ -33,6 +44,7 @@ class BangumiViewModel : ViewModel() {
     val error: LiveData<Pair<Int, String?>?> = _error
 
     private var hasLoaded = false
+    private var isRefreshInProgress = false
 
     /** 收藏类型 → 中文名 */
     companion object {
@@ -48,16 +60,18 @@ class BangumiViewModel : ViewModel() {
         )
     }
 
-    fun loadIfNeeded(username: String) {
-        if (hasLoaded) return
-        refresh(username)
+    fun loadIfNeeded(username: String, accessToken: String, context: Context) {
+        if (hasLoaded || isRefreshInProgress) return
+        refresh(username, accessToken, context)
     }
 
-    fun refresh(username: String) {
+    fun refresh(username: String, accessToken: String, context: Context) {
+        if (isRefreshInProgress) return
         if (username.isBlank()) {
             _error.value = Pair(R.string.bangumi_no_username, null)
             return
         }
+        isRefreshInProgress = true
         viewModelScope.launch {
             _loading.value = true
             try {
@@ -96,34 +110,104 @@ class BangumiViewModel : ViewModel() {
                 _collections.value = allData
                 // 批量拉取 subject 详情评分（并发 8 个一组）
                 val existingRatings = mutableMapOf<Int, Any?>()
+                val episodeTotals = mutableMapOf<Int, Int>()
+                val watchedEpisodeCounts = mutableMapOf<Int, Int>()
                 val allSubjects = allData.values.flatten()
                 // 先收集已有评分的（collections API 可能部分返回了）
                 for (item in allSubjects) {
                     val r = item.subject?.rating
                     if (r != null) existingRatings[item.subject_id] = r
+                    val total = item.subject?.eps?.takeIf { it > 0 }
+                    if (total != null) episodeTotals[item.subject_id] = total
                 }
-                // 补拉缺失的
-                val missingIds = allSubjects.filter { it.subject?.rating == null }.map { it.subject_id }.distinct()
-                if (missingIds.isNotEmpty()) {
+                // 补拉完整详情评分
+                val subjectIds = allSubjects.map { it.subject_id }.distinct()
+                val missingRatingIds = allSubjects
+                    .filter { it.subject?.rating == null }
+                    .map { it.subject_id }
+                    .distinct()
+                if (missingRatingIds.isNotEmpty()) {
                     kotlinx.coroutines.coroutineScope {
-                        missingIds.chunked(8).forEach { batch ->
+                        missingRatingIds.chunked(8).forEach { batch ->
                             batch.map { id ->
                                 async {
                                     try {
-                                        val detail = GameArchiveApp.bgmService.getSubject(id)
-                                        if (detail.rating != null) id to detail.rating else null
+                                        id to GameArchiveApp.bgmService.getSubject(id)
                                     } catch (_: Exception) { null }
                                 }
-                            }.mapNotNull { it.await() }.forEach { (id, r) -> existingRatings[id] = r }
+                            }.mapNotNull { it.await() }.forEach { (id, detail) ->
+                                if (detail.rating != null) existingRatings[id] = detail.rating
+                            }
+                        }
+                    }
+                }
+                // 有观看进度或 eps 缺失时，使用用户正篇章节状态纠正分子与分母
+                val authenticatedEpisodeIds = allSubjects
+                    .filter {
+                        it.type == 2 ||
+                            it.ep_status > 0 ||
+                            !episodeTotals.containsKey(it.subject_id)
+                    }
+                    .map { it.subject_id }
+                    .distinct()
+                if (accessToken.isNotBlank() && authenticatedEpisodeIds.isNotEmpty()) {
+                    val authenticatedService =
+                        GameArchiveApp.createAuthenticatedBgmService(accessToken)
+                    kotlinx.coroutines.coroutineScope {
+                        authenticatedEpisodeIds.chunked(8).forEach { batch ->
+                            batch.map { id ->
+                                async {
+                                    try {
+                                        id to authenticatedService.getEpisodeCollections(id)
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                }
+                            }.mapNotNull { it.await() }.forEach { (id, episodes) ->
+                                if (episodes.total > 0) episodeTotals[id] = episodes.total
+                                watchedEpisodeCounts[id] =
+                                    episodes.data.orEmpty().count { it.type == 2 }
+                            }
+                        }
+                    }
+                }
+                // 未能通过授权接口补齐的条目，使用公开 type=0 章节总数
+                val missingEpisodeIds = subjectIds.filterNot(episodeTotals::containsKey)
+                if (missingEpisodeIds.isNotEmpty()) {
+                    kotlinx.coroutines.coroutineScope {
+                        missingEpisodeIds.chunked(8).forEach { batch ->
+                            batch.map { id ->
+                                async {
+                                    try {
+                                        val total = GameArchiveApp.bgmService
+                                            .getSubjectEpisodes(id)
+                                            .total
+                                            .takeIf { it > 0 }
+                                        if (total != null) id to total else null
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                }
+                            }.mapNotNull { it.await() }.forEach { (id, total) ->
+                                episodeTotals[id] = total
+                            }
                         }
                     }
                 }
                 _ratings.value = existingRatings
+                _episodeTotals.value = episodeTotals
+                _watchedEpisodeCounts.value = watchedEpisodeCounts
+                if (accessToken.isNotBlank() && watchedEpisodeCounts.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        ActivityStats.syncBangumi(context, allSubjects, watchedEpisodeCounts)
+                    }
+                }
                 hasLoaded = true
             } catch (e: Exception) {
                 _error.value = Pair(R.string.general_error, e.message)
             } finally {
                 _loading.value = false
+                isRefreshInProgress = false
             }
         }
     }
