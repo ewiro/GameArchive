@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -27,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.*
@@ -69,15 +73,135 @@ private fun BangumiDetailScreen(
     val statusBarDp = statusBarHeightDp()
 
     var detail by remember { mutableStateOf<BangumiSubjectDetail?>(null) }
+    var myCollection by remember { mutableStateOf<BangumiMyCollection?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var isCollectionLoaded by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
+    var draftType by remember { mutableIntStateOf(1) }
+    var draftRate by remember { mutableIntStateOf(0) }
+    var draftTags by remember { mutableStateOf("") }
+    var draftComment by remember { mutableStateOf("") }
+    var mainEpisodes by remember { mutableStateOf<List<BangumiUserEpisodeCollection>>(emptyList()) }
+    var isEpisodeProgressUnavailable by remember { mutableStateOf(false) }
+    var savedEpisodeProgress by remember { mutableIntStateOf(0) }
+    var draftEpisodeProgress by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(subjectId) {
         try {
             detail = GameArchiveApp.bgmService.getSubject(subjectId)
         } catch (_: Exception) {
-            Toast.makeText(context, "加载失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.bangumi_detail_load_failed), Toast.LENGTH_SHORT).show()
         }
+        val token = UserPrefs.getBangumiAccessToken(context)
+        if (token.isNotEmpty()) {
+            try {
+                val service = GameArchiveApp.createAuthenticatedBgmService(token)
+                var username = UserPrefs.getBangumiUsername(context)
+                if (username.isBlank()) {
+                    username = service.getCurrentUser().username
+                    UserPrefs.setBangumiUsername(context, username)
+                }
+                val collection = service.getMyCollection(username, subjectId)
+                myCollection = collection
+                draftType = collection.type ?: 1
+                draftRate = collection.rate ?: 0
+                draftTags = collection.tags.orEmpty().joinToString(", ")
+                draftComment = collection.comment.orEmpty()
+                savedEpisodeProgress = collection.ep_status ?: 0
+                draftEpisodeProgress = savedEpisodeProgress
+                try {
+                    mainEpisodes = service.getEpisodeCollections(subjectId).data.orEmpty()
+                        .sortedWith(compareBy(
+                            { it.episode.ep ?: Double.MAX_VALUE },
+                            { it.episode.sort ?: Double.MAX_VALUE }
+                        ))
+                } catch (_: Exception) {
+                    isEpisodeProgressUnavailable = true
+                }
+            } catch (e: Exception) {
+                if ((e as? HttpException)?.code() != 404) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.bangumi_collection_load_failed),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+        isCollectionLoaded = true
         isLoading = false
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    fun saveCollection() {
+        val token = UserPrefs.getBangumiAccessToken(context)
+        if (token.isEmpty() || isSaving) return
+        val tags = draftTags
+            .split(Regex("[,，\\s]+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase() }
+        isSaving = true
+        coroutineScope.launch {
+            try {
+                val service = GameArchiveApp.createAuthenticatedBgmService(token)
+                val response = service.updateCollection(
+                    subjectId,
+                    BangumiCollectionUpdate(
+                        type = draftType,
+                        rate = draftRate,
+                        comment = draftComment.trim(),
+                        tags = tags,
+                        `private` = myCollection?.private ?: false
+                    )
+                )
+                if (!response.isSuccessful) throw HttpException(response)
+
+                val boundedEpisodeProgress = draftEpisodeProgress.coerceIn(0, mainEpisodes.size)
+                val boundedSavedProgress = savedEpisodeProgress.coerceIn(0, mainEpisodes.size)
+                val changedEpisodes = when {
+                    boundedEpisodeProgress > boundedSavedProgress ->
+                        mainEpisodes.subList(boundedSavedProgress, boundedEpisodeProgress) to 2
+                    boundedEpisodeProgress < boundedSavedProgress ->
+                        mainEpisodes.subList(boundedEpisodeProgress, boundedSavedProgress) to 0
+                    else -> emptyList<BangumiUserEpisodeCollection>() to 0
+                }
+                if (changedEpisodes.first.isNotEmpty()) {
+                    val episodeResponse = service.updateEpisodeCollections(
+                        subjectId,
+                        BangumiEpisodeCollectionUpdate(
+                            episode_id = changedEpisodes.first.map { it.episode.id },
+                            type = changedEpisodes.second
+                        )
+                    )
+                    if (!episodeResponse.isSuccessful) throw HttpException(episodeResponse)
+                }
+
+                var username = UserPrefs.getBangumiUsername(context)
+                if (username.isBlank()) {
+                    username = service.getCurrentUser().username
+                    UserPrefs.setBangumiUsername(context, username)
+                }
+                myCollection = service.getMyCollection(username, subjectId)
+                savedEpisodeProgress = myCollection?.ep_status ?: boundedEpisodeProgress
+                draftEpisodeProgress = savedEpisodeProgress
+                BangumiViewModel.collectionChanged = true
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.bangumi_collection_saved),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Exception) {
+                val messageRes = if ((e as? HttpException)?.code() == 401) {
+                    R.string.bangumi_authorization_expired
+                } else {
+                    R.string.bangumi_collection_save_failed
+                }
+                Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+            }
+            isSaving = false
+        }
     }
 
     val displayName = subjectNameCn.ifEmpty { subjectName }
@@ -123,6 +247,7 @@ private fun BangumiDetailScreen(
                     Column(
                         modifier = Modifier.fillMaxSize()
                             .verticalScroll(rememberScrollState())
+                            .imePadding()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         // 封面 + 基本信息
@@ -148,7 +273,7 @@ private fun BangumiDetailScreen(
                             }
                             Spacer(Modifier.width(16.dp))
                             // 信息
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(modifier = Modifier.weight(1f).height(168.dp)) {
                                 Text(
                                     text = d.name ?: subjectName,
                                     fontSize = DesignTokens.TextTitle.sp,
@@ -186,32 +311,326 @@ private fun BangumiDetailScreen(
                                     Spacer(Modifier.height(4.dp))
                                 }
 
-                                // 日期 + 话数
-                                if (!d.date.isNullOrEmpty()) {
-                                    Text(
-                                        text = "开播 ${d.date}",
-                                        fontSize = DesignTokens.TextBody1.sp,
-                                        color = dim
-                                    )
-                                }
-                                if (d.total_episodes != null && d.total_episodes!! > 0) {
-                                    Text(
-                                        text = "共 ${d.total_episodes} 话",
-                                        fontSize = DesignTokens.TextBody1.sp,
-                                        color = dim
-                                    )
-                                }
+                                Spacer(Modifier.weight(1f))
+
+                                // 日期 + 话数（置底，用eps正集数不含番外）
                                 if (d.eps != null && d.eps!! > 0) {
-                                    Text(
-                                        text = "已播 ${d.eps} 话",
-                                        fontSize = DesignTokens.TextBody1.sp,
-                                        color = dim
-                                    )
+                                    Text(text = "共 ${d.eps} 话", fontSize = DesignTokens.TextBody1.sp, color = dim)
+                                } else {
+                                    Text(text = "连载中", fontSize = DesignTokens.TextBody1.sp, color = dim)
+                                }
+                                if (!d.date.isNullOrEmpty()) {
+                                    val isMovie = d.name?.contains("剧场版") == true ||
+                                        d.name_cn?.contains("剧场版") == true ||
+                                        d.name?.contains("电影") == true ||
+                                        d.name_cn?.contains("电影") == true
+                                    val dateLabel = if (isMovie) "上映日期" else "放送日期"
+                                    Text(text = "$dateLabel：${d.date}", fontSize = DesignTokens.TextBody1.sp, color = dim)
                                 }
                             }
                         }
 
                         Spacer(Modifier.height(20.dp))
+
+                        // 我的评价（需授权）
+                        val authorized = UserPrefs.getBangumiAccessToken(context).isNotEmpty()
+                        if (authorized && isCollectionLoaded) {
+                            val typeLabels = listOf(
+                                1 to context.getString(R.string.bangumi_wish),
+                                3 to context.getString(R.string.bangumi_doing),
+                                2 to context.getString(R.string.bangumi_done),
+                                4 to context.getString(R.string.bangumi_on_hold),
+                                5 to context.getString(R.string.bangumi_dropped)
+                            )
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                cornerRadius = DesignTokens.CornerLarge
+                            ) {
+                                Column(modifier = Modifier.padding(DesignTokens.SpaceXl)) {
+                                    Text(
+                                        text = context.getString(R.string.bangumi_my_collection),
+                                        fontSize = DesignTokens.TextTitle.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MiuixTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = context.getString(R.string.bangumi_collection_sync_hint),
+                                        fontSize = DesignTokens.TextBody2.sp,
+                                        color = dim
+                                    )
+                                    Spacer(Modifier.height(DesignTokens.SpaceXxl))
+
+                                    Text(
+                                        text = context.getString(R.string.bangumi_collection_status),
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MiuixTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(Modifier.height(DesignTokens.SpaceMd))
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd),
+                                        verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd)
+                                    ) {
+                                        typeLabels.forEach { (apiType, label) ->
+                                            val selected = apiType == draftType
+                                            Box(
+                                                modifier = Modifier
+                                                    .height(DesignTokens.ButtonHeight)
+                                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                                    .background(
+                                                        if (selected) MiuixTheme.colorScheme.primary
+                                                        else MiuixTheme.colorScheme.secondaryContainer
+                                                    )
+                                                    .noRippleClickable { draftType = apiType }
+                                                    .padding(horizontal = DesignTokens.SpaceXl),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = DesignTokens.TextBody1.sp,
+                                                    color = if (selected) Color.White
+                                                        else MiuixTheme.colorScheme.onSurface,
+                                                    fontWeight = if (selected) FontWeight.Bold
+                                                        else FontWeight.Normal
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (mainEpisodes.isNotEmpty()) {
+                                        Spacer(Modifier.height(DesignTokens.SpaceXxl))
+                                        Text(
+                                            text = context.getString(R.string.bangumi_episode_progress),
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MiuixTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(Modifier.height(DesignTokens.SpaceMd))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                                .background(MiuixTheme.colorScheme.secondaryContainer)
+                                                .padding(DesignTokens.SpaceLg)
+                                        ) {
+                                            Column {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    val canDecrease = draftEpisodeProgress > 0
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(DesignTokens.ButtonHeight)
+                                                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                                            .background(
+                                                                MiuixTheme.colorScheme.surface.copy(
+                                                                    alpha = if (canDecrease) 1f
+                                                                    else DesignTokens.OpacityDisabled
+                                                                )
+                                                            )
+                                                            .semantics {
+                                                                contentDescription = context.getString(
+                                                                    R.string.bangumi_episode_decrease
+                                                                )
+                                                            }
+                                                            .noRippleClickable {
+                                                                if (canDecrease) draftEpisodeProgress--
+                                                            },
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Text(
+                                                            text = "−",
+                                                            fontSize = DesignTokens.TextHeadline.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MiuixTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Text(
+                                                            text = context.getString(
+                                                                R.string.bangumi_episode_seen,
+                                                                draftEpisodeProgress
+                                                            ),
+                                                            fontSize = DesignTokens.TextSubtitle.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MiuixTheme.colorScheme.onSurface
+                                                        )
+                                                        Text(
+                                                            text = context.getString(
+                                                                R.string.bangumi_episode_total,
+                                                                mainEpisodes.size
+                                                            ),
+                                                            fontSize = DesignTokens.TextBody2.sp,
+                                                            color = dim
+                                                        )
+                                                    }
+                                                    val canIncrease = draftEpisodeProgress < mainEpisodes.size
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(DesignTokens.ButtonHeight)
+                                                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                                            .background(
+                                                                MiuixTheme.colorScheme.surface.copy(
+                                                                    alpha = if (canIncrease) 1f
+                                                                    else DesignTokens.OpacityDisabled
+                                                                )
+                                                            )
+                                                            .semantics {
+                                                                contentDescription = context.getString(
+                                                                    R.string.bangumi_episode_increase
+                                                                )
+                                                            }
+                                                            .noRippleClickable {
+                                                                if (canIncrease) draftEpisodeProgress++
+                                                            },
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Text(
+                                                            text = "+",
+                                                            fontSize = DesignTokens.TextHeadline.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MiuixTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(Modifier.height(DesignTokens.SpaceLg))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(DesignTokens.SpaceSm)
+                                                        .clip(RoundedCornerShape(DesignTokens.CornerSmall))
+                                                        .background(MiuixTheme.colorScheme.surface)
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth(
+                                                                draftEpisodeProgress.toFloat() /
+                                                                    mainEpisodes.size.toFloat()
+                                                            )
+                                                            .fillMaxHeight()
+                                                            .background(MiuixTheme.colorScheme.primary)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else if (isEpisodeProgressUnavailable) {
+                                        Spacer(Modifier.height(DesignTokens.SpaceXxl))
+                                        Text(
+                                            text = context.getString(R.string.bangumi_episode_progress),
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MiuixTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = context.getString(
+                                                R.string.bangumi_episode_progress_unavailable
+                                            ),
+                                            fontSize = DesignTokens.TextBody2.sp,
+                                            color = dim
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(DesignTokens.SpaceXxl))
+                                    Text(
+                                        text = context.getString(R.string.bangumi_my_rating),
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MiuixTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(Modifier.height(DesignTokens.SpaceMd))
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd),
+                                        verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd)
+                                    ) {
+                                        for (i in 0..10) {
+                                            val label = if (i == 0) "—" else "$i"
+                                            val selected = i == draftRate
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(DesignTokens.ButtonHeight)
+                                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                                    .background(
+                                                        if (selected) MiuixTheme.colorScheme.primary
+                                                        else MiuixTheme.colorScheme.secondaryContainer
+                                                    )
+                                                    .noRippleClickable { draftRate = i },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = DesignTokens.TextBody1.sp,
+                                                    color = if (selected) Color.White
+                                                        else MiuixTheme.colorScheme.onSurface,
+                                                    fontWeight = if (selected) FontWeight.Bold
+                                                        else FontWeight.Normal
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(Modifier.height(DesignTokens.SpaceXxl))
+
+                                    TextField(
+                                        value = draftTags,
+                                        onValueChange = { draftTags = it },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = context.getString(R.string.bangumi_tags_hint),
+                                        useLabelAsPlaceholder = true,
+                                        singleLine = true
+                                    )
+                                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+
+                                    TextField(
+                                        value = draftComment,
+                                        onValueChange = { draftComment = it },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = context.getString(R.string.bangumi_comment_hint),
+                                        useLabelAsPlaceholder = true,
+                                        singleLine = false
+                                    )
+                                    Spacer(Modifier.height(DesignTokens.SpaceXxl))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(DesignTokens.ButtonHeight)
+                                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                            .background(
+                                                if (isSaving) {
+                                                    buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled)
+                                                } else {
+                                                    buttonBgColor()
+                                                }
+                                            )
+                                            .noRippleClickable {
+                                                if (!isSaving) saveCollection()
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = context.getString(
+                                                if (isSaving) R.string.bangumi_saving
+                                                else R.string.bangumi_save_collection
+                                            ),
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(DesignTokens.SpaceXxl))
+                        } else if (!authorized) {
+                            Text(
+                                text = context.getString(R.string.bangumi_authorization_required),
+                                fontSize = DesignTokens.TextBody1.sp,
+                                color = dim
+                            )
+                            Spacer(Modifier.height(DesignTokens.SpaceXxl))
+                        }
 
                         // 标签
                         if (!d.tags.isNullOrEmpty()) {

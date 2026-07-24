@@ -1612,6 +1612,7 @@ private fun BangumiPage(
     val displayStyle = ThemeUtils.getBangumiDisplayStyle(context)  // 0=list, 1=grid
     val bgmUsername = UserPrefs.getBangumiUsername(context)
     val viewModel: BangumiViewModel = viewModel()
+    val lifecycleOwner = LocalLifecycleOwner.current
     val loading by viewModel.loading.observeAsState()
     val error by viewModel.error.observeAsState()
     val collections by viewModel.collections.observeAsState()
@@ -1620,6 +1621,21 @@ private fun BangumiPage(
     val ratingsMap = bgmRatings ?: emptyMap()
 
     LaunchedEffect(bgmUsername) { viewModel.loadIfNeeded(bgmUsername) }
+
+    DisposableEffect(lifecycleOwner, bgmUsername) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (
+                event == Lifecycle.Event.ON_RESUME &&
+                BangumiViewModel.collectionChanged &&
+                bgmUsername.isNotBlank()
+            ) {
+                BangumiViewModel.collectionChanged = false
+                viewModel.refresh(bgmUsername)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // 错误提示
     LaunchedEffect(error) {

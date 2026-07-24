@@ -175,6 +175,26 @@
     <string name="bangumi_profile_total">%d anime in collection</string>
     <string name="bangumi_count">%d anime</string>
     <string name="bangumi_search">Search anime…</string>
+    <string name="bangumi_detail_load_failed">Failed to load anime details</string>
+    <string name="bangumi_collection_load_failed">Failed to load your Bangumi collection</string>
+    <string name="bangumi_my_collection">My Collection</string>
+    <string name="bangumi_collection_sync_hint">Status, progress, rating and notes sync together</string>
+    <string name="bangumi_collection_status">Collection status</string>
+    <string name="bangumi_episode_progress">Episode progress</string>
+    <string name="bangumi_episode_seen">Watched through episode %d</string>
+    <string name="bangumi_episode_total">%d episodes total</string>
+    <string name="bangumi_episode_decrease">Decrease watched episode</string>
+    <string name="bangumi_episode_increase">Increase watched episode</string>
+    <string name="bangumi_episode_progress_unavailable">Episode progress is temporarily unavailable</string>
+    <string name="bangumi_my_rating">My Rating</string>
+    <string name="bangumi_tags_hint">Tags, separated by commas</string>
+    <string name="bangumi_comment_hint">Comment...</string>
+    <string name="bangumi_save_collection">Sync to Bangumi</string>
+    <string name="bangumi_saving">Syncing…</string>
+    <string name="bangumi_collection_saved">Synced to your Bangumi account</string>
+    <string name="bangumi_collection_save_failed">Sync failed. Please try again</string>
+    <string name="bangumi_authorization_expired">Bangumi authorization expired. Please sign in again</string>
+    <string name="bangumi_authorization_required">Authorize Bangumi in Settings to edit this collection</string>
 
     <string name="cancel">Cancel</string>
 </resources>

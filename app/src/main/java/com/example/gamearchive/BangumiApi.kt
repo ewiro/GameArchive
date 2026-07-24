@@ -1,7 +1,10 @@
 package com.example.gamearchive
 
 import androidx.annotation.Keep
+import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
@@ -117,4 +120,84 @@ interface BangumiOAuthService {
         @Field("refresh_token") refreshToken: String? = null,
         @Field("redirect_uri") redirectUri: String
     ): BangumiOAuthToken
+}
+
+// --- 用户收藏编辑（需 Bearer Token）---
+@Keep data class BangumiMyCollection(
+    val subject_id: Int? = null,
+    val subject_type: Int? = null,
+    val rate: Int? = null,
+    val type: Int? = null,
+    val comment: String? = null,
+    val tags: List<String>? = null,
+    val ep_status: Int? = null,
+    val vol_status: Int? = null,
+    val updated_at: String? = null,
+    val `private`: Boolean? = null,
+    val subject: BangumiSubject? = null
+)
+
+@Keep data class BangumiCollectionUpdate(
+    val type: Int,
+    val rate: Int,
+    val comment: String,
+    val tags: List<String>,
+    val `private`: Boolean
+)
+
+@Keep data class BangumiEpisode(
+    val id: Int,
+    val type: Int,
+    val name: String? = null,
+    val name_cn: String? = null,
+    val sort: Double? = null,
+    val ep: Double? = null
+)
+
+@Keep data class BangumiUserEpisodeCollection(
+    val episode: BangumiEpisode,
+    val type: Int,
+    val updated_at: Long? = null
+)
+
+@Keep data class BangumiPagedEpisodeCollection(
+    val total: Int,
+    val limit: Int,
+    val offset: Int,
+    val data: List<BangumiUserEpisodeCollection>? = null
+)
+
+@Keep data class BangumiEpisodeCollectionUpdate(
+    val episode_id: List<Int>,
+    val type: Int
+)
+
+interface BangumiCollectionService {
+    @GET("bangumi/v0/me")
+    suspend fun getCurrentUser(): BangumiUser
+
+    @GET("bangumi/v0/users/{username}/collections/{subject_id}")
+    suspend fun getMyCollection(
+        @Path("username") username: String,
+        @Path("subject_id") subjectId: Int
+    ): BangumiMyCollection
+
+    @POST("bangumi/v0/users/-/collections/{subject_id}")
+    suspend fun updateCollection(
+        @Path("subject_id") subjectId: Int,
+        @Body payload: BangumiCollectionUpdate
+    ): Response<Unit>
+
+    @GET("bangumi/v0/users/-/collections/{subject_id}/episodes")
+    suspend fun getEpisodeCollections(
+        @Path("subject_id") subjectId: Int,
+        @Query("limit") limit: Int = 1000,
+        @Query("episode_type") episodeType: Int = 0
+    ): BangumiPagedEpisodeCollection
+
+    @PATCH("bangumi/v0/users/-/collections/{subject_id}/episodes")
+    suspend fun updateEpisodeCollections(
+        @Path("subject_id") subjectId: Int,
+        @Body payload: BangumiEpisodeCollectionUpdate
+    ): Response<Unit>
 }
