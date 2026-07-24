@@ -76,6 +76,13 @@ class BangumiAuthActivity : ComponentActivity() {
                 UserPrefs.setBangumiAccessToken(this@BangumiAuthActivity, token.access_token)
                 UserPrefs.setBangumiRefreshToken(this@BangumiAuthActivity, token.refresh_token)
                 UserPrefs.setBangumiUserId(this@BangumiAuthActivity, token.user_id)
+                try {
+                    val currentUser = GameArchiveApp.createAuthenticatedBgmService(token.access_token)
+                        .getCurrentUser()
+                    UserPrefs.setBangumiUsername(this@BangumiAuthActivity, currentUser.username)
+                } catch (_: Exception) {
+                    // Token 已成功取得；用户名仍可在设置页手动填写。
+                }
                 ThemeUtils.isChanged = true
                 Toast.makeText(this@BangumiAuthActivity, "授权成功！用户 ID: ${token.user_id}", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {

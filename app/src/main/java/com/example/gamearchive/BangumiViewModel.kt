@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 /**
@@ -35,6 +36,9 @@ class BangumiViewModel : ViewModel() {
 
     /** 收藏类型 → 中文名 */
     companion object {
+        @Volatile
+        var collectionChanged = false
+
         val typeNames = mapOf(
             1 to R.string.bangumi_wish,
             2 to R.string.bangumi_doing,
@@ -57,33 +61,36 @@ class BangumiViewModel : ViewModel() {
         viewModelScope.launch {
             _loading.value = true
             try {
-                // 并发：用户信息 + 各分类收藏
+                // 并发：用户信息 + 所有分类收藏同时拉取
                 val userDeferred = viewModelScope.async {
                     try { GameArchiveApp.bgmService.getUserInfo(username) } catch (_: Exception) { null }
                 }
-                val allData = mutableMapOf<Int, MutableList<BangumiCollection>>()
-                // 逐个 type 拉取，翻页到底；内部交换 2↔3：API 的 2(看过)⟷3(在看)
-                for (type in 1..5) {
-                    try {
-                        val bucket = when (type) { 2 -> 3; 3 -> 2; else -> type }
-                        val list = mutableListOf<BangumiCollection>()
-                        var offset = 0
-                        // 循环翻页直到拿完所有数据
-                        while (true) {
-                            val page = GameArchiveApp.bgmService.getUserCollections(
-                                username, subjectType = 2, collectionType = type,
-                                limit = 50, offset = offset
-                            )
-                            page.data?.forEach { item ->
-                                // 交换 items 自身的 type，确保 item.type 与 bucket 一致
-                                val t = when (item.type) { 2 -> 3; 3 -> 2; else -> item.type }
-                                list.add(item.copy(type = t))
+                // 5 个分类并发拉取
+                val typeDeferreds = (1..5).map { type ->
+                    viewModelScope.async {
+                        try {
+                            val bucket = when (type) { 2 -> 3; 3 -> 2; else -> type }
+                            val list = mutableListOf<BangumiCollection>()
+                            var offset = 0
+                            while (true) {
+                                val page = GameArchiveApp.bgmService.getUserCollections(
+                                    username, subjectType = 2, collectionType = type,
+                                    limit = 50, offset = offset
+                                )
+                                page.data?.forEach { item ->
+                                    val t = when (item.type) { 2 -> 3; 3 -> 2; else -> item.type }
+                                    list.add(item.copy(type = t))
+                                }
+                                if (page.data == null || page.total <= offset + 50) break
+                                offset += 50
                             }
-                            if (page.data == null || page.total <= offset + 50) break
-                            offset += 50
-                        }
-                        if (list.isNotEmpty()) allData[bucket] = list
-                    } catch (_: Exception) { /* 某个分类为空时继续 */ }
+                            if (list.isNotEmpty()) bucket to list else null
+                        } catch (_: Exception) { null }
+                    }
+                }
+                val allData = mutableMapOf<Int, MutableList<BangumiCollection>>()
+                typeDeferreds.awaitAll().filterNotNull().forEach { (bucket, list) ->
+                    allData[bucket] = list
                 }
                 _user.value = userDeferred.await()
                 _collections.value = allData

@@ -52,6 +52,25 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
                 .build()
                 .create(BangumiOAuthService::class.java)
         }
+
+        /** 创建带 Bearer Token 的 Bangumi 收藏编辑服务（走代理） */
+        fun createAuthenticatedBgmService(token: String): BangumiCollectionService {
+            val authClient = okHttpClient.newBuilder()
+                .addInterceptor { chain ->
+                    chain.proceed(chain.request().newBuilder()
+                        .header("Authorization", "Bearer $token")
+                        .header("Accept", "application/json")
+                        .header("User-Agent", "GameArchive/${BuildConfig.VERSION_NAME} (Android)")
+                        .build())
+                }
+                .build()
+            return Retrofit.Builder()
+                .baseUrl(AppConfig.PROXY_URL)
+                .client(authClient)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+                .create(BangumiCollectionService::class.java)
+        }
     }
 
     override fun newImageLoader(): ImageLoader {
