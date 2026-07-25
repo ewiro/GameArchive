@@ -63,6 +63,9 @@
 
 # 5.2 完整保留本项目的网络接口及其方法签名 (Retrofit 靠它解析返回类型)
 -keep interface com.example.gamearchive.SteamApiService { *; }
+-keep interface com.example.gamearchive.BangumiService { *; }
+-keep interface com.example.gamearchive.BangumiOAuthService { *; }
+-keep interface com.example.gamearchive.BangumiCollectionService { *; }
 
 # 6. 保护 Coil
 -keep class coil.** { *; }

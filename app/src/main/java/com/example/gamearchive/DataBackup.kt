@@ -49,6 +49,9 @@ object DataBackup {
         prefs.put("enable_grouping", themePrefs.getBoolean("enable_grouping", false))
         prefs.put("sort_mode", themePrefs.getInt("sort_mode", 0))
         prefs.put("show_specials", themePrefs.getBoolean("show_specials", true))
+        prefs.put("show_bangumi", themePrefs.getBoolean("show_bangumi", true))
+        prefs.put("bangumi_display_style", themePrefs.getInt("bangumi_display_style", 0))
+        prefs.put("bangumi_rating_mode", UserPrefs.getBangumiRatingMode(context))
         root.put("app_theme_prefs", prefs)
 
         return root.toString(2)
@@ -130,8 +133,18 @@ object DataBackup {
                 if (p.has("enable_grouping")) editor.putBoolean("enable_grouping", p.getBoolean("enable_grouping"))
                 if (p.has("sort_mode")) editor.putInt("sort_mode", p.getInt("sort_mode"))
                 if (p.has("show_specials")) editor.putBoolean("show_specials", p.getBoolean("show_specials"))
+                if (p.has("show_bangumi")) editor.putBoolean("show_bangumi", p.getBoolean("show_bangumi"))
+                if (p.has("bangumi_display_style")) {
+                    editor.putInt("bangumi_display_style", p.getInt("bangumi_display_style").coerceIn(0, 1))
+                }
                 // 兼容旧格式：跳过 group_recent 字段（已废弃）
                 editor.apply()
+                if (p.has("bangumi_rating_mode")) {
+                    UserPrefs.setBangumiRatingMode(
+                        context,
+                        p.getInt("bangumi_rating_mode").coerceIn(0, 2)
+                    )
+                }
             }
 
             ThemeUtils.isChanged = true
