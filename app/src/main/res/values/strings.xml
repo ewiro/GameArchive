@@ -47,8 +47,9 @@
     <string name="settings_lang_follow_system">Follow System</string>
     <string name="settings_lang_chinese">中文</string>
     <string name="settings_lang_english">English</string>
-    <string name="settings_profile">Profile</string>
+    <string name="settings_game_page">Game Page</string>
     <string name="settings_show_profile">Show profile card</string>
+    <string name="settings_custom_urls">Custom URLs</string>
     <string name="settings_avatar_url">Custom Avatar URL</string>
     <string name="settings_avatar_hint">Supports GIF, empty for official avatar</string>
     <string name="settings_bg_url">Background Image URL</string>
@@ -57,16 +58,20 @@
     <string name="settings_frame_hint">Must be PNG, empty to hide</string>
     <string name="settings_save_profile">Save</string>
     <string name="settings_profile_saved">Profile settings saved</string>
-    <string name="settings_library">Game List Settings</string>
     <string name="settings_show_specials">Show Specials</string>
     <string name="settings_show_bangumi">Show Anime</string>
+    <string name="settings_show_activity">Show Activity</string>
     <string name="settings_grouping">Enable status grouping</string>
     <string name="settings_sort_mode">Default Sort Mode</string>
     <string name="settings_sort_playtime">By Playtime (High to Low)</string>
     <string name="settings_sort_name">By Name (A-Z)</string>
-    <string name="settings_logout">Sign Out / Switch Account</string>
+    <string name="settings_logout">Sign Out</string>
     <string name="settings_accounts">Accounts</string>
     <string name="account_add">Add Account</string>
+    <string name="account_choose_type">Choose account type</string>
+    <string name="account_steam">Steam</string>
+    <string name="account_bangumi">Bangumi</string>
+    <string name="account_add_steam">Add Steam Account</string>
     <string name="account_exists">Account already exists</string>
     <string name="account_remove">Remove</string>
     <string name="account_steam_id_hint">Steam ID</string>
@@ -164,8 +169,7 @@
 
     <!-- Bangumi -->
     <string name="nav_bangumi">Anime</string>
-    <string name="settings_bangumi">Bangumi</string>
-    <string name="settings_bangumi_hint">Bangumi user ID</string>
+    <string name="settings_bangumi">Anime Page</string>
     <string name="settings_bangumi_show_rating">Anime Rating</string>
     <string name="settings_bangumi_rating_all">Show Rating</string>
     <string name="settings_bangumi_rating_mine">My Rating Only</string>

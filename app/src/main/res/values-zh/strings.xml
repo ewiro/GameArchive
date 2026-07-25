@@ -47,8 +47,9 @@
     <string name="settings_lang_follow_system">跟随系统</string>
     <string name="settings_lang_chinese">中文</string>
     <string name="settings_lang_english">English</string>
-    <string name="settings_profile">个人资料</string>
+    <string name="settings_game_page">游戏页</string>
     <string name="settings_show_profile">显示个人资料卡片</string>
+    <string name="settings_custom_urls">自定义 URL</string>
     <string name="settings_avatar_url">自定义头像 URL</string>
     <string name="settings_avatar_hint">支持 GIF，留空则使用官方头像</string>
     <string name="settings_bg_url">背景图片 URL</string>
@@ -57,16 +58,20 @@
     <string name="settings_frame_hint">必须为 PNG 格式，留空隐藏</string>
     <string name="settings_save_profile">保存</string>
     <string name="settings_profile_saved">个人资料设置已更新</string>
-    <string name="settings_library">游戏列表设置</string>
     <string name="settings_show_specials">展示特惠页</string>
     <string name="settings_show_bangumi">展示动漫页</string>
+    <string name="settings_show_activity">展示记录页</string>
     <string name="settings_grouping">开启状态分组</string>
     <string name="settings_sort_mode">默认排序方式</string>
     <string name="settings_sort_playtime">按游戏时长 (从高到低)</string>
     <string name="settings_sort_name">按名称 (A-Z)</string>
-    <string name="settings_logout">退出登录 / 切换账号</string>
+    <string name="settings_logout">退出登录</string>
     <string name="settings_accounts">账号管理</string>
     <string name="account_add">添加账号</string>
+    <string name="account_choose_type">选择账号类型</string>
+    <string name="account_steam">Steam</string>
+    <string name="account_bangumi">Bangumi</string>
+    <string name="account_add_steam">添加 Steam 账号</string>
     <string name="account_exists">账号已存在</string>
     <string name="account_remove">删除</string>
     <string name="account_steam_id_hint">Steam ID</string>
@@ -164,15 +169,14 @@
 
     <!-- Bangumi -->
     <string name="nav_bangumi">动漫</string>
-    <string name="settings_bangumi">Bangumi</string>
-    <string name="settings_bangumi_hint">Bangumi 用户ID</string>
+    <string name="settings_bangumi">动漫页</string>
     <string name="settings_bangumi_show_rating">动漫评分</string>
     <string name="settings_bangumi_rating_all">展示评分</string>
     <string name="settings_bangumi_rating_mine">仅展示我的评分</string>
     <string name="settings_bangumi_rating_none">不展示</string>
     <string name="settings_bangumi_display_style">展示风格</string>
-    <string name="settings_bangumi_display_list">列表展示</string>
-    <string name="settings_bangumi_display_grid">网格展示</string>
+    <string name="settings_bangumi_display_list">列表</string>
+    <string name="settings_bangumi_display_grid">网格</string>
     <string name="confirm">确认</string>
     <string name="bangumi_wish">想看</string>
     <string name="bangumi_done">看过</string>

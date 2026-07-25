@@ -33,6 +33,7 @@ data class DailyActivity(
 
 data class ActivityYearSnapshot(
     val stats: Map<String, DailyActivity>,
+    val history: Map<String, DailyActivity>,
     val availableYears: Set<Int>,
     val baselineOnly: Boolean
 )
@@ -233,14 +234,15 @@ object ActivityStats {
         val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
         val prefix = "$year-"
         val stats = linkedMapOf<String, DailyActivity>()
+        val history = linkedMapOf<String, DailyActivity>()
         val years = mutableSetOf<Int>()
         val keys = days.keys()
         while (keys.hasNext()) {
             val date = keys.next()
             date.take(4).toIntOrNull()?.let(years::add)
-            if (date.startsWith(prefix)) {
-                stats[date] = decodeDay(date, days.optJSONObject(date))
-            }
+            val day = decodeDay(date, days.optJSONObject(date))
+            history[date] = day
+            if (date.startsWith(prefix)) stats[date] = day
         }
         val hasBaseline =
             parseObject(prefs.getString(KEY_GAME_BASELINES, null)).length() > 0 ||
@@ -251,6 +253,7 @@ object ActivityStats {
             prefs.getString(KEY_ANIME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0
         return ActivityYearSnapshot(
             stats = stats,
+            history = history,
             availableYears = years,
             baselineOnly = hasBaseline && gameObservations < 2 && animeObservations < 2
         )
