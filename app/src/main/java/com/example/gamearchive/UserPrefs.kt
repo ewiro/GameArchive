@@ -97,6 +97,7 @@ object UserPrefs {
 
     // ── 多账号管理 ──
     private const val KEY_ADDITIONAL_ACCOUNTS = "additional_accounts"
+    private const val KEY_STEAM_NICKNAMES = "steam_nicknames"
 
     /** 获取额外账号列表 (steamId, apiKey) */
     fun getAdditionalAccounts(context: Context): List<Pair<String, String>> {
@@ -118,7 +119,11 @@ object UserPrefs {
     }
 
     /** 添加额外账号，重复steamId返回false */
-    fun addAccount(context: Context, steamId: String, apiKey: String): Boolean {
+    fun addAccount(
+        context: Context,
+        steamId: String,
+        apiKey: String
+    ): Boolean {
         val all = getAllAccounts(context)
         if (all.any { it.first == steamId }) return false
         val existing = getAdditionalAccounts(context).toMutableList()
@@ -131,8 +136,9 @@ object UserPrefs {
     fun removeAccount(context: Context, index: Int) {
         val existing = getAdditionalAccounts(context).toMutableList()
         if (index in existing.indices) {
-            existing.removeAt(index)
+            val removedSteamId = existing.removeAt(index).first
             saveAdditionalAccounts(context, existing)
+            removeSteamNickname(context, removedSteamId)
         }
     }
 
@@ -145,6 +151,34 @@ object UserPrefs {
             arr.put(obj)
         }
         getPrefs(context).edit().putString(KEY_ADDITIONAL_ACCOUNTS, arr.toString()).apply()
+    }
+
+    fun getStoredSteamNickname(context: Context, steamId: String): String {
+        val names = runCatching {
+            JSONObject(getPrefs(context).getString(KEY_STEAM_NICKNAMES, "{}") ?: "{}")
+        }.getOrDefault(JSONObject())
+        return names.optString(steamId)
+    }
+
+    fun getSteamNickname(context: Context, steamId: String): String {
+        return getStoredSteamNickname(context, steamId).ifBlank { steamId }
+    }
+
+    fun saveSteamNickname(context: Context, steamId: String, nickname: String) {
+        if (steamId.isBlank() || nickname.isBlank()) return
+        val names = runCatching {
+            JSONObject(getPrefs(context).getString(KEY_STEAM_NICKNAMES, "{}") ?: "{}")
+        }.getOrDefault(JSONObject())
+        names.put(steamId, nickname.trim())
+        getPrefs(context).edit().putString(KEY_STEAM_NICKNAMES, names.toString()).apply()
+    }
+
+    private fun removeSteamNickname(context: Context, steamId: String) {
+        val names = runCatching {
+            JSONObject(getPrefs(context).getString(KEY_STEAM_NICKNAMES, "{}") ?: "{}")
+        }.getOrDefault(JSONObject())
+        names.remove(steamId)
+        getPrefs(context).edit().putString(KEY_STEAM_NICKNAMES, names.toString()).apply()
     }
 
     // ── Bangumi 用户名 ──
@@ -200,6 +234,7 @@ object UserPrefs {
             .remove(KEY_BANGUMI_ACCESS_TOKEN)
             .remove(KEY_BANGUMI_REFRESH_TOKEN)
             .remove(KEY_BANGUMI_USER_ID)
+            .remove(KEY_BANGUMI_USERNAME)
             .apply()
         GameArchiveApp.clearAuthenticatedBgmService()
     }

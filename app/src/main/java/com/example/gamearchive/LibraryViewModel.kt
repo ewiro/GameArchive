@@ -182,6 +182,15 @@ class LibraryViewModel : ViewModel() {
                         )
                     }
                     val playerInfo = playerDeferred.await()
+                    if (context != null && playerInfo != null) {
+                        withContext(Dispatchers.IO) {
+                            UserPrefs.saveSteamNickname(
+                                context,
+                                steamId,
+                                playerInfo.personaname
+                            )
+                        }
+                    }
 
                     // Steam 等级（仅主账号）
                     val playerLevel = levelDeferred.await()

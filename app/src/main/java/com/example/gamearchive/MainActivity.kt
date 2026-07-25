@@ -160,10 +160,15 @@ private fun MainScreen() {
     val context = LocalContext.current
     val specialsEnabled = ThemeUtils.isSpecialsEnabled(context)
     val bangumiEnabled = ThemeUtils.isBangumiEnabled(context)
+    val activityEnabled = ThemeUtils.isActivityEnabled(context)
     val specialsPage = if (specialsEnabled) 1 else -1
     val bangumiPage = if (bangumiEnabled) (if (specialsEnabled) 2 else 1) else -1
-    val activityPage = 1 + (if (specialsEnabled) 1 else 0) + (if (bangumiEnabled) 1 else 0)
-    val pagerState = rememberPagerState(pageCount = { activityPage + 1 })
+    val pageCount = 1 +
+        (if (specialsEnabled) 1 else 0) +
+        (if (bangumiEnabled) 1 else 0) +
+        (if (activityEnabled) 1 else 0)
+    val activityPage = if (activityEnabled) pageCount - 1 else -1
+    val pagerState = rememberPagerState(pageCount = { pageCount })
     var bottomBarVisible by remember { mutableStateOf(true) }
     var topBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
@@ -463,51 +468,53 @@ private fun MainScreen() {
                         color = if (selectedTab == bangumiPage) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
                 }
-                val tabAnimActivity by animateFloatAsState(
-                    targetValue = if (selectedTab == activityPage) 1f else 0f,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-                    label = "tab_anim_activity"
-                )
-                Column(
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = 0.85f + 0.15f * tabAnimActivity
-                            scaleY = 0.85f + 0.15f * tabAnimActivity
-                        }
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() }
-                        ) {
-                            navigateToPage(activityPage)
-                        }
-                        .padding(horizontal = 24.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Image(
-                        imageVector = if (selectedTab == activityPage) {
-                            MiuixIcons.Demibold.Recent
-                        } else {
-                            MiuixIcons.Light.Recent
-                        },
-                        contentDescription = context.getString(R.string.nav_activity),
-                        modifier = Modifier.size(DesignTokens.IconXl),
-                        colorFilter = ColorFilter.tint(
-                            if (selectedTab == activityPage) {
+                if (activityEnabled) {
+                    val tabAnimActivity by animateFloatAsState(
+                        targetValue = if (selectedTab == activityPage) 1f else 0f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+                        label = "tab_anim_activity"
+                    )
+                    Column(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = 0.85f + 0.15f * tabAnimActivity
+                                scaleY = 0.85f + 0.15f * tabAnimActivity
+                            }
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {
+                                navigateToPage(activityPage)
+                            }
+                            .padding(horizontal = 24.dp, vertical = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(
+                            imageVector = if (selectedTab == activityPage) {
+                                MiuixIcons.Demibold.Recent
+                            } else {
+                                MiuixIcons.Light.Recent
+                            },
+                            contentDescription = context.getString(R.string.nav_activity),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(
+                                if (selectedTab == activityPage) {
+                                    DesignTokens.AccentBlue
+                                } else {
+                                    MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive)
+                                }
+                            )
+                        )
+                        Text(
+                            text = context.getString(R.string.nav_activity),
+                            fontSize = DesignTokens.TextCaption.sp,
+                            color = if (selectedTab == activityPage) {
                                 DesignTokens.AccentBlue
                             } else {
                                 MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive)
                             }
                         )
-                    )
-                    Text(
-                        text = context.getString(R.string.nav_activity),
-                        fontSize = DesignTokens.TextCaption.sp,
-                        color = if (selectedTab == activityPage) {
-                            DesignTokens.AccentBlue
-                        } else {
-                            MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive)
-                        }
-                    )
+                    }
                 }
             }
         }
@@ -1670,7 +1677,9 @@ private fun ActivityPage(
     val today = remember { activityDateString(Calendar.getInstance()) }
     var selectedYear by remember { mutableIntStateOf(currentYear) }
     var selectedDate by remember { mutableStateOf(today) }
+    var showExactDate by remember { mutableStateOf(false) }
     var yearStats by remember { mutableStateOf<Map<String, DailyActivity>>(emptyMap()) }
+    var activityHistory by remember { mutableStateOf<Map<String, DailyActivity>>(emptyMap()) }
     var availableYears by remember { mutableStateOf(setOf(currentYear)) }
     var baselineOnly by remember { mutableStateOf(false) }
 
@@ -1679,6 +1688,7 @@ private fun ActivityPage(
             ActivityStats.getYearSnapshot(context, selectedYear)
         }
         yearStats = snapshot.stats
+        activityHistory = snapshot.history
         availableYears = snapshot.availableYears + currentYear
         baselineOnly = snapshot.baselineOnly
         if (!selectedDate.startsWith("$selectedYear-")) {
@@ -1690,8 +1700,19 @@ private fun ActivityPage(
         }
     }
 
-    val selectedDay = yearStats[selectedDate]
-        ?: DailyActivity(selectedDate, 0, 0, emptyList())
+    val historyEntries = remember(activityHistory, selectedDate) {
+        activityHistory.asSequence()
+            .filter { (date, _) -> date <= selectedDate }
+            .flatMap { (_, day) -> day.entries.asSequence() }
+            .sortedByDescending { it.lastRecordedAt }
+            .distinctBy { it.kind to it.id }
+            .toList()
+    }
+    val displayedEntries = if (showExactDate) {
+        yearStats[selectedDate]?.entries.orEmpty()
+    } else {
+        historyEntries
+    }
     val minYear = availableYears.minOrNull() ?: currentYear
     val apiKey = UserPrefs.getApiKey(context)
     val steamId = UserPrefs.getSteamId(context)
@@ -1722,7 +1743,14 @@ private fun ActivityPage(
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    showExactDate = false
+                },
             contentPadding = PaddingValues(bottom = 72.dp)
         ) {
             item("activity_top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
@@ -1735,7 +1763,10 @@ private fun ActivityPage(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     IconButton(
-                        onClick = { selectedYear-- },
+                        onClick = {
+                            selectedYear--
+                            showExactDate = false
+                        },
                         enabled = selectedYear > minYear
                     ) {
                         Image(
@@ -1757,7 +1788,10 @@ private fun ActivityPage(
                         color = DesignTokens.AccentBlue
                     )
                     IconButton(
-                        onClick = { selectedYear++ },
+                        onClick = {
+                            selectedYear++
+                            showExactDate = false
+                        },
                         enabled = selectedYear < currentYear
                     ) {
                         Image(
@@ -1777,27 +1811,32 @@ private fun ActivityPage(
                 ActivityHeatmap(
                     year = selectedYear,
                     today = today,
-                    selectedDate = selectedDate,
+                    selectedDate = selectedDate.takeIf { showExactDate },
                     stats = yearStats,
-                    onDateSelected = { selectedDate = it }
+                    onDateSelected = {
+                        selectedDate = it
+                        showExactDate = true
+                    }
                 )
             }
-            item("activity_summary") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = selectedDate,
-                        fontSize = DesignTokens.TextSubtitle.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+            if (showExactDate) {
+                item("activity_summary") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = selectedDate,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
-            if (selectedDay.entries.isEmpty()) {
+            if (displayedEntries.isEmpty()) {
                 item("activity_empty") {
                     Box(
                         modifier = Modifier
@@ -1819,7 +1858,7 @@ private fun ActivityPage(
                     }
                 }
             } else {
-                val rows = selectedDay.entries.chunked(4)
+                val rows = displayedEntries.chunked(4)
                 items(
                     count = rows.size,
                     key = { rowIndex ->
@@ -1866,7 +1905,7 @@ private fun ActivityPage(
 private fun ActivityHeatmap(
     year: Int,
     today: String,
-    selectedDate: String,
+    selectedDate: String?,
     stats: Map<String, DailyActivity>,
     onDateSelected: (String) -> Unit
 ) {
@@ -1894,8 +1933,9 @@ private fun ActivityHeatmap(
                 detectTapGestures { offset ->
                     if (canvasSize.width <= 0 || canvasSize.height <= 0) return@detectTapGestures
                     val column = (offset.x / (canvasSize.width / 25f)).toInt()
-                    val row = (offset.y / (canvasSize.height / rows.toFloat())).toInt()
-                    val index = row * 25 + column
+                    val visualRow = (offset.y / (canvasSize.height / rows.toFloat())).toInt()
+                    val chronologicalRow = rows - 1 - visualRow
+                    val index = chronologicalRow * 25 + column
                     val date = dates.getOrNull(index) ?: return@detectTapGestures
                     if (date <= today) onDateSelected(date)
                 }
@@ -1906,7 +1946,7 @@ private fun ActivityHeatmap(
         val cellSize = minOf(slotWidth, slotHeight) - gapPx
         dates.forEachIndexed { index, date ->
             val column = index % 25
-            val row = index / 25
+            val row = rows - 1 - index / 25
             val score = stats[date]?.score ?: 0.0
             val cellColor = when {
                 score <= 0.0 -> emptyColor
