@@ -148,11 +148,13 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var accounts by remember { mutableStateOf(UserPrefs.getAdditionalAccounts(context)) }
     var steamNamesRevision by remember { mutableIntStateOf(0) }
     var bangumiUserId by remember { mutableIntStateOf(UserPrefs.getBangumiUserId(context)) }
+    var bangumiNickname by remember { mutableStateOf(UserPrefs.getBangumiNickname(context)) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 bangumiUserId = UserPrefs.getBangumiUserId(context)
+                bangumiNickname = UserPrefs.getBangumiNickname(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -181,6 +183,25 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             changed
         }
         if (namesChanged) steamNamesRevision++
+    }
+
+    LaunchedEffect(bangumiUserId) {
+        if (bangumiUserId > 0) {
+            val token = UserPrefs.getBangumiAccessToken(context)
+            if (token.isNotBlank()) {
+                val currentUser = withContext(Dispatchers.IO) {
+                    runCatching {
+                        GameArchiveApp.createAuthenticatedBgmService(token).getCurrentUser()
+                    }.getOrNull()
+                }
+                if (currentUser != null) {
+                    UserPrefs.setBangumiUsername(context, currentUser.username)
+                    val displayName = currentUser.nickname.ifBlank { currentUser.username }
+                    UserPrefs.setBangumiNickname(context, displayName)
+                    bangumiNickname = displayName
+                }
+            }
+        }
     }
 
     // ── 导出/导入文件选择器 ──
@@ -917,7 +938,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         ) {
                             Spacer(Modifier.width(DesignTokens.SpaceXl))
                             Text(
-                                text = bangumiUserId.toString(),
+                                text = bangumiNickname.ifBlank { bangumiUserId.toString() },
                                 fontSize = DesignTokens.TextSubtitle.sp,
                                 color = MiuixTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1f)
@@ -931,6 +952,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     .noRippleClickable {
                                         UserPrefs.clearBangumiToken(context)
                                         bangumiUserId = 0
+                                        bangumiNickname = ""
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             )

@@ -183,6 +183,7 @@ object UserPrefs {
 
     // ── Bangumi 用户名 ──
     private const val KEY_BANGUMI_USERNAME = "bangumi_username"
+    private const val KEY_BANGUMI_NICKNAME = "bangumi_nickname"
 
     fun getBangumiUsername(context: Context): String {
         return getPrefs(context).getString(KEY_BANGUMI_USERNAME, "") ?: ""
@@ -190,6 +191,14 @@ object UserPrefs {
 
     fun setBangumiUsername(context: Context, username: String) {
         getPrefs(context).edit().putString(KEY_BANGUMI_USERNAME, username.trim()).apply()
+    }
+
+    fun getBangumiNickname(context: Context): String {
+        return getPrefs(context).getString(KEY_BANGUMI_NICKNAME, "") ?: ""
+    }
+
+    fun setBangumiNickname(context: Context, nickname: String) {
+        getPrefs(context).edit().putString(KEY_BANGUMI_NICKNAME, nickname.trim()).apply()
     }
 
     // ── Bangumi 评分展示模式：0=展示评分, 1=仅我的评分, 2=不展示 ──
@@ -235,6 +244,7 @@ object UserPrefs {
             .remove(KEY_BANGUMI_REFRESH_TOKEN)
             .remove(KEY_BANGUMI_USER_ID)
             .remove(KEY_BANGUMI_USERNAME)
+            .remove(KEY_BANGUMI_NICKNAME)
             .apply()
         GameArchiveApp.clearAuthenticatedBgmService()
     }

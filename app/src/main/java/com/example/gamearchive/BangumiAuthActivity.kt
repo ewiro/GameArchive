@@ -80,8 +80,12 @@ class BangumiAuthActivity : ComponentActivity() {
                     val currentUser = GameArchiveApp.createAuthenticatedBgmService(token.access_token)
                         .getCurrentUser()
                     UserPrefs.setBangumiUsername(this@BangumiAuthActivity, currentUser.username)
+                    UserPrefs.setBangumiNickname(
+                        this@BangumiAuthActivity,
+                        currentUser.nickname.ifBlank { currentUser.username }
+                    )
                 } catch (_: Exception) {
-                    // Token 已成功取得；用户名仍可在设置页手动填写。
+                    // Token 已成功取得；用户资料会在设置页再次补拉。
                 }
                 ThemeUtils.isChanged = true
                 Toast.makeText(
