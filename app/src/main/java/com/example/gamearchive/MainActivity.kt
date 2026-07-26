@@ -56,6 +56,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -284,6 +286,7 @@ private fun MainScreen() {
                     listState = activityListState,
                     libraryViewModel = libraryViewModel,
                     bangumiViewModel = bangumiViewModel,
+                    includeAnime = bangumiEnabled,
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToBangumiDetail = navigateToBangumiDetail
                 )
@@ -1685,10 +1688,14 @@ private fun ActivityPage(
     listState: LazyListState,
     libraryViewModel: LibraryViewModel,
     bangumiViewModel: BangumiViewModel,
+    includeAnime: Boolean,
     onNavigateToDetail: (Int, String, String) -> Unit,
     onNavigateToBangumiDetail: (Int, String, String, String) -> Unit
 ) {
     val context = LocalContext.current
+    val yearFontFamily = remember {
+        FontFamily(Font(R.font.dseg7_classic_bold, FontWeight.Bold))
+    }
     val steamLoading by libraryViewModel.loading.observeAsState()
     val bangumiLoading by bangumiViewModel.loading.observeAsState()
     val revision by ActivityStats.revision.observeAsState()
@@ -1702,9 +1709,13 @@ private fun ActivityPage(
     var availableYears by remember { mutableStateOf(setOf(currentYear)) }
     var baselineOnly by remember { mutableStateOf(false) }
 
-    LaunchedEffect(revision, selectedYear) {
+    LaunchedEffect(revision, selectedYear, includeAnime) {
         val snapshot = withContext(Dispatchers.IO) {
-            ActivityStats.getYearSnapshot(context, selectedYear)
+            ActivityStats.getYearSnapshot(
+                context = context,
+                year = selectedYear,
+                includeAnime = includeAnime
+            )
         }
         yearStats = snapshot.stats
         activityHistory = snapshot.history
@@ -1740,11 +1751,11 @@ private fun ActivityPage(
     val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
 
     PullToRefresh(
-        isRefreshing = steamLoading == true || bangumiLoading == true,
+        isRefreshing = steamLoading == true || includeAnime && bangumiLoading == true,
         onRefresh = {
             libraryViewModel.refresh(apiKey, steamId, context)
             if (
-                ThemeUtils.isBangumiEnabled(context) &&
+                includeAnime &&
                 bgmUsername.isNotBlank() &&
                 bgmAccessToken.isNotBlank()
             ) {
@@ -1802,8 +1813,9 @@ private fun ActivityPage(
                     Text(
                         text = selectedYear.toString(),
                         modifier = Modifier.padding(horizontal = 24.dp),
-                        fontSize = 36.sp,
+                        fontSize = 42.sp,
                         fontWeight = FontWeight.Bold,
+                        fontFamily = yearFontFamily,
                         color = DesignTokens.AccentBlue
                     )
                     IconButton(

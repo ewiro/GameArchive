@@ -23,9 +23,9 @@
 
 ##  Screenshot Preview 
 
-| Login & Setup | My Library  | Specials  | Immersive Details  | Settings | Sort & Filter |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| <img src="screenshots/login.jpg" width="200"/> | <img src="screenshots/library.jpg" width="200"/> | <img src="screenshots/specials.jpg" width="200"/> | <img src="screenshots/detail.jpg" width="200"/> |<img src="screenshots/setting.jpg" width="200"/> |<img src="screenshots/sequence.jpg" width="200"/> |
+| login | game | detail game | specials | sequence | anime | detail anime | activity | setting |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| <img src="screenshots/login.jpg" width="200"/> | <img src="screenshots/game.jpg" width="200"/> | <img src="screenshots/detail_game.jpg" width="200"/> | <img src="screenshots/specials.jpg" width="200"/> |<img src="screenshots/sequence.jpg" width="200"/> |<img src="screenshots/anime.jpg" width="200"/> |<img src="screenshots/detail_anime.jpg" width="200"/> |<img src="screenshots/activity.jpg" width="200"/> | <img src="screenshots/setting.jpg" width="200"/> |
 
 
 
@@ -64,9 +64,11 @@
 
 We understand the importance of Steam account security, therefore:
 
-1.  **Local Storage**: All Steam IDs and Web API Keys are stored only in the local encrypted storage (`SharedPreferences`) of your phone.
-2.  **Zero Collection**: This project has **no** backend servers and will not collect or upload any of your personal information.
-3.  **Open Source & Transparent**: All code (including proxy server scripts) is completely open source, allowing you to audit it at any time.
+1.  **Local Storage**: Steam IDs, Web API Keys, and Bangumi OAuth tokens are stored in the app's private local storage and are excluded from the app's manual backup files.
+2.  **Steam Credential Boundary**: The app never obtains or stores Steam passwords, Steam Guard codes, or login cookies. A Web API Key is not a Steam login credential, but it must still be treated as sensitive.
+3.  **Proxy Disclosure**: To remain usable in mainland China, Steam and Bangumi API requests pass through the default Cloudflare Worker. The proxy does not maintain a user database or intentionally persist credentials, but it can access Steam Web API Keys and Bangumi Access Tokens while forwarding requests. The Cloudflare account hosting the default proxy is protected by passkeys and 2FA.
+4.  **Bangumi Authorization Boundary**: A Bangumi Access Token can read and modify collections and episode progress within its authorization. Revoke the authorization if the proxy or device may have been compromised.
+5.  **Open Source & Transparent**: The client and proxy scripts are open source and can be audited or deployed independently.
 
 ---
 
@@ -83,7 +85,7 @@ You need to enter your Steam information for the first time use:
 
 ### 3. (Advanced) Self-hosted Proxy Service
 To ensure stable access in mainland China, the App uses a built-in Cloudflare Worker proxy by default (address configured in the `PROXY_URL` constant of `AppConfig.kt`).
-For absolute data security and faster speeds, **it is strongly recommended that you deploy your own Worker**:
+To reduce reliance on the default public proxy or control logging and deployment permissions independently, you can deploy your own Worker:
 1. Create a new Worker on [Cloudflare Workers](https://workers.cloudflare.com/)
 2. Copy the contents of `cloudflare_worker.js` into it
 3. Replace `PROXY_URL` in `AppConfig.kt` with your Worker address
