@@ -147,6 +147,10 @@
 
     <!-- Notes -->
     <string name="note_local">本地评论</string>
+    <string name="activity_game_history">游玩记录</string>
+    <string name="activity_anime_history">观看记录</string>
+    <string name="activity_game_record">%1$s: %2$sh</string>
+    <string name="activity_anime_record">%1$s: %2$d话</string>
     <string name="note_hint">评论一下…</string>
 
     <!-- Data Management -->
@@ -187,6 +191,9 @@
     <string name="bangumi_empty">暂无动漫收藏记录</string>
     <string name="bangumi_profile_total">共收藏 %d 部动漫</string>
     <string name="bangumi_search">搜索动漫…</string>
+    <string name="bangumi_search_title">搜索动漫</string>
+    <string name="bangumi_search_no_results">未找到相关动漫</string>
+    <string name="bangumi_search_failed">搜索失败，请重试</string>
     <string name="bangumi_detail_load_failed">动漫详情加载失败</string>
     <string name="bangumi_collection_load_failed">无法读取你的 Bangumi 收藏信息</string>
     <string name="bangumi_my_collection">我的进度</string>

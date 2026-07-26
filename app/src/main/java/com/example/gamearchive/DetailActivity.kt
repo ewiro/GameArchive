@@ -56,9 +56,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -130,6 +132,11 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameText by remember { mutableStateOf("") }
     var noteExpanded by remember { mutableStateOf(false) }
+    val playRecords by produceState<List<ItemActivityRecord>>(emptyList(), appId) {
+        value = withContext(Dispatchers.IO) {
+            ActivityStats.getGameRecords(context, appId)
+        }
+    }
 
     // 评价状态
     var reviewSummary by remember { mutableStateOf("") }
@@ -203,6 +210,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 var rawDesc = data.detailed_description ?: data.short_description ?: ""
                 rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*&nbsp;\\s*</p>"), "")
                 rawDesc = rawDesc.replace(Regex("(?i)<p[^>]*>\\s*</p>"), "")
+                rawDesc = rawDesc.replace(
+                    Regex("(?i)<img(?![^>]*crossorigin)"),
+                    "<img crossorigin=\"anonymous\""
+                )
 
                 val bodyColor = String.format("#%06X", (if (isNightMode) 0xFFB0B0B5.toInt() else 0xFF6A6A6F.toInt()) and 0xFFFFFF)
                 val headColor = String.format("#%06X", (if (isNightMode) 0xFFF2F2F2.toInt() else 0xFF000000.toInt()) and 0xFFFFFF)
@@ -226,6 +237,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             var els=document.body.querySelectorAll('p,div,span,a,h1,h2,h3,li');
                             for(var i=0;i<els.length;i++){
                                 var el=els[i];
+                                var color=window.getComputedStyle(el).color.match(/\d+/g);
+                                if(color&&Number(color[0])>=230&&Number(color[1])>=230&&Number(color[2])>=230){
+                                    el.style.setProperty('color','$bodyColor','important');
+                                }
                                 var hasImg=el.querySelector('img')||el.querySelector('video');
                                 var hasText=el.innerText.replace(/\s/g,'').length>0;
                                 if(hasImg&&!hasText){el.style.margin='0';el.style.padding='0';el.style.lineHeight='0';el.style.fontSize='0';el.style.display='block';}
@@ -233,6 +248,49 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                             }
                             var bb=document.querySelectorAll('.bb_img_ctn');
                             for(var j=0;j<bb.length;j++){bb[j].style.display='block';bb[j].style.lineHeight='0';bb[j].style.margin='0';}
+                            if(${!isNightMode}){
+                                var target='$bodyColor';
+                                var targetR=parseInt(target.substring(1,3),16);
+                                var targetG=parseInt(target.substring(3,5),16);
+                                var targetB=parseInt(target.substring(5,7),16);
+                                var normalizeImage=function(img){
+                                    if(img.dataset.gaColorNormalized==='1'||!img.naturalWidth||!img.naturalHeight){return;}
+                                    img.dataset.gaColorNormalized='1';
+                                    try{
+                                        var canvas=document.createElement('canvas');
+                                        canvas.width=img.naturalWidth;
+                                        canvas.height=img.naturalHeight;
+                                        var ctx=canvas.getContext('2d',{willReadFrequently:true});
+                                        ctx.drawImage(img,0,0);
+                                        var pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
+                                        var values=pixels.data;
+                                        var transparent=false;
+                                        for(var p=3;p<values.length;p+=4){
+                                            if(values[p]<250){transparent=true;break;}
+                                        }
+                                        if(!transparent){return;}
+                                        var changed=false;
+                                        for(var q=0;q<values.length;q+=4){
+                                            if(values[q+3]>0&&values[q]>=230&&values[q+1]>=230&&values[q+2]>=230){
+                                                values[q]=targetR;
+                                                values[q+1]=targetG;
+                                                values[q+2]=targetB;
+                                                changed=true;
+                                            }
+                                        }
+                                        if(changed){
+                                            ctx.putImageData(pixels,0,0);
+                                            img.src=canvas.toDataURL('image/png');
+                                        }
+                                    }catch(ignore){}
+                                };
+                                var images=document.querySelectorAll('img.bb_img');
+                                for(var k=0;k<images.length;k++){
+                                    var image=images[k];
+                                    if(image.complete){normalizeImage(image);}
+                                    else{image.addEventListener('load',function(){normalizeImage(this);},{once:true});}
+                                }
+                            }
                         });
                     </script>
                 """.trimIndent()
@@ -630,6 +688,12 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 }
 
                 // 分割线
+                ActivityHistorySection(
+                    kind = ActivityKind.GAME,
+                    records = playRecords,
+                    dimTitle = true,
+                    modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)
+                )
                 Spacer(Modifier.height(DesignTokens.SpaceMassive))
                 Box(
                     modifier = Modifier

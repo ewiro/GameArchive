@@ -147,6 +147,10 @@
 
     <!-- Notes -->
     <string name="note_local">Local Notes</string>
+    <string name="activity_game_history">Play History</string>
+    <string name="activity_anime_history">Watch History</string>
+    <string name="activity_game_record">%1$s: %2$sh</string>
+    <string name="activity_anime_record">%1$s: %2$d ep</string>
     <string name="note_hint">Leave a comment…</string>
 
     <!-- Data Management -->
@@ -187,6 +191,9 @@
     <string name="bangumi_empty">No anime collection found</string>
     <string name="bangumi_profile_total">%d anime in collection</string>
     <string name="bangumi_search">Search anime…</string>
+    <string name="bangumi_search_title">Search Anime</string>
+    <string name="bangumi_search_no_results">No matching anime found</string>
+    <string name="bangumi_search_failed">Search failed. Please try again</string>
     <string name="bangumi_detail_load_failed">Failed to load anime details</string>
     <string name="bangumi_collection_load_failed">Failed to load your Bangumi collection</string>
     <string name="bangumi_my_collection">My Progress</string>
