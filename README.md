@@ -23,9 +23,9 @@
 
 ##  截图预览 
 
-| 登录与设置 | 个人库存  | 特惠查询  | 沉浸式详情  | 设置界面 | 排序界面 |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| <img src="screenshots/login.jpg" width="200"/> | <img src="screenshots/library.jpg" width="200"/> | <img src="screenshots/specials.jpg" width="200"/> | <img src="screenshots/detail.jpg" width="200"/> |<img src="screenshots/setting.jpg" width="200"/> |<img src="screenshots/sequence.jpg" width="200"/> |
+| 登录 | 游戏页 | 游戏详情 | 特惠页 | 排序 | 动漫页 | 动漫详情 | 记录页 | 设置 |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| <img src="screenshots/login.jpg" width="200"/> | <img src="screenshots/game.jpg" width="200"/> | <img src="screenshots/detail_game.jpg" width="200"/> | <img src="screenshots/specials.jpg" width="200"/> |<img src="screenshots/sequence.jpg" width="200"/> |<img src="screenshots/anime.jpg" width="200"/> |<img src="screenshots/detail_anime.jpg" width="200"/> |<img src="screenshots/activity.jpg" width="200"/> | <img src="screenshots/setting.jpg" width="200"/> |
 
 
 
@@ -64,9 +64,11 @@
 
 我们深知 Steam 账号安全的重要性，因此：
 
-1.  **本地存储**：所有的 Steam ID 和 Web API Key 仅保存在您手机的本地加密存储 (`SharedPreferences`) 中。
-2.  **零收集**：本项目**没有**任何后端服务器，不会收集、上传您的任何个人信息。
-3.  **开源透明**：所有代码（包括代理服务器脚本）均完全开源，您可以随时审计。
+1.  **本地保存**：Steam ID、Web API Key 和 Bangumi OAuth Token 保存在应用私有的本地存储中，不会写入软件的手动备份文件。
+2.  **Steam 凭证边界**：应用不会获取或保存 Steam 密码、Steam Guard 验证码和登录 Cookie。Web API Key 不是 Steam 登录凭证，但仍属于需要保密的敏感信息。
+3.  **代理说明**：为保证中国大陆地区的可用性，Steam API 与 Bangumi API 请求会经过默认的 Cloudflare Worker。代理不建立用户数据库，也不主动持久化凭证，但在转发时能够接触 Steam Web API Key 和 Bangumi Access Token。默认代理的 Cloudflare 账号已启用通行密钥和 2FA。
+4.  **Bangumi 授权边界**：Bangumi Access Token 可用于读取和修改授权范围内的收藏与章节数据；如怀疑代理或设备失守，请及时撤销授权。
+5.  **开源透明**：客户端及代理脚本均开源，可自行审计或部署独立 Worker。
 
 ---
 
@@ -83,7 +85,7 @@
 
 ### 3. (进阶) 自建代理服务
 为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理（地址统一配置于 `AppConfig.kt` 中的 `PROXY_URL` 常量）。
-为了数据绝对安全和更快的速度，**强烈建议您部署自己的 Worker**：
+如果希望减少对默认公共代理的信任，或需要独立控制日志和部署权限，可以自行部署 Worker：
 1. 在 [Cloudflare Workers](https://workers.cloudflare.com/) 创建新 Worker
 2. 将项目根目录的 `cloudflare_worker.js` 内容复制进去
 3. 将 `AppConfig.kt` 中的 `PROXY_URL` 改为你的 Worker 地址

@@ -807,7 +807,8 @@ private fun BangumiDetailScreen(
                         // 标签
                         ActivityHistorySection(
                             kind = ActivityKind.ANIME,
-                            records = watchRecords
+                            records = watchRecords,
+                            titleFontSize = DesignTokens.TextSubtitle.sp
                         )
                         Spacer(Modifier.height(DesignTokens.SpaceXxl))
 

@@ -242,7 +242,11 @@ object ActivityStats {
 
     /** 一次解析统计 JSON，同时返回记录页需要的全部年度状态。 */
     @Synchronized
-    fun getYearSnapshot(context: Context, year: Int): ActivityYearSnapshot {
+    fun getYearSnapshot(
+        context: Context,
+        year: Int,
+        includeAnime: Boolean = true
+    ): ActivityYearSnapshot {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
         val prefix = "$year-"
@@ -252,14 +256,26 @@ object ActivityStats {
         val keys = days.keys()
         while (keys.hasNext()) {
             val date = keys.next()
-            date.take(4).toIntOrNull()?.let(years::add)
             val day = decodeDay(date, days.optJSONObject(date))
-            history[date] = day
-            if (date.startsWith(prefix)) stats[date] = day
+            val visibleDay = if (includeAnime) {
+                day
+            } else {
+                day.copy(
+                    animeEpisodes = 0,
+                    entries = day.entries.filter { it.kind == ActivityKind.GAME }
+                )
+            }
+            if (includeAnime || visibleDay.gameMinutes > 0 || visibleDay.entries.isNotEmpty()) {
+                date.take(4).toIntOrNull()?.let(years::add)
+                history[date] = visibleDay
+                if (date.startsWith(prefix)) stats[date] = visibleDay
+            }
         }
-        val hasBaseline =
-            parseObject(prefs.getString(KEY_GAME_BASELINES, null)).length() > 0 ||
-                parseObject(prefs.getString(KEY_ANIME_BASELINES, null)).length() > 0
+        val hasGameBaseline =
+            parseObject(prefs.getString(KEY_GAME_BASELINES, null)).length() > 0
+        val hasAnimeBaseline =
+            parseObject(prefs.getString(KEY_ANIME_BASELINES, null)).length() > 0
+        val hasBaseline = hasGameBaseline || includeAnime && hasAnimeBaseline
         val gameObservations =
             prefs.getString(KEY_GAME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0
         val animeObservations =
@@ -268,7 +284,9 @@ object ActivityStats {
             stats = stats,
             history = history,
             availableYears = years,
-            baselineOnly = hasBaseline && gameObservations < 2 && animeObservations < 2
+            baselineOnly = hasBaseline &&
+                gameObservations < 2 &&
+                (!includeAnime || animeObservations < 2)
         )
     }
 

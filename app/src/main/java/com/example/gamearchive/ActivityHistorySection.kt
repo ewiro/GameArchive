@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -37,6 +38,7 @@ fun ActivityHistorySection(
     kind: ActivityKind,
     records: List<ItemActivityRecord>,
     dimTitle: Boolean = false,
+    titleFontSize: TextUnit = DesignTokens.TextBody1.sp,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -64,7 +66,7 @@ fun ActivityHistorySection(
                         R.string.activity_anime_history
                     }
                 ),
-                fontSize = DesignTokens.TextBody1.sp,
+                fontSize = titleFontSize,
                 fontWeight = FontWeight.Bold,
                 color = if (dimTitle) dim else MiuixTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
