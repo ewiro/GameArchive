@@ -95,7 +95,7 @@ private fun BangumiDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isCollectionLoaded by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
-    var draftType by remember { mutableIntStateOf(1) }
+    var draftType by remember { mutableIntStateOf(0) }
     var draftRate by remember { mutableIntStateOf(0) }
     var draftTags by remember { mutableStateOf("") }
     var draftComment by remember { mutableStateOf("") }
@@ -108,9 +108,10 @@ private fun BangumiDetailScreen(
     var isStatusDropdownVisible by remember { mutableStateOf(false) }
     var statusDropdownRect by remember { mutableStateOf(Rect.Zero) }
     var isProgressExpanded by remember { mutableStateOf(false) }
+    var activityHistoryRevision by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(subjectId) {
-        val (loadedDetail, loadedPersons, loadedEpisodeCount) = coroutineScope {
+        val (loadedDetail, loadedPersons, loadedEpisodePage) = coroutineScope {
             val detailDeferred = async {
                 runCatching { GameArchiveApp.bgmService.getSubject(subjectId) }.getOrNull()
             }
@@ -121,10 +122,26 @@ private fun BangumiDetailScreen(
             }
             val episodesDeferred = async {
                 runCatching {
-                    GameArchiveApp.bgmService
-                        .getSubjectEpisodes(subjectId)
-                        .total
-                        .takeIf { it > 0 }
+                    val firstPage = GameArchiveApp.bgmService
+                        .getSubjectEpisodes(subjectId, limit = 100)
+                    if (firstPage.total <= firstPage.data.orEmpty().size) {
+                        firstPage
+                    } else {
+                        val episodes = firstPage.data.orEmpty().toMutableList()
+                        var offset = episodes.size
+                        while (offset < firstPage.total) {
+                            val page = GameArchiveApp.bgmService.getSubjectEpisodes(
+                                subjectId = subjectId,
+                                limit = 100,
+                                offset = offset
+                            )
+                            val newEpisodes = page.data.orEmpty()
+                            if (newEpisodes.isEmpty()) break
+                            episodes += newEpisodes
+                            offset += newEpisodes.size
+                        }
+                        firstPage.copy(data = episodes)
+                    }
                 }.getOrNull()
             }
             Triple(
@@ -135,28 +152,31 @@ private fun BangumiDetailScreen(
         }
         detail = loadedDetail
         subjectPersons = loadedPersons
-        mainEpisodeCount = loadedEpisodeCount
+        mainEpisodeCount = loadedEpisodePage?.total?.takeIf { it > 0 }
+        mainEpisodes = loadedEpisodePage?.data.orEmpty()
+            .sortedWith(compareBy(
+                { it.ep ?: Double.MAX_VALUE },
+                { it.sort ?: Double.MAX_VALUE }
+            ))
+            .map { BangumiUserEpisodeCollection(episode = it, type = 0) }
         if (loadedDetail == null) {
             Toast.makeText(context, context.getString(R.string.bangumi_detail_load_failed), Toast.LENGTH_SHORT).show()
         }
         val token = UserPrefs.getBangumiAccessToken(context)
         if (token.isNotEmpty()) {
-            try {
-                val service = GameArchiveApp.createAuthenticatedBgmService(token)
-                var username = UserPrefs.getBangumiUsername(context)
-                if (username.isBlank()) {
-                    username = service.getCurrentUser().username
+            val service = GameArchiveApp.createAuthenticatedBgmService(token)
+            var username = UserPrefs.getBangumiUsername(context)
+            if (username.isBlank()) {
+                username = runCatching { service.getCurrentUser().username }.getOrDefault("")
+                if (username.isNotBlank()) {
                     UserPrefs.setBangumiUsername(context, username)
                 }
-                val collectionDeferred = async {
-                    service.getMyCollection(username, subjectId)
-                }
-                val episodesDeferred = async {
-                    runCatching {
-                        service.getEpisodeCollections(subjectId).data.orEmpty()
-                    }.getOrNull()
-                }
-                val collection = collectionDeferred.await()
+            }
+            val collectionResult = runCatching {
+                service.getMyCollection(username, subjectId)
+            }
+            val collection = collectionResult.getOrNull()
+            if (collection != null) {
                 myCollection = collection
                 draftType = collection.type ?: 1
                 draftRate = collection.rate ?: 0
@@ -165,7 +185,9 @@ private fun BangumiDetailScreen(
                 savedEpisodeProgress = collection.ep_status ?: 0
                 savedRegularEpisodeProgress = savedEpisodeProgress
                 draftEpisodeProgress = savedEpisodeProgress
-                val loadedEpisodes = episodesDeferred.await()
+                val loadedEpisodes = runCatching {
+                    service.getEpisodeCollections(subjectId).data.orEmpty()
+                }.getOrNull()
                 if (loadedEpisodes != null) {
                     mainEpisodes = loadedEpisodes
                         .sortedWith(compareBy(
@@ -178,8 +200,9 @@ private fun BangumiDetailScreen(
                 } else {
                     isEpisodeProgressUnavailable = true
                 }
-            } catch (e: Exception) {
-                if ((e as? HttpException)?.code() != 404) {
+            } else {
+                val error = collectionResult.exceptionOrNull()
+                if ((error as? HttpException)?.code() != 404) {
                     Toast.makeText(
                         context,
                         context.getString(R.string.bangumi_collection_load_failed),
@@ -196,13 +219,13 @@ private fun BangumiDetailScreen(
 
     fun saveCollection() {
         val token = UserPrefs.getBangumiAccessToken(context)
-        if (token.isEmpty() || isSaving) return
+        if (token.isEmpty() || isSaving || draftType == 0) return
         val tags = draftTags
             .split(Regex("[,，\\s]+"))
             .map { it.trim() }
             .filter { it.isNotEmpty() }
             .distinctBy { it.lowercase() }
-        val previousApiType = myCollection?.type ?: draftType
+        val previousApiType = myCollection?.type ?: 0
         val targetApiType = draftType
         val previousRegularProgress = savedRegularEpisodeProgress
         isSaving = true
@@ -262,6 +285,7 @@ private fun BangumiDetailScreen(
                         currentEpisodes = boundedEpisodeProgress
                     )
                 }
+                activityHistoryRevision++
                 savedRegularEpisodeProgress = boundedEpisodeProgress
                 savedEpisodeProgress = boundedEpisodeProgress
                 draftEpisodeProgress = savedEpisodeProgress
@@ -286,6 +310,15 @@ private fun BangumiDetailScreen(
     val displayName = subjectNameCn.ifEmpty { subjectName }
     val score = extractScore(detail?.rating)
     val ratingMode = UserPrefs.getBangumiRatingMode(context)
+    val watchRecords by produceState<List<ItemActivityRecord>>(
+        initialValue = emptyList(),
+        subjectId,
+        activityHistoryRevision
+    ) {
+        value = withContext(Dispatchers.IO) {
+            ActivityStats.getAnimeRecords(context, subjectId)
+        }
+    }
     val showRating = ratingMode == 0  // 0=展示评分, 1=仅我的评分(详情页无), 2=不展示
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
     val typeLabels = listOf(
@@ -530,7 +563,9 @@ private fun BangumiDetailScreen(
                                             modifier = Modifier.weight(1f)
                                         )
                                         Text(
-                                            text = typeLabels.first { it.first == draftType }.second,
+                                            text = typeLabels.firstOrNull {
+                                                it.first == draftType
+                                            }?.second.orEmpty(),
                                             fontSize = DesignTokens.TextBody1.sp,
                                             color = dim
                                         )
@@ -735,14 +770,14 @@ private fun BangumiDetailScreen(
                                             .height(DesignTokens.ButtonHeight)
                                             .clip(RoundedCornerShape(DesignTokens.CornerLarge))
                                             .background(
-                                                if (isSaving) {
+                                                if (isSaving || draftType == 0) {
                                                     buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled)
                                                 } else {
                                                     buttonBgColor()
                                                 }
                                             )
                                             .noRippleClickable {
-                                                if (!isSaving) saveCollection()
+                                                if (!isSaving && draftType != 0) saveCollection()
                                             },
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -770,6 +805,12 @@ private fun BangumiDetailScreen(
                         }
 
                         // 标签
+                        ActivityHistorySection(
+                            kind = ActivityKind.ANIME,
+                            records = watchRecords
+                        )
+                        Spacer(Modifier.height(DesignTokens.SpaceXxl))
+
                         if (!d.tags.isNullOrEmpty()) {
                             Text(
                                 text = context.getString(R.string.bangumi_tags_title),

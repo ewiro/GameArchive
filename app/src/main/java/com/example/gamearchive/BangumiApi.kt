@@ -56,6 +56,13 @@ import retrofit2.http.Query
 
 // --- 接口 ---
 interface BangumiService {
+    @POST("bangumi/v0/search/subjects")
+    suspend fun searchSubjects(
+        @Body payload: BangumiSubjectSearchRequest,
+        @Query("limit") limit: Int = 30,
+        @Query("offset") offset: Int = 0
+    ): BangumiPagedSubjects
+
     @GET("bangumi/v0/users/{username}")
     suspend fun getUserInfo(
         @Path("username") username: String
@@ -88,6 +95,23 @@ interface BangumiService {
         @Query("offset") offset: Int = 0
     ): BangumiPagedEpisodes
 }
+
+@Keep data class BangumiSubjectSearchFilter(
+    val type: List<Int>
+)
+
+@Keep data class BangumiSubjectSearchRequest(
+    val keyword: String,
+    val sort: String = "match",
+    val filter: BangumiSubjectSearchFilter
+)
+
+@Keep data class BangumiPagedSubjects(
+    val total: Int = 0,
+    val limit: Int = 0,
+    val offset: Int = 0,
+    val data: List<BangumiSubjectDetail>? = null
+)
 
 /** 单条目详情（含完整 rating），只取需要的字段 */
 @Keep data class BangumiSubjectDetail(

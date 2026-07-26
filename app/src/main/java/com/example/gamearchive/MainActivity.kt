@@ -273,6 +273,7 @@ private fun MainScreen() {
             when (page) {
                 0 -> LibraryScreen(
                     listState = libraryListState,
+                    showBottomBar = pageCount > 1,
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToSettings = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
@@ -340,6 +341,18 @@ private fun MainScreen() {
                     fontSize = DesignTokens.TextTitle.sp,
                     modifier = Modifier.weight(1f)
                 )
+                if (selectedTab == bangumiPage) {
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, BangumiSearchActivity::class.java))
+                    }) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Search,
+                            contentDescription = context.getString(R.string.bangumi_search_title),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                        )
+                    }
+                }
                 if (selectedTab == 0 || selectedTab == bangumiPage || selectedTab == activityPage) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
@@ -365,6 +378,7 @@ private fun MainScreen() {
         }
 
         // ── 底栏叠加层（至少2页时显示） ──
+        if (pageCount > 1) {
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -518,6 +532,8 @@ private fun MainScreen() {
                 }
             }
         }
+        }
+
     } // Box
     } // Surface
 }
@@ -527,6 +543,7 @@ private fun MainScreen() {
 @Composable
 private fun LibraryScreen(
     listState: LazyListState,
+    showBottomBar: Boolean,
     onNavigateToDetail: (Int, String, String) -> Unit,
     onNavigateToSettings: () -> Unit,
     viewModel: LibraryViewModel = viewModel()
@@ -628,7 +645,9 @@ private fun LibraryScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 72.dp)
+            contentPadding = PaddingValues(
+                bottom = if (showBottomBar) 72.dp else DesignTokens.SpaceXl
+            )
         ) {
             item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
             if (showProfile && player != null) {
@@ -2548,7 +2567,7 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
                 Box(
                     modifier = Modifier
                         .size(70.dp)
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                         .background(MiuixTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {

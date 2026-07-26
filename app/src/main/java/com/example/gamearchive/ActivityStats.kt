@@ -31,6 +31,11 @@ data class DailyActivity(
     val score: Double get() = gameMinutes / 60.0 + animeEpisodes
 }
 
+data class ItemActivityRecord(
+    val date: String,
+    val amount: Int
+)
+
 data class ActivityYearSnapshot(
     val stats: Map<String, DailyActivity>,
     val history: Map<String, DailyActivity>,
@@ -219,6 +224,14 @@ object ActivityStats {
     }
 
     @Synchronized
+    fun getGameRecords(context: Context, appId: Int): List<ItemActivityRecord> =
+        getItemRecords(context, ActivityKind.GAME, appId, "game_minutes")
+
+    @Synchronized
+    fun getAnimeRecords(context: Context, subjectId: Int): List<ItemActivityRecord> =
+        getItemRecords(context, ActivityKind.ANIME, subjectId, "anime_episodes")
+
+    @Synchronized
     fun getAvailableYears(context: Context): Set<Int> {
         val days = loadDays(context)
         val years = mutableSetOf<Int>()
@@ -281,6 +294,28 @@ object ActivityStats {
     private fun loadDays(context: Context): JSONObject {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         return parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
+    }
+
+    private fun getItemRecords(
+        context: Context,
+        kind: ActivityKind,
+        id: Int,
+        amountKey: String
+    ): List<ItemActivityRecord> {
+        val days = loadDays(context)
+        val entryKey = "${kind.name.lowercase(Locale.US)}:$id"
+        val records = mutableListOf<ItemActivityRecord>()
+        val dates = days.keys()
+        while (dates.hasNext()) {
+            val date = dates.next()
+            val entry = days.optJSONObject(date)
+                ?.optJSONObject("entries")
+                ?.optJSONObject(entryKey)
+                ?: continue
+            val amount = entry.optInt(amountKey)
+            if (amount > 0) records += ItemActivityRecord(date, amount)
+        }
+        return records.sortedByDescending { it.date }
     }
 
     private fun decodeDay(date: String, source: JSONObject?): DailyActivity {
