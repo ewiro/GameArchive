@@ -2,7 +2,19 @@ package com.example.gamearchive
 
 import android.os.Build
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,10 +26,13 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -28,6 +43,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** 设计标记 — 应用层单一事实来源。主题色走 MiuixTheme.colorScheme，此处仅补充应用专有色与尺寸常量。 */
@@ -152,6 +169,10 @@ object DesignTokens {
 
     // 动画时长 (ms)
     const val AnimDuration = 200
+    const val ExpandDuration = 280
+    const val CollapseDuration = 220
+    const val FadeInDuration = 180
+    const val FadeOutDuration = 140
 
     // ═══════════════════ 图标尺寸 ═══════════════════
 
@@ -162,6 +183,59 @@ object DesignTokens {
     val IconXl   = 24.dp
     val IconHuge = 28.dp
     val IconPlay = 48.dp
+}
+
+fun smoothExpandEnter(): EnterTransition =
+    expandVertically(
+        animationSpec = tween(
+            durationMillis = DesignTokens.ExpandDuration,
+            easing = FastOutSlowInEasing
+        ),
+        expandFrom = Alignment.Top
+    ) + fadeIn(
+        animationSpec = tween(
+            durationMillis = DesignTokens.FadeInDuration,
+            easing = FastOutSlowInEasing
+        ),
+        initialAlpha = 0.45f
+    )
+
+fun smoothExpandExit(): ExitTransition =
+    shrinkVertically(
+        animationSpec = tween(
+            durationMillis = DesignTokens.CollapseDuration,
+            easing = FastOutSlowInEasing
+        ),
+        shrinkTowards = Alignment.Top
+    ) + fadeOut(
+        animationSpec = tween(
+            durationMillis = DesignTokens.FadeOutDuration,
+            easing = FastOutSlowInEasing
+        )
+    )
+
+@Composable
+fun ExpandableArrow(
+    expanded: Boolean,
+    modifier: Modifier = Modifier,
+    color: Color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 90f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "expandable_arrow_rotation"
+    )
+    Image(
+        imageVector = MiuixIcons.Basic.ArrowRight,
+        contentDescription = null,
+        modifier = modifier
+            .size(DesignTokens.IconMd)
+            .rotate(rotation),
+        colorFilter = ColorFilter.tint(color)
+    )
 }
 
 // ═══════════════════ 全局可组合项 ═══════════════════

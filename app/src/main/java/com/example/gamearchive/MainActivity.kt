@@ -14,10 +14,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -1360,14 +1356,16 @@ private fun SortDialog(
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.width(4.dp))
-        DropdownArrowEndAction(
-                actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-            )
+                    DropdownArrowEndAction(
+                        actionColor = MiuixTheme.colorScheme.onSurface.copy(
+                            alpha = DesignTokens.OpacityBody
+                        )
+                    )
                 }
                 AnimatedVisibility(
                     visible = showSortOptions,
-                    enter = expandVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeIn(animationSpec = tween(DesignTokens.AnimDuration)),
-                    exit = shrinkVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeOut(animationSpec = tween(DesignTokens.AnimDuration))
+                    enter = smoothExpandEnter(),
+                    exit = smoothExpandExit()
                 ) {
                     Column {
                         sortOptions.forEachIndexed { i, resId ->
@@ -1417,14 +1415,16 @@ private fun SortDialog(
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.width(4.dp))
-        DropdownArrowEndAction(
-                actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-            )
+                    DropdownArrowEndAction(
+                        actionColor = MiuixTheme.colorScheme.onSurface.copy(
+                            alpha = DesignTokens.OpacityBody
+                        )
+                    )
                 }
                 AnimatedVisibility(
                     visible = showPriceOptions,
-                    enter = expandVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeIn(animationSpec = tween(DesignTokens.AnimDuration)),
-                    exit = shrinkVertically(animationSpec = tween(DesignTokens.AnimDuration)) + fadeOut(animationSpec = tween(DesignTokens.AnimDuration))
+                    enter = smoothExpandEnter(),
+                    exit = smoothExpandExit()
                 ) {
                     Column {
                         priceOptions.forEachIndexed { i, label ->

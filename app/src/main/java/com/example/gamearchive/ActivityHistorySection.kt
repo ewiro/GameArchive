@@ -1,13 +1,6 @@
 package com.example.gamearchive
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,15 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.Locale
 
@@ -43,11 +32,6 @@ fun ActivityHistorySection(
 ) {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) 90f else 0f,
-        animationSpec = tween(DesignTokens.AnimDuration),
-        label = "activity_history_arrow"
-    )
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -71,21 +55,17 @@ fun ActivityHistorySection(
                 color = if (dimTitle) dim else MiuixTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
-            Image(
-                imageVector = MiuixIcons.Basic.ArrowRight,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(DesignTokens.IconMd)
-                    .rotate(arrowRotation),
-                colorFilter = ColorFilter.tint(
-                    MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint)
+            ExpandableArrow(
+                expanded = expanded,
+                color = MiuixTheme.colorScheme.onSurface.copy(
+                    alpha = DesignTokens.OpacityHint
                 )
             )
         }
         AnimatedVisibility(
             visible = expanded,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
+            enter = smoothExpandEnter(),
+            exit = smoothExpandExit()
         ) {
             Column(
                 modifier = Modifier
