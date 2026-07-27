@@ -44,7 +44,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
@@ -170,33 +169,34 @@ private fun BangumiSearchScreen(
                     singleLine = true
                 )
                 Box(modifier = Modifier.fillMaxSize()) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            top = DesignTokens.SpaceXs,
-                            bottom = DesignTokens.SpaceMassive
-                        )
-                    ) {
-                        items(results, key = { it.id!! }) { subject ->
-                            BangumiSearchResult(
-                                subject = subject,
-                                showRating = showRating
-                            ) {
-                                onOpenSubject(subject)
+                    if (isLoading) {
+                        BangumiSearchLoadingSkeleton()
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                top = DesignTokens.SpaceXs,
+                                bottom = DesignTokens.SpaceMassive
+                            )
+                        ) {
+                            items(results, key = { it.id!! }) { subject ->
+                                BangumiSearchResult(
+                                    subject = subject,
+                                    showRating = showRating
+                                ) {
+                                    onOpenSubject(subject)
+                                }
                             }
                         }
-                    }
-                    when {
-                        isLoading -> InfiniteProgressIndicator(
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                        searchFailed -> SearchMessage(
-                            text = context.getString(R.string.bangumi_search_failed)
-                        )
-                        hasSearched && results.isEmpty() -> SearchMessage(
-                            text = context.getString(R.string.bangumi_search_no_results)
-                        )
+                        when {
+                            searchFailed -> SearchMessage(
+                                text = context.getString(R.string.bangumi_search_failed)
+                            )
+                            hasSearched && results.isEmpty() -> SearchMessage(
+                                text = context.getString(R.string.bangumi_search_no_results)
+                            )
+                        }
                     }
                 }
             }

@@ -62,13 +62,20 @@ object ActivityStats {
         val baselines = parseObject(prefs.getString(KEY_GAME_BASELINES, null))
         val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
         val aggregated = games.groupBy { it.appid }.mapValues { (_, copies) ->
-            copies.first().copy(playtime_forever = copies.sumOf { it.playtime_forever })
+            copies.first().copy(
+                playtime_forever = copies.sumOf { it.playtime_forever },
+                rtime_last_played = copies.maxOf { it.rtime_last_played }
+            )
         }
 
         aggregated.values.forEach { game ->
             val key = game.appid.toString()
             val previous = if (baselines.has(key)) baselines.optInt(key) else null
             val current = game.playtime_forever.coerceAtLeast(0)
+            val playedAt = steamPlayedAt(game, observedAt)
+            if (playedAt != null) {
+                moveLegacyDetectedActivity(days, game, observedAt, playedAt)
+            }
             if (
                 previous != null &&
                 current > previous &&
@@ -83,7 +90,7 @@ object ActivityStats {
                     imageUrl = steamPortraitUrl(game.appid),
                     gameMinutes = current - previous,
                     animeEpisodes = 0,
-                    recordedAt = observedAt
+                    recordedAt = playedAt ?: observedAt
                 )
             }
             baselines.put(key, current)
@@ -333,7 +340,7 @@ object ActivityStats {
             val amount = entry.optInt(amountKey)
             if (amount > 0) records += ItemActivityRecord(date, amount)
         }
-        return records.sortedByDescending { it.date }
+        return records.sortedBy { it.date }
     }
 
     private fun decodeDay(date: String, source: JSONObject?): DailyActivity {
@@ -400,6 +407,67 @@ object ActivityStats {
 
     private fun parseObject(value: String?): JSONObject =
         runCatching { JSONObject(value ?: "{}") }.getOrElse { JSONObject() }
+
+    private fun steamPlayedAt(game: GameInfo, observedAt: Long): Long? {
+        if (game.rtime_last_played <= 0L) return null
+        val timestamp = game.rtime_last_played * 1_000L
+        return timestamp.takeIf { it <= observedAt + 5 * 60 * 1_000L }
+    }
+
+    /**
+     * v2.0 及更早版本把 Steam 延迟返回的增量记在检测当天。
+     * 仅当当天条目时间确实也是检测当天时，将它移到 Steam 最后游玩日期。
+     */
+    private fun moveLegacyDetectedActivity(
+        days: JSONObject,
+        game: GameInfo,
+        observedAt: Long,
+        playedAt: Long
+    ) {
+        val detectedDate = localDate(observedAt)
+        val playedDate = localDate(playedAt)
+        if (detectedDate == playedDate) return
+
+        val sourceDay = days.optJSONObject(detectedDate) ?: return
+        val sourceEntries = sourceDay.optJSONObject("entries") ?: return
+        val entryKey = "${ActivityKind.GAME.name.lowercase(Locale.US)}:${game.appid}"
+        val sourceEntry = sourceEntries.optJSONObject(entryKey) ?: return
+        val recordedAt = sourceEntry.optLong("last_recorded_at")
+        if (recordedAt <= 0L || localDate(recordedAt) != detectedDate) return
+
+        val minutes = sourceEntry.optInt("game_minutes")
+        if (minutes <= 0) return
+        val title = sourceEntry.optString("title").ifBlank { game.name }
+        val imageUrl = sourceEntry.optString("image_url").ifBlank {
+            steamPortraitUrl(game.appid)
+        }
+
+        sourceEntries.remove(entryKey)
+        sourceDay
+            .put("game_minutes", (sourceDay.optInt("game_minutes") - minutes).coerceAtLeast(0))
+            .put("entries", sourceEntries)
+        if (
+            sourceEntries.length() == 0 &&
+            sourceDay.optInt("game_minutes") == 0 &&
+            sourceDay.optInt("anime_episodes") == 0
+        ) {
+            days.remove(detectedDate)
+        } else {
+            days.put(detectedDate, sourceDay)
+        }
+
+        addActivity(
+            days = days,
+            kind = ActivityKind.GAME,
+            id = game.appid,
+            title = title,
+            secondaryTitle = "",
+            imageUrl = imageUrl,
+            gameMinutes = minutes,
+            animeEpisodes = 0,
+            recordedAt = playedAt
+        )
+    }
 
     private fun localDate(timestamp: Long): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(timestamp))

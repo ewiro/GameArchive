@@ -41,7 +41,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.geometry.Offset
@@ -74,7 +73,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -629,12 +627,12 @@ private fun LibraryScreen(
     // 顶栏叠加层占位高度
     val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
 
-    Crossfade(loading == true && gameList.isEmpty(), animationSpec = tween(250)) { showSkeleton ->
+    Crossfade(loading == true, animationSpec = tween(250)) { showSkeleton ->
     if (showSkeleton) {
         LibraryLoadingSkeleton(topBarInsetDp, showProfile)
     } else {
         PullToRefresh(
-            isRefreshing = loading == true,
+            isRefreshing = false,
             onRefresh = { viewModel.refresh(apiKey, steamId, context); listRefreshTrigger++ },
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = topBarInsetDp),
@@ -1257,7 +1255,7 @@ private fun SpecialsScreen(
     val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Crossfade(loading == true && filteredList.isEmpty(), animationSpec = tween(250)) { showSkeleton ->
+    Crossfade(loading == true, animationSpec = tween(250)) { showSkeleton ->
     if (showSkeleton) {
         SpecialsSkeleton(topBarInsetDp)
     } else {
@@ -1568,22 +1566,11 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
     }
 }
 
-// ── 骨架屏 ──
-@Composable
-private fun shimmerBrush(): Brush {
-    var target by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) { while (true) { target = 1f; delay(800); target = 0f; delay(800) } }
-    val progress by animateFloatAsState(target, tween(1600))
-    val s = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.06f)
-    return Brush.linearGradient(listOf(Color.Transparent, s, Color.Transparent), Offset(progress * 400f - 200f, 0f), Offset(progress * 400f + 100f, 0f))
-}
-
-
 // ── 动漫条目骨架（100×140 封面 + 文字行 + 状态行） ──
 @Composable
 private fun BangumiSkeletonCard() {
     val bg = MiuixTheme.colorScheme.surfaceVariant
-    val shimmer = shimmerBrush()
+    val shimmer = rememberLoadingSkeletonBrush()
     val coverW = 80.dp; val coverH = 112.dp
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.size(coverW, coverH).clip(RoundedCornerShape(6.dp)).background(bg))
@@ -1609,7 +1596,7 @@ private fun BangumiSkeletonCard() {
 @Composable
 private fun SkeletonCard() {
     val bg = MiuixTheme.colorScheme.surfaceVariant
-    val shimmer = shimmerBrush()
+    val shimmer = rememberLoadingSkeletonBrush()
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight).clip(RoundedCornerShape(DesignTokens.CornerMedium)).background(bg))
         Column(Modifier.padding(start = 12.dp).height(DesignTokens.CoverHeight)) {
@@ -1629,7 +1616,7 @@ private fun ShimmerBox(
     modifier: Modifier = Modifier,
     corner: Dp = 4.dp
 ) {
-    Box(modifier.width(w).height(h).clip(RoundedCornerShape(corner)).background(shimmerBrush()))
+    Box(modifier.width(w).height(h).clip(RoundedCornerShape(corner)).background(rememberLoadingSkeletonBrush()))
 }
 
 // 库存页顶部骨架
@@ -1644,7 +1631,7 @@ private fun LibraryTopSkeleton(showProfile: Boolean) {
             ) {
                 Column(Modifier.fillMaxSize().padding(20.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(DesignTokens.AvatarOuter).clip(CircleShape).background(shimmerBrush()))
+                        Box(Modifier.size(DesignTokens.AvatarOuter).clip(CircleShape).background(rememberLoadingSkeletonBrush()))
                         Spacer(Modifier.width(24.dp))
                         Column(Modifier.weight(1f)) { ShimmerBox(120.dp, 16.dp); Spacer(Modifier.height(8.dp)); ShimmerBox(60.dp, 14.dp, corner = 10.dp) }
                     }
@@ -1708,8 +1695,10 @@ private fun ActivityPage(
     var activityHistory by remember { mutableStateOf<Map<String, DailyActivity>>(emptyMap()) }
     var availableYears by remember { mutableStateOf(setOf(currentYear)) }
     var baselineOnly by remember { mutableStateOf(false) }
+    var snapshotLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(revision, selectedYear, includeAnime) {
+        snapshotLoading = true
         val snapshot = withContext(Dispatchers.IO) {
             ActivityStats.getYearSnapshot(
                 context = context,
@@ -1728,6 +1717,7 @@ private fun ActivityPage(
                 yearStats.keys.maxOrNull() ?: "$selectedYear-12-31"
             }
         }
+        snapshotLoading = false
     }
 
     val historyEntries = remember(activityHistory, selectedDate) {
@@ -1743,15 +1733,32 @@ private fun ActivityPage(
     } else {
         historyEntries
     }
+    val historyTotals = remember(activityHistory, selectedDate) {
+        activityHistory.asSequence()
+            .filter { (date, _) -> date <= selectedDate }
+            .fold(0 to 0) { (gameMinutes, animeEpisodes), (_, day) ->
+                gameMinutes + day.gameMinutes to animeEpisodes + day.animeEpisodes
+            }
+    }
+    val selectedDay = yearStats[selectedDate]
+    val summaryGameMinutes =
+        if (showExactDate) selectedDay?.gameMinutes ?: 0 else historyTotals.first
+    val summaryAnimeEpisodes =
+        if (showExactDate) selectedDay?.animeEpisodes ?: 0 else historyTotals.second
     val minYear = availableYears.minOrNull() ?: currentYear
     val apiKey = UserPrefs.getApiKey(context)
     val steamId = UserPrefs.getSteamId(context)
     val bgmUsername = UserPrefs.getBangumiUsername(context)
     val bgmAccessToken = UserPrefs.getBangumiAccessToken(context)
     val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
+    val activityLoading =
+        snapshotLoading || steamLoading == true || includeAnime && bangumiLoading == true
 
-    PullToRefresh(
-        isRefreshing = steamLoading == true || includeAnime && bangumiLoading == true,
+    if (activityLoading) {
+        ActivityPageLoadingSkeleton(topBarInsetDp)
+    } else {
+        PullToRefresh(
+        isRefreshing = false,
         onRefresh = {
             libraryViewModel.refresh(apiKey, steamId, context)
             if (
@@ -1850,20 +1857,40 @@ private fun ActivityPage(
                     }
                 )
             }
-            if (showExactDate) {
-                item("activity_summary") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 18.dp, vertical = 20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+            item("activity_summary") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (showExactDate) {
                         Text(
                             text = selectedDate,
-                            fontSize = DesignTokens.TextSubtitle.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = DesignTokens.TextBody1.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = yearFontFamily
                         )
+                        Spacer(Modifier.height(DesignTokens.SpaceSm))
                     }
+                    Text(
+                        text = if (includeAnime) {
+                            context.getString(
+                                R.string.activity_stats_combined,
+                                formatActivityHours(summaryGameMinutes),
+                                summaryAnimeEpisodes
+                            )
+                        } else {
+                            context.getString(
+                                R.string.activity_stats_game_only,
+                                formatActivityHours(summaryGameMinutes)
+                            )
+                        },
+                        fontSize = DesignTokens.TextBody2.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(
+                            alpha = DesignTokens.OpacityBody
+                        )
+                    )
                 }
             }
 
@@ -1929,6 +1956,7 @@ private fun ActivityPage(
                 }
             }
         }
+    }
     }
 }
 
@@ -2075,6 +2103,9 @@ private fun activityDateString(calendar: Calendar): String = String.format(
     calendar.get(Calendar.DAY_OF_MONTH)
 )
 
+private fun formatActivityHours(minutes: Int): String =
+    String.format(Locale.US, "%.1f", minutes / 60.0)
+
 /** Bangumi 收藏类型 → 标签颜色 */
 private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
     1 to Color(0xFF42A5F5),
@@ -2162,7 +2193,7 @@ private fun BangumiPage(
     }
 
     PullToRefresh(
-        isRefreshing = loading == true,
+        isRefreshing = false,
         onRefresh = { viewModel.refresh(bgmUsername, bgmAccessToken, context) },
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = topBarInsetDp),
@@ -2174,7 +2205,7 @@ private fun BangumiPage(
         ),
     ) {
         val collectionMap = collections
-        val showSkeleton = loading == true && collectionMap == null
+        val showSkeleton = loading == true
         val showEmpty = !showSkeleton && (collectionMap == null || collectionMap.isEmpty())
 
         // ── 骨架屏数量 ──
@@ -2185,7 +2216,7 @@ private fun BangumiPage(
             maxOf(4, ((windowHeight - 260.dp) / 132.dp).toInt())
         }
         // 骨架材质（@Composable，在此处初始化供 LazyColumn 使用）
-        val shimmer = shimmerBrush()
+        val shimmer = rememberLoadingSkeletonBrush()
         val skelBg = MiuixTheme.colorScheme.secondaryContainer
 
         // ── 状态变量 ──

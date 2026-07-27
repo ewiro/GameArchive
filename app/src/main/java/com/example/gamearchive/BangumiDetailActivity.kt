@@ -358,9 +358,7 @@ private fun BangumiDetailScreen(
                 }
 
                 if (isLoading) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(context.getString(R.string.general_loading), color = dim)
-                    }
+                    AnimeDetailLoadingSkeleton()
                 } else if (detail != null) {
                     val d = detail!!
                     val chapterCount = mainEpisodes.size.takeIf { it > 0 }

@@ -146,10 +146,7 @@ private fun MediaVideoPlayer(url: String) {
         )
 
         if (isLoading) {
-            top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator(
-                modifier = Modifier.size(DesignTokens.IconPlay),
-                color = Color.White
-            )
+            MediaLoadingSkeleton()
         }
     }
 
