@@ -64,7 +64,6 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -312,6 +311,9 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 android.util.Log.e("DetailActivity", "Failed to load game details for appId=$appId", e)
             }
         } finally {
+            if (reviewSummary.isEmpty()) {
+                reviewSummary = context.getString(R.string.general_no_data)
+            }
             isLoading = false
         }
     }
@@ -349,9 +351,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
 
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                InfiniteProgressIndicator()
-            }
+            GameDetailLoadingSkeleton(topBarHeightDp)
         } else {
             LazyColumn(
                 state = scrollState,
@@ -482,7 +482,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = reviewSummary.ifEmpty { context.getString(R.string.detail_loading_review) },
+                                    text = reviewSummary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = DesignTokens.TextBody1.sp,
                                     color = if (reviewPercent >= 0) reviewColor(reviewPercent) else DesignTokens.ReviewDefault

@@ -62,6 +62,19 @@ class BangumiViewModel : ViewModel() {
 
     fun loadIfNeeded(username: String, accessToken: String, context: Context) {
         if (hasLoaded || isRefreshInProgress) return
+        viewModelScope.launch {
+            val cached = withContext(Dispatchers.IO) {
+                BangumiPageCache.load(context, username)
+            }
+            if (cached != null && _collections.value == null) {
+                cached.user?.let { _user.value = it }
+                _collections.value = cached.collections
+                _ratings.value = cached.ratings
+                _episodeTotals.value = cached.episodeTotals
+                _watchedEpisodeCounts.value = cached.watchedEpisodeCounts
+                _loading.value = false
+            }
+        }
         refresh(username, accessToken, context)
     }
 
@@ -82,8 +95,8 @@ class BangumiViewModel : ViewModel() {
                 // 5 个分类并发拉取
                 val typeDeferreds = (1..5).map { type ->
                     async {
-                        try {
-                            val bucket = when (type) { 2 -> 3; 3 -> 2; else -> type }
+                        val bucket = when (type) { 2 -> 3; 3 -> 2; else -> type }
+                        runCatching {
                             val list = mutableListOf<BangumiCollection>()
                             var offset = 0
                             while (true) {
@@ -98,20 +111,49 @@ class BangumiViewModel : ViewModel() {
                                 if (page.data == null || page.total <= offset + 50) break
                                 offset += 50
                             }
-                            if (list.isNotEmpty()) bucket to list else null
-                        } catch (_: Exception) { null }
+                            CollectionBucketResult(bucket, list, succeeded = true)
+                        }.getOrElse {
+                            CollectionBucketResult(bucket, emptyList(), succeeded = false)
+                        }
                     }
                 }
-                val allData = mutableMapOf<Int, MutableList<BangumiCollection>>()
-                typeDeferreds.awaitAll().filterNotNull().forEach { (bucket, list) ->
-                    allData[bucket] = list
+                // 默认展示“在看”：优先等待这一类，先结束首屏骨架，再补齐其他分类。
+                val watchingResult = typeDeferreds[2].await()
+                if (watchingResult.succeeded) {
+                    val earlyData = _collections.value.orEmpty()
+                        .mapValuesTo(mutableMapOf()) { (_, list) -> list.toMutableList() }
+                    if (watchingResult.items.isEmpty()) {
+                        earlyData.remove(watchingResult.bucket)
+                    } else {
+                        earlyData[watchingResult.bucket] =
+                            watchingResult.items.toMutableList()
+                    }
+                    _collections.value = earlyData
+                    _loading.value = false
                 }
-                userDeferred.await()?.let { _user.value = it }
+                val bucketResults = typeDeferreds.awaitAll()
+                if (bucketResults.none { it.succeeded }) {
+                    _error.value = Pair(R.string.bangumi_collection_load_failed, null)
+                    return@launch
+                }
+                val allData = _collections.value.orEmpty()
+                    .mapValuesTo(mutableMapOf()) { (_, list) -> list.toMutableList() }
+                bucketResults.filter { it.succeeded }.forEach { result ->
+                    if (result.items.isEmpty()) {
+                        allData.remove(result.bucket)
+                    } else {
+                        allData[result.bucket] = result.items.toMutableList()
+                    }
+                }
                 _collections.value = allData
+                _loading.value = false
+                userDeferred.await()?.let { _user.value = it }
+
                 // 批量拉取 subject 详情评分（并发 8 个一组）
-                val existingRatings = mutableMapOf<Int, Any?>()
-                val episodeTotals = mutableMapOf<Int, Int>()
-                val watchedEpisodeCounts = mutableMapOf<Int, Int>()
+                val existingRatings = _ratings.value.orEmpty().toMutableMap()
+                val episodeTotals = _episodeTotals.value.orEmpty().toMutableMap()
+                val watchedEpisodeCounts =
+                    _watchedEpisodeCounts.value.orEmpty().toMutableMap()
                 val allSubjects = allData.values.flatten()
                 // 先收集已有评分的（collections API 可能部分返回了）
                 for (item in allSubjects) {
@@ -120,6 +162,18 @@ class BangumiViewModel : ViewModel() {
                     val total = item.subject?.eps?.takeIf { it > 0 }
                     if (total != null) episodeTotals[item.subject_id] = total
                 }
+                _ratings.value = existingRatings.toMap()
+                _episodeTotals.value = episodeTotals.toMap()
+                _watchedEpisodeCounts.value = watchedEpisodeCounts.toMap()
+                savePageCache(
+                    context,
+                    username,
+                    allData,
+                    existingRatings,
+                    episodeTotals,
+                    watchedEpisodeCounts
+                )
+
                 // 补拉完整详情评分
                 val subjectIds = allSubjects.map { it.subject_id }.distinct()
                 val missingRatingIds = allSubjects
@@ -202,6 +256,14 @@ class BangumiViewModel : ViewModel() {
                         ActivityStats.syncBangumi(context, allSubjects, watchedEpisodeCounts)
                     }
                 }
+                savePageCache(
+                    context,
+                    username,
+                    allData,
+                    existingRatings,
+                    episodeTotals,
+                    watchedEpisodeCounts
+                )
                 hasLoaded = true
             } catch (e: Exception) {
                 _error.value = Pair(R.string.general_error, e.message)
@@ -212,5 +274,32 @@ class BangumiViewModel : ViewModel() {
         }
     }
 
+    private suspend fun savePageCache(
+        context: Context,
+        username: String,
+        collections: Map<Int, List<BangumiCollection>>,
+        ratings: Map<Int, Any?>,
+        episodeTotals: Map<Int, Int>,
+        watchedEpisodeCounts: Map<Int, Int>
+    ) {
+        val snapshot = BangumiPageSnapshot(
+            username = username,
+            user = _user.value,
+            collections = collections.mapValues { (_, list) -> list.toList() },
+            ratings = ratings.toMap(),
+            episodeTotals = episodeTotals.toMap(),
+            watchedEpisodeCounts = watchedEpisodeCounts.toMap()
+        )
+        withContext(Dispatchers.IO) {
+            BangumiPageCache.save(context, snapshot)
+        }
+    }
+
     fun clearError() { _error.value = null }
 }
+
+private data class CollectionBucketResult(
+    val bucket: Int,
+    val items: List<BangumiCollection>,
+    val succeeded: Boolean
+)

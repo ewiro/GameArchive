@@ -81,7 +81,6 @@
     <string name="detail_about">游戏简介</string>
     <string name="detail_reviews_title">玩家评测</string>
     <string name="detail_reviews_count">%d 条评价</string>
-    <string name="detail_loading_review">评价加载中…</string>
     <string name="detail_positive"> 好评</string>
     <string name="detail_developer">开发商</string>
     <string name="detail_release_date">发行日期</string>
@@ -138,6 +137,8 @@
     <string name="activity_baseline_ready">已建立基线，下次刷新后开始统计</string>
     <string name="activity_game_cover">%s 的游戏封面</string>
     <string name="activity_anime_cover">%s 的动漫封面</string>
+    <string name="activity_stats_combined">玩了%1$s小时　看了%2$d话</string>
+    <string name="activity_stats_game_only">玩了%1$s小时</string>
 
     <!-- Tags -->
     <string name="tag_manage">标签管理</string>
@@ -225,7 +226,6 @@
     <string name="general_back">返回</string>
     <string name="general_close">关闭</string>
     <string name="general_delete">删除</string>
-    <string name="general_loading">加载中…</string>
     <string name="general_load_failed">加载失败</string>
     <string name="general_sort">排序</string>
     <string name="tag_create">新建</string>

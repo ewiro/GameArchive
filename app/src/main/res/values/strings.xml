@@ -81,7 +81,6 @@
     <string name="detail_about">ABOUT THIS GAME</string>
     <string name="detail_reviews_title">PLAYER REVIEWS</string>
     <string name="detail_reviews_count">%d reviews</string>
-    <string name="detail_loading_review">Loading reviews…</string>
     <string name="detail_positive"> Positive</string>
     <string name="detail_developer">Developer</string>
     <string name="detail_release_date">Release Date</string>
@@ -138,6 +137,8 @@
     <string name="activity_baseline_ready">Baseline ready. Refresh again to start tracking.</string>
     <string name="activity_game_cover">Game cover for %s</string>
     <string name="activity_anime_cover">Anime cover for %s</string>
+    <string name="activity_stats_combined">Played %1$s hours  Watched %2$d episodes</string>
+    <string name="activity_stats_game_only">Played %1$s hours</string>
 
     <!-- Tags -->
     <string name="tag_manage">Manage Tags</string>
@@ -225,7 +226,6 @@
     <string name="general_back">Back</string>
     <string name="general_close">Close</string>
     <string name="general_delete">Delete</string>
-    <string name="general_loading">Loading…</string>
     <string name="general_load_failed">Failed to load</string>
     <string name="general_sort">Sort</string>
     <string name="tag_create">Create</string>

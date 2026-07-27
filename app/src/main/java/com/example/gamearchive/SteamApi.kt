@@ -19,7 +19,8 @@ import retrofit2.http.Query
 @Keep data class GameListResponse(val game_count: Int, val games: List<GameInfo>)
 @Keep data class GameInfo(
     val appid: Int, val name: String, val playtime_forever: Int,
-    val img_icon_url: String, val playtime_2weeks: Int? = 0
+    val img_icon_url: String, val playtime_2weeks: Int? = 0,
+    val rtime_last_played: Long = 0L
 )
 
 // --- 3. 商店详情 ---
