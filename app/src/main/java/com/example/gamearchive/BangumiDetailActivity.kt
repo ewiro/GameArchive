@@ -6,12 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -23,10 +21,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -53,6 +54,9 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 class BangumiDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -517,14 +521,8 @@ private fun BangumiDetailScreen(
                                 )
                                 AnimatedVisibility(
                                     visible = isProgressExpanded,
-                                    enter = expandVertically(
-                                        animationSpec = tween(durationMillis = 280),
-                                        expandFrom = Alignment.Top
-                                    ) + fadeIn(animationSpec = tween(durationMillis = 180)),
-                                    exit = shrinkVertically(
-                                        animationSpec = tween(durationMillis = 220),
-                                        shrinkTowards = Alignment.Top
-                                    ) + fadeOut(animationSpec = tween(durationMillis = 140))
+                                    enter = smoothExpandEnter(),
+                                    exit = smoothExpandExit()
                                 ) {
                                     Column(
                                         modifier = Modifier.padding(
@@ -725,16 +723,9 @@ private fun BangumiDetailScreen(
                                                         },
                                                     contentAlignment = Alignment.Center
                                                 ) {
-                                                    Text(
-                                                        text = if (selected) "★" else "☆",
-                                                        fontSize = DesignTokens.TextHeadline.sp,
-                                                        color = if (selected) {
-                                                            selectedRatingColor
-                                                        } else {
-                                                            MiuixTheme.colorScheme.onSurface.copy(
-                                                                alpha = DesignTokens.OpacityDisabled
-                                                            )
-                                                        }
+                                                    SoftRatingStar(
+                                                        selected = selected,
+                                                        selectedColor = selectedRatingColor
                                                     )
                                                 }
                                             }
@@ -792,7 +783,7 @@ private fun BangumiDetailScreen(
                                     }
                                 }
                             }
-                            Spacer(Modifier.height(DesignTokens.SpaceXxl))
+                            Spacer(Modifier.height(DesignTokens.SpaceMd))
                         } else if (!authorized) {
                             Text(
                                 text = context.getString(R.string.bangumi_authorization_required),
@@ -931,7 +922,15 @@ private fun BangumiDetailScreen(
             }
         }
 
-        if (isStatusDropdownVisible) {
+        AnimatedVisibility(
+            visible = isStatusDropdownVisible,
+            enter = fadeIn(
+                animationSpec = tween(DesignTokens.FadeInDuration)
+            ),
+            exit = fadeOut(
+                animationSpec = tween(DesignTokens.CollapseDuration)
+            )
+        ) {
             val density = LocalDensity.current
             val triggerBottomDp = with(density) {
                 (statusDropdownRect.bottom / density.density).dp
@@ -955,48 +954,54 @@ private fun BangumiDetailScreen(
                     val triggerRightDp = with(density) {
                         (statusDropdownRect.right / density.density).dp
                     }
-                    Card(
-                        modifier = Modifier
-                            .padding(end = maxOf(0.dp, screenWidthDp - triggerRightDp))
-                            .wrapContentWidth(),
-                        cornerRadius = DesignTokens.CornerLarge
+                    AnimatedVisibility(
+                        visible = isStatusDropdownVisible,
+                        enter = smoothExpandEnter(),
+                        exit = smoothExpandExit()
                     ) {
-                        Column(Modifier.width(IntrinsicSize.Max)) {
-                            typeLabels.forEach { (apiType, label) ->
-                                val selected = apiType == draftType
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .noRippleClickable {
-                                            draftType = apiType
-                                            isStatusDropdownVisible = false
-                                        }
-                                        .padding(
-                                            horizontal = DesignTokens.SpaceXl,
-                                            vertical = DesignTokens.SpaceLg
-                                        ),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = DesignTokens.TextSubtitle.sp,
-                                        fontWeight = if (selected) FontWeight.Bold
-                                            else FontWeight.Normal,
-                                        color = if (selected) MiuixTheme.colorScheme.primary
-                                            else MiuixTheme.colorScheme.onSurface,
-                                        softWrap = false
-                                    )
-                                    Spacer(Modifier.weight(1f))
-                                    Spacer(Modifier.width(DesignTokens.SpaceMassive))
-                                    Image(
-                                        imageVector = MiuixIcons.Basic.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(DesignTokens.IconMd),
-                                        colorFilter = ColorFilter.tint(
-                                            if (selected) MiuixTheme.colorScheme.primary
-                                            else Color.Transparent
+                        Card(
+                            modifier = Modifier
+                                .padding(end = maxOf(0.dp, screenWidthDp - triggerRightDp))
+                                .wrapContentWidth(),
+                            cornerRadius = DesignTokens.CornerLarge
+                        ) {
+                            Column(Modifier.width(IntrinsicSize.Max)) {
+                                typeLabels.forEach { (apiType, label) ->
+                                    val selected = apiType == draftType
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .noRippleClickable {
+                                                draftType = apiType
+                                                isStatusDropdownVisible = false
+                                            }
+                                            .padding(
+                                                horizontal = DesignTokens.SpaceXl,
+                                                vertical = DesignTokens.SpaceLg
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            fontSize = DesignTokens.TextSubtitle.sp,
+                                            fontWeight = if (selected) FontWeight.Bold
+                                                else FontWeight.Normal,
+                                            color = if (selected) MiuixTheme.colorScheme.primary
+                                                else MiuixTheme.colorScheme.onSurface,
+                                            softWrap = false
                                         )
-                                    )
+                                        Spacer(Modifier.weight(1f))
+                                        Spacer(Modifier.width(DesignTokens.SpaceMassive))
+                                        Image(
+                                            imageVector = MiuixIcons.Basic.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(DesignTokens.IconMd),
+                                            colorFilter = ColorFilter.tint(
+                                                if (selected) MiuixTheme.colorScheme.primary
+                                                else Color.Transparent
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1013,11 +1018,6 @@ private fun ProgressSectionHeader(
     onToggle: () -> Unit
 ) {
     val context = LocalContext.current
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) 90f else 0f,
-        animationSpec = tween(durationMillis = 220),
-        label = "progressArrow"
-    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1039,16 +1039,74 @@ private fun ProgressSectionHeader(
             color = MiuixTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
-        Image(
-            imageVector = MiuixIcons.Regular.ChevronForward,
-            contentDescription = null,
-            modifier = Modifier
-                .size(DesignTokens.IconMd)
-                .rotate(arrowRotation),
-            colorFilter = ColorFilter.tint(
-                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+        ExpandableArrow(
+            expanded = expanded,
+            color = MiuixTheme.colorScheme.onSurface.copy(
+                alpha = DesignTokens.OpacityBody
             )
         )
+    }
+}
+
+@Composable
+private fun SoftRatingStar(
+    selected: Boolean,
+    selectedColor: Color
+) {
+    val outlineColor = MiuixTheme.colorScheme.onSurface.copy(
+        alpha = DesignTokens.OpacityDisabled
+    )
+    Canvas(Modifier.size(18.dp)) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val outerRadius = size.minDimension * 0.43f
+        val innerRadius = outerRadius * 0.5f
+        val points = List(10) { index ->
+            val radius = if (index % 2 == 0) outerRadius else innerRadius
+            val angle = -PI / 2 + index * PI / 5
+            Offset(
+                x = center.x + cos(angle).toFloat() * radius,
+                y = center.y + sin(angle).toFloat() * radius
+            )
+        }
+        val cornerFraction = 0.2f
+        val starPath = Path()
+        points.forEachIndexed { index, point ->
+            val previous = points[(index - 1 + points.size) % points.size]
+            val next = points[(index + 1) % points.size]
+            val beforeCorner = Offset(
+                x = point.x + (previous.x - point.x) * cornerFraction,
+                y = point.y + (previous.y - point.y) * cornerFraction
+            )
+            val afterCorner = Offset(
+                x = point.x + (next.x - point.x) * cornerFraction,
+                y = point.y + (next.y - point.y) * cornerFraction
+            )
+            if (index == 0) {
+                starPath.moveTo(beforeCorner.x, beforeCorner.y)
+            } else {
+                starPath.lineTo(beforeCorner.x, beforeCorner.y)
+            }
+            starPath.quadraticBezierTo(
+                point.x,
+                point.y,
+                afterCorner.x,
+                afterCorner.y
+            )
+        }
+        starPath.close()
+
+        if (selected) {
+            drawPath(starPath, selectedColor.copy(alpha = 0.9f))
+        } else {
+            drawPath(
+                path = starPath,
+                color = outlineColor,
+                style = Stroke(
+                    width = 1.25.dp.toPx(),
+                    join = StrokeJoin.Round
+                )
+            )
+        }
     }
 }
 

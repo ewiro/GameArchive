@@ -11,12 +11,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -254,7 +250,18 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     }
 
     var dropdownPopup by remember { mutableStateOf<DropdownPopupData?>(null) }
-    CompositionLocalProvider(LocalDropdownHost provides { dropdownPopup = it }) {
+    var dropdownPopupVisible by remember { mutableStateOf(false) }
+    val dismissDropdown = {
+        dropdownPopupVisible = false
+    }
+    CompositionLocalProvider(LocalDropdownHost provides { popup ->
+        if (popup == null) {
+            dismissDropdown()
+        } else {
+            dropdownPopup = popup
+            dropdownPopupVisible = true
+        }
+    }) {
     Box(Modifier.fillMaxSize()) {
     Surface(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -409,22 +416,11 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
                     AnimatedVisibility(
                         visible = showProfile,
-                        enter = expandVertically(
-                            animationSpec = tween(durationMillis = DesignTokens.AnimDuration),
-                            expandFrom = Alignment.Top
-                        ) + fadeIn(animationSpec = tween(durationMillis = DesignTokens.AnimDuration)),
-                        exit = shrinkVertically(
-                            animationSpec = tween(durationMillis = DesignTokens.AnimDuration),
-                            shrinkTowards = Alignment.Top
-                        ) + fadeOut(animationSpec = tween(durationMillis = DesignTokens.AnimDuration))
+                        enter = smoothExpandEnter(),
+                        exit = smoothExpandExit()
                     ) {
                         Column {
                             DividerLine()
-                            val arrowRotation by animateFloatAsState(
-                                targetValue = if (customUrlsExpanded) 90f else 0f,
-                                animationSpec = tween(DesignTokens.AnimDuration),
-                                label = "custom_url_arrow"
-                            )
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -442,30 +438,18 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     color = MiuixTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f)
                                 )
-                                Image(
-                                    imageVector = MiuixIcons.Basic.ArrowRight,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(DesignTokens.IconMd)
-                                        .graphicsLayer { rotationZ = arrowRotation },
-                                    colorFilter = ColorFilter.tint(
-                                        MiuixTheme.colorScheme.onSurface.copy(
-                                            alpha = DesignTokens.OpacityBody
-                                        )
+                                ExpandableArrow(
+                                    expanded = customUrlsExpanded,
+                                    color = MiuixTheme.colorScheme.onSurface.copy(
+                                        alpha = DesignTokens.OpacityBody
                                     )
                                 )
                             }
 
                             AnimatedVisibility(
                                 visible = customUrlsExpanded,
-                                enter = expandVertically(
-                                    animationSpec = tween(DesignTokens.AnimDuration),
-                                    expandFrom = Alignment.Top
-                                ) + fadeIn(animationSpec = tween(DesignTokens.AnimDuration)),
-                                exit = shrinkVertically(
-                                    animationSpec = tween(DesignTokens.AnimDuration),
-                                    shrinkTowards = Alignment.Top
-                                ) + fadeOut(animationSpec = tween(DesignTokens.AnimDuration))
+                                enter = smoothExpandEnter(),
+                                exit = smoothExpandExit()
                             ) {
                                 Column {
                                     LabeledTextField(
@@ -1208,7 +1192,15 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     } // close Surface
 
         // ── 选择器弹窗叠加层 ──
-        if (dropdownPopup != null) {
+        AnimatedVisibility(
+            visible = dropdownPopupVisible && dropdownPopup != null,
+            enter = fadeIn(
+                animationSpec = tween(DesignTokens.FadeInDuration)
+            ),
+            exit = fadeOut(
+                animationSpec = tween(DesignTokens.CollapseDuration)
+            )
+        ) {
             val popup = dropdownPopup!!
             val density = LocalDensity.current
             val triggerBottomDp = with(density) { (popup.triggerRect.bottom / density.density).dp }
@@ -1216,7 +1208,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .background(DesignTokens.ScrimDark)
-                    .clickable { dropdownPopup = null },
+                    .clickable { dismissDropdown() },
                 contentAlignment = Alignment.TopStart
             ) {
                 Box(
@@ -1230,50 +1222,56 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     }
                     val triggerRightDp = with(density) { (popup.triggerRect.right / density.density).dp }
                     val paddingEnd = maxOf(0.dp, screenWidthDp - triggerRightDp)
-                    Card(
-                        modifier = Modifier
-                            .padding(end = paddingEnd)
-                            .wrapContentWidth(),
-                    cornerRadius = DesignTokens.CornerLarge
-                ) {
-                    Column(Modifier.width(IntrinsicSize.Max)) {
-                        popup.options.forEachIndexed { index, option ->
-                            val isSelected = index == popup.selectedIndex
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .noRippleClickable {
-                                        popup.onSelect(index)
-                                        dropdownPopup = null
+                    AnimatedVisibility(
+                        visible = dropdownPopupVisible,
+                        enter = smoothExpandEnter(),
+                        exit = smoothExpandExit()
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .padding(end = paddingEnd)
+                                .wrapContentWidth(),
+                            cornerRadius = DesignTokens.CornerLarge
+                        ) {
+                            Column(Modifier.width(IntrinsicSize.Max)) {
+                                popup.options.forEachIndexed { index, option ->
+                                    val isSelected = index == popup.selectedIndex
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .noRippleClickable {
+                                                popup.onSelect(index)
+                                                dismissDropdown()
+                                            }
+                                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = option,
+                                            fontSize = DesignTokens.TextSubtitle.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected)
+                                                MiuixTheme.colorScheme.primary
+                                            else MiuixTheme.colorScheme.onSurface,
+                                            softWrap = false
+                                        )
+                                        Spacer(Modifier.weight(1f))
+                                        Spacer(Modifier.width(32.dp))
+                                        Image(
+                                            imageVector = MiuixIcons.Basic.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(DesignTokens.IconMd),
+                                            colorFilter = ColorFilter.tint(if (isSelected)
+                                                MiuixTheme.colorScheme.primary
+                                            else Color.Transparent)
+                                        )
                                     }
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = option,
-                                    fontSize = DesignTokens.TextSubtitle.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected)
-                                        MiuixTheme.colorScheme.primary
-                                    else MiuixTheme.colorScheme.onSurface,
-                                    softWrap = false
-                                )
-                                Spacer(Modifier.weight(1f))
-                                Spacer(Modifier.width(32.dp))
-                                Image(
-                                    imageVector = MiuixIcons.Basic.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(DesignTokens.IconMd),
-                                    colorFilter = ColorFilter.tint(if (isSelected)
-                                        MiuixTheme.colorScheme.primary
-                                    else Color.Transparent)
-                                )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
         }
     } // close Box
     } // close CompositionLocalProvider
@@ -1384,7 +1382,14 @@ private fun DropdownSelector(
                 }
                 .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                 .noRippleClickable {
-                    dropdownHost(DropdownPopupData(options, selectedIndex, onSelect, triggerRect))
+                    dropdownHost(
+                        DropdownPopupData(
+                            options = options,
+                            selectedIndex = selectedIndex,
+                            onSelect = onSelect,
+                            triggerRect = triggerRect
+                        )
+                    )
                 }
                 .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1404,7 +1409,9 @@ private fun DropdownSelector(
             )
             Spacer(Modifier.width(4.dp))
             DropdownArrowEndAction(
-                actionColor = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                actionColor = MiuixTheme.colorScheme.onSurface.copy(
+                    alpha = DesignTokens.OpacityBody
+                )
             )
         }
     }
