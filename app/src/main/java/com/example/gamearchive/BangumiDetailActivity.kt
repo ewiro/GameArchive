@@ -267,6 +267,16 @@ private fun BangumiDetailScreen(
                     )
                     if (!episodeResponse.isSuccessful) throw HttpException(episodeResponse)
                 }
+                val changedEpisodeIds = changedEpisodes.first
+                    .mapTo(hashSetOf()) { it.episode.id }
+                val currentWatchedEpisodeIds = mainEpisodes.mapNotNull { episode ->
+                    val type = if (episode.episode.id in changedEpisodeIds) {
+                        changedEpisodes.second
+                    } else {
+                        episode.type
+                    }
+                    episode.episode.id.takeIf { type == 2 }
+                }
 
                 var username = UserPrefs.getBangumiUsername(context)
                 if (username.isBlank()) {
@@ -286,7 +296,8 @@ private fun BangumiDetailScreen(
                         previousApiType = previousApiType,
                         currentApiType = targetApiType,
                         previousEpisodes = previousRegularProgress,
-                        currentEpisodes = boundedEpisodeProgress
+                        currentEpisodes = boundedEpisodeProgress,
+                        currentEpisodeIds = currentWatchedEpisodeIds
                     )
                 }
                 activityHistoryRevision++

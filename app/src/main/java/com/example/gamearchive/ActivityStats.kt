@@ -3,6 +3,7 @@ package com.example.gamearchive
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -113,7 +114,7 @@ object ActivityStats {
     fun syncBangumi(
         context: Context,
         collections: List<BangumiCollection>,
-        watchedEpisodeCounts: Map<Int, Int>,
+        watchedEpisodeCollections: Map<Int, List<BangumiUserEpisodeCollection>>,
         observedAt: Long = System.currentTimeMillis()
     ) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -121,9 +122,14 @@ object ActivityStats {
         val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
 
         collections.distinctBy { it.subject_id }.forEach { item ->
-            val currentEpisodes = watchedEpisodeCounts[item.subject_id] ?: return@forEach
+            val watchedEpisodes = watchedEpisodeCollections[item.subject_id]
+                ?.filter { it.type == 2 }
+                ?: return@forEach
+            val currentEpisodes = watchedEpisodes.size
+            val currentEpisodeIds = watchedEpisodes.mapTo(linkedSetOf()) { it.episode.id }
             val key = item.subject_id.toString()
             val previous = baselines.optJSONObject(key)
+            val previousEpisodeIds = previous?.let(::previousEpisodeIds)
             val currentApiType = uiCollectionTypeToApi(item.type)
             if (previous != null) {
                 val previousEpisodes = previous.optInt("episodes")
@@ -131,27 +137,64 @@ object ActivityStats {
                 val delta = currentEpisodes - previousEpisodes
                 if (delta > 0 && (previousApiType == 3 || currentApiType == 3)) {
                     val subject = item.subject
-                    addActivity(
-                        days = days,
-                        kind = ActivityKind.ANIME,
-                        id = item.subject_id,
-                        title = subject?.name.orEmpty(),
-                        secondaryTitle = subject?.name_cn.orEmpty(),
-                        imageUrl = subject?.images?.large
-                            ?: subject?.images?.common
-                            ?: subject?.images?.medium
-                            ?: "",
-                        gameMinutes = 0,
-                        animeEpisodes = delta,
-                        recordedAt = observedAt
-                    )
+                    val candidates = watchedEpisodes
+                        .filter { previousEpisodeIds == null || it.episode.id !in previousEpisodeIds }
+                        .sortedByDescending {
+                            bangumiEpisodeUpdatedAt(it.updated_at, observedAt)
+                        }
+                        .take(delta)
+                    candidates.forEach { episode ->
+                        addActivity(
+                            days = days,
+                            kind = ActivityKind.ANIME,
+                            id = item.subject_id,
+                            title = subject?.name.orEmpty(),
+                            secondaryTitle = subject?.name_cn.orEmpty(),
+                            imageUrl = subject?.images?.large
+                                ?: subject?.images?.common
+                                ?: subject?.images?.medium
+                                ?: "",
+                            gameMinutes = 0,
+                            animeEpisodes = 1,
+                            recordedAt = bangumiEpisodeUpdatedAt(
+                                episode.updated_at,
+                                observedAt
+                            )
+                        )
+                    }
+                    repeat(delta - candidates.size) {
+                        addActivity(
+                            days = days,
+                            kind = ActivityKind.ANIME,
+                            id = item.subject_id,
+                            title = subject?.name.orEmpty(),
+                            secondaryTitle = subject?.name_cn.orEmpty(),
+                            imageUrl = subject?.images?.large
+                                ?: subject?.images?.common
+                                ?: subject?.images?.medium
+                                ?: "",
+                            gameMinutes = 0,
+                            animeEpisodes = 1,
+                            recordedAt = observedAt
+                        )
+                    }
                 }
+            }
+            if (previous != null && previousEpisodeIds == null) {
+                reconcileLegacyAnimeDates(
+                    days = days,
+                    item = item,
+                    watchedEpisodes = watchedEpisodes,
+                    observedAt = observedAt
+                )
             }
             baselines.put(
                 key,
-                JSONObject()
-                    .put("episodes", currentEpisodes.coerceAtLeast(0))
-                    .put("type", currentApiType)
+                animeBaseline(
+                    episodes = currentEpisodes,
+                    apiType = currentApiType,
+                    episodeIds = currentEpisodeIds
+                )
             )
         }
 
@@ -179,6 +222,7 @@ object ActivityStats {
         currentApiType: Int,
         previousEpisodes: Int,
         currentEpisodes: Int,
+        currentEpisodeIds: Collection<Int>,
         recordedAt: Long = System.currentTimeMillis()
     ) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -200,9 +244,11 @@ object ActivityStats {
         }
         baselines.put(
             subjectId.toString(),
-            JSONObject()
-                .put("episodes", currentEpisodes.coerceAtLeast(0))
-                .put("type", currentApiType)
+            animeBaseline(
+                episodes = currentEpisodes,
+                apiType = currentApiType,
+                episodeIds = currentEpisodeIds
+            )
         )
         prefs.edit()
             .putString(KEY_ANIME_BASELINES, baselines.toString())
@@ -403,6 +449,138 @@ object ActivityStats {
             .put("anime_episodes", day.optInt("anime_episodes") + animeEpisodes)
             .put("entries", entries)
         days.put(date, day)
+    }
+
+    private fun animeBaseline(
+        episodes: Int,
+        apiType: Int,
+        episodeIds: Collection<Int>
+    ): JSONObject {
+        val ids = JSONArray()
+        episodeIds.distinct().sorted().forEach(ids::put)
+        return JSONObject()
+            .put("episodes", episodes.coerceAtLeast(0))
+            .put("type", apiType)
+            .put("episode_ids", ids)
+    }
+
+    private fun previousEpisodeIds(source: JSONObject): Set<Int>? {
+        if (!source.has("episode_ids")) return null
+        val ids = source.optJSONArray("episode_ids") ?: return emptySet()
+        return buildSet {
+            for (index in 0 until ids.length()) {
+                val id = ids.optInt(index)
+                if (id > 0) add(id)
+            }
+        }
+    }
+
+    private fun reconcileLegacyAnimeDates(
+        days: JSONObject,
+        item: BangumiCollection,
+        watchedEpisodes: List<BangumiUserEpisodeCollection>,
+        observedAt: Long
+    ) {
+        val existingAmounts = animeRecordAmounts(days, item.subject_id)
+        val recordedTotal = existingAmounts.values.sum()
+        if (recordedTotal <= 0 || recordedTotal > watchedEpisodes.size) return
+
+        val timestampedEpisodes = watchedEpisodes.mapNotNull { episode ->
+            bangumiEpisodeUpdatedAtOrNull(episode.updated_at, observedAt)?.let {
+                episode to it
+            }
+        }.sortedByDescending { it.second }
+        if (timestampedEpisodes.size < recordedTotal) return
+
+        val recordedEpisodes = timestampedEpisodes.take(recordedTotal)
+        val expectedAmounts = recordedEpisodes
+            .groupingBy { localDate(it.second) }
+            .eachCount()
+        if (expectedAmounts == existingAmounts) return
+
+        removeAnimeRecords(days, item.subject_id)
+        val subject = item.subject
+        recordedEpisodes.sortedBy { it.second }.forEach { (_, recordedAt) ->
+            addActivity(
+                days = days,
+                kind = ActivityKind.ANIME,
+                id = item.subject_id,
+                title = subject?.name.orEmpty(),
+                secondaryTitle = subject?.name_cn.orEmpty(),
+                imageUrl = subject?.images?.large
+                    ?: subject?.images?.common
+                    ?: subject?.images?.medium
+                    ?: "",
+                gameMinutes = 0,
+                animeEpisodes = 1,
+                recordedAt = recordedAt
+            )
+        }
+    }
+
+    private fun animeRecordAmounts(days: JSONObject, subjectId: Int): Map<String, Int> {
+        val entryKey = "${ActivityKind.ANIME.name.lowercase(Locale.US)}:$subjectId"
+        return buildMap {
+            val dates = days.keys()
+            while (dates.hasNext()) {
+                val date = dates.next()
+                val amount = days.optJSONObject(date)
+                    ?.optJSONObject("entries")
+                    ?.optJSONObject(entryKey)
+                    ?.optInt("anime_episodes")
+                    ?: 0
+                if (amount > 0) put(date, amount)
+            }
+        }
+    }
+
+    private fun removeAnimeRecords(days: JSONObject, subjectId: Int) {
+        val entryKey = "${ActivityKind.ANIME.name.lowercase(Locale.US)}:$subjectId"
+        val dates = buildList {
+            val keys = days.keys()
+            while (keys.hasNext()) add(keys.next())
+        }
+        dates.forEach { date ->
+            val day = days.optJSONObject(date) ?: return@forEach
+            val entries = day.optJSONObject("entries") ?: return@forEach
+            val entry = entries.optJSONObject(entryKey) ?: return@forEach
+            val episodes = entry.optInt("anime_episodes")
+            entries.remove(entryKey)
+            day
+                .put(
+                    "anime_episodes",
+                    (day.optInt("anime_episodes") - episodes).coerceAtLeast(0)
+                )
+                .put("entries", entries)
+            if (
+                day.optInt("game_minutes") == 0 &&
+                day.optInt("anime_episodes") == 0 &&
+                entries.length() == 0
+            ) {
+                days.remove(date)
+            } else {
+                days.put(date, day)
+            }
+        }
+    }
+
+    private fun bangumiEpisodeUpdatedAt(updatedAt: Long?, observedAt: Long): Long {
+        return bangumiEpisodeUpdatedAtOrNull(updatedAt, observedAt) ?: observedAt
+    }
+
+    private fun bangumiEpisodeUpdatedAtOrNull(
+        updatedAt: Long?,
+        observedAt: Long
+    ): Long? {
+        if (updatedAt == null || updatedAt <= 0L) return null
+        val timestamp = if (updatedAt < 10_000_000_000L) {
+            updatedAt * 1_000L
+        } else {
+            updatedAt
+        }
+        return timestamp.takeIf {
+            it <= observedAt + 5 * 60 * 1_000L
+        }
     }
 
     private fun parseObject(value: String?): JSONObject =
