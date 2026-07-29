@@ -150,6 +150,9 @@
     <string name="note_local">Local Notes</string>
     <string name="activity_game_history">Play History</string>
     <string name="activity_anime_history">Watch History</string>
+    <string name="activity_anime_record_edit">Edit Watch History</string>
+    <string name="activity_anime_record_amount">Episodes watched</string>
+    <string name="activity_anime_record_zero_hint">Enter 0 to delete this record</string>
     <string name="activity_game_record">%1$s: %2$sh</string>
     <string name="activity_anime_record">%1$s: %2$d ep</string>
     <string name="note_hint">Leave a comment…</string>
