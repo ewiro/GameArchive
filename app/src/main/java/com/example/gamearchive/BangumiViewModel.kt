@@ -154,6 +154,8 @@ class BangumiViewModel : ViewModel() {
                 val episodeTotals = _episodeTotals.value.orEmpty().toMutableMap()
                 val watchedEpisodeCounts =
                     _watchedEpisodeCounts.value.orEmpty().toMutableMap()
+                val watchedEpisodeCollections =
+                    mutableMapOf<Int, List<BangumiUserEpisodeCollection>>()
                 val allSubjects = allData.values.flatten()
                 // 先收集已有评分的（collections API 可能部分返回了）
                 for (item in allSubjects) {
@@ -219,8 +221,10 @@ class BangumiViewModel : ViewModel() {
                                 }
                             }.mapNotNull { it.await() }.forEach { (id, episodes) ->
                                 if (episodes.total > 0) episodeTotals[id] = episodes.total
+                                val episodeCollections = episodes.data.orEmpty()
+                                watchedEpisodeCollections[id] = episodeCollections
                                 watchedEpisodeCounts[id] =
-                                    episodes.data.orEmpty().count { it.type == 2 }
+                                    episodeCollections.count { it.type == 2 }
                             }
                         }
                     }
@@ -251,9 +255,13 @@ class BangumiViewModel : ViewModel() {
                 _ratings.value = existingRatings
                 _episodeTotals.value = episodeTotals
                 _watchedEpisodeCounts.value = watchedEpisodeCounts
-                if (accessToken.isNotBlank() && watchedEpisodeCounts.isNotEmpty()) {
+                if (accessToken.isNotBlank() && watchedEpisodeCollections.isNotEmpty()) {
                     withContext(Dispatchers.IO) {
-                        ActivityStats.syncBangumi(context, allSubjects, watchedEpisodeCounts)
+                        ActivityStats.syncBangumi(
+                            context,
+                            allSubjects,
+                            watchedEpisodeCollections
+                        )
                     }
                 }
                 savePageCache(
