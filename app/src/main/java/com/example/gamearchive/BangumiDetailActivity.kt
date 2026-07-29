@@ -41,6 +41,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
@@ -113,6 +115,8 @@ private fun BangumiDetailScreen(
     var statusDropdownRect by remember { mutableStateOf(Rect.Zero) }
     var isProgressExpanded by remember { mutableStateOf(false) }
     var activityHistoryRevision by remember { mutableIntStateOf(0) }
+    var editingWatchRecord by remember { mutableStateOf<ItemActivityRecord?>(null) }
+    var editingWatchAmount by remember { mutableStateOf("") }
 
     LaunchedEffect(subjectId) {
         val (loadedDetail, loadedPersons, loadedEpisodePage) = coroutineScope {
@@ -808,7 +812,11 @@ private fun BangumiDetailScreen(
                         ActivityHistorySection(
                             kind = ActivityKind.ANIME,
                             records = watchRecords,
-                            titleFontSize = DesignTokens.TextSubtitle.sp
+                            titleFontSize = DesignTokens.TextSubtitle.sp,
+                            onRecordClick = { record ->
+                                editingWatchRecord = record
+                                editingWatchAmount = record.amount.toString()
+                            }
                         )
                         Spacer(Modifier.height(DesignTokens.SpaceXxl))
 
@@ -1014,6 +1022,131 @@ private fun BangumiDetailScreen(
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        editingWatchRecord?.let { record ->
+            Dialog(
+                onDismissRequest = { editingWatchRecord = null },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    decorFitsSystemWindows = false
+                )
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = DesignTokens.SpaceXl)
+                        .imePadding(),
+                    cornerRadius = DesignTokens.CornerLarge
+                ) {
+                    Column(modifier = Modifier.padding(DesignTokens.SpaceXl)) {
+                        Text(
+                            text = context.getString(R.string.activity_anime_record_edit),
+                            color = MiuixTheme.colorScheme.onSurface,
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(DesignTokens.SpaceMd))
+                        Text(
+                            text = record.date,
+                            color = dim,
+                            fontSize = DesignTokens.TextBody1.sp
+                        )
+                        Spacer(Modifier.height(DesignTokens.SpaceLg))
+                        TextField(
+                            value = editingWatchAmount,
+                            onValueChange = { value ->
+                                editingWatchAmount = value
+                                    .filter(Char::isDigit)
+                                    .take(4)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = context.getString(R.string.activity_anime_record_amount),
+                            useLabelAsPlaceholder = true,
+                            singleLine = true
+                        )
+                        Spacer(Modifier.height(DesignTokens.SpaceSm))
+                        Text(
+                            text = context.getString(
+                                R.string.activity_anime_record_zero_hint
+                            ),
+                            color = dim,
+                            fontSize = DesignTokens.TextCaption.sp
+                        )
+                        Spacer(Modifier.height(DesignTokens.SpaceLg))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .noRippleClickable { editingWatchRecord = null }
+                                    .padding(horizontal = DesignTokens.SpaceXl),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = context.getString(R.string.cancel),
+                                    color = dim,
+                                    fontSize = DesignTokens.TextBody1.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(Modifier.width(DesignTokens.SpaceMd))
+                            val canSave = editingWatchAmount.toIntOrNull() != null
+                            Box(
+                                modifier = Modifier
+                                    .height(DesignTokens.ButtonHeightSmall)
+                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .background(
+                                        buttonBgColor().copy(
+                                            alpha = if (canSave) {
+                                                1f
+                                            } else {
+                                                DesignTokens.OpacityDisabled
+                                            }
+                                        )
+                                    )
+                                    .then(
+                                        if (canSave) {
+                                            Modifier.noRippleClickable {
+                                                val episodes =
+                                                    editingWatchAmount.toIntOrNull()
+                                                        ?: return@noRippleClickable
+                                                coroutineScope.launch {
+                                                    withContext(Dispatchers.IO) {
+                                                        ActivityStats.updateAnimeRecord(
+                                                            context = context,
+                                                            subjectId = subjectId,
+                                                            date = record.date,
+                                                            episodes = episodes
+                                                        )
+                                                    }
+                                                    activityHistoryRevision++
+                                                    editingWatchRecord = null
+                                                }
+                                            }
+                                        } else {
+                                            Modifier
+                                        }
+                                    )
+                                    .padding(horizontal = DesignTokens.SpaceXl),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = context.getString(
+                                        R.string.settings_save_profile
+                                    ),
+                                    color = Color.White,
+                                    fontSize = DesignTokens.TextBody1.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }

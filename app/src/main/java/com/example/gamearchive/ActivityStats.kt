@@ -285,6 +285,54 @@ object ActivityStats {
         getItemRecords(context, ActivityKind.ANIME, subjectId, "anime_episodes")
 
     @Synchronized
+    fun updateAnimeRecord(
+        context: Context,
+        subjectId: Int,
+        date: String,
+        episodes: Int
+    ): Boolean {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
+        val day = days.optJSONObject(date) ?: return false
+        val entries = day.optJSONObject("entries") ?: return false
+        val entryKey = "${ActivityKind.ANIME.name.lowercase(Locale.US)}:$subjectId"
+        val entry = entries.optJSONObject(entryKey) ?: return false
+        val previousEpisodes = entry.optInt("anime_episodes")
+        val updatedEpisodes = episodes.coerceAtLeast(0)
+        if (previousEpisodes == updatedEpisodes) return false
+
+        if (updatedEpisodes == 0) {
+            entries.remove(entryKey)
+        } else {
+            entry.put("anime_episodes", updatedEpisodes)
+            entries.put(entryKey, entry)
+        }
+
+        var animeTotal = 0
+        val entryKeys = entries.keys()
+        while (entryKeys.hasNext()) {
+            animeTotal += entries.optJSONObject(entryKeys.next())
+                ?.optInt("anime_episodes")
+                ?: 0
+        }
+        day
+            .put("anime_episodes", animeTotal.coerceAtLeast(0))
+            .put("entries", entries)
+        if (
+            day.optInt("game_minutes") == 0 &&
+            day.optInt("anime_episodes") == 0 &&
+            entries.length() == 0
+        ) {
+            days.remove(date)
+        } else {
+            days.put(date, day)
+        }
+        prefs.edit().putString(KEY_DAILY_ACTIVITY, days.toString()).apply()
+        notifyChanged()
+        return true
+    }
+
+    @Synchronized
     fun getAvailableYears(context: Context): Set<Int> {
         val days = loadDays(context)
         val years = mutableSetOf<Int>()

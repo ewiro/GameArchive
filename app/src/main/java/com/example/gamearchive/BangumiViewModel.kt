@@ -40,6 +40,9 @@ class BangumiViewModel : ViewModel() {
     private val _loading = MutableLiveData<Boolean>()
     val loading: LiveData<Boolean> = _loading
 
+    private val _refreshing = MutableLiveData(false)
+    val refreshing: LiveData<Boolean> = _refreshing
+
     private val _error = MutableLiveData<Pair<Int, String?>?>()
     val error: LiveData<Pair<Int, String?>?> = _error
 
@@ -85,8 +88,9 @@ class BangumiViewModel : ViewModel() {
             return
         }
         isRefreshInProgress = true
+        _refreshing.value = true
         viewModelScope.launch {
-            _loading.value = true
+            _loading.value = _collections.value == null
             try {
                 // 并发：用户信息 + 所有分类收藏同时拉取
                 val userDeferred = async {
@@ -277,6 +281,7 @@ class BangumiViewModel : ViewModel() {
                 _error.value = Pair(R.string.general_error, e.message)
             } finally {
                 _loading.value = false
+                _refreshing.value = false
                 isRefreshInProgress = false
             }
         }

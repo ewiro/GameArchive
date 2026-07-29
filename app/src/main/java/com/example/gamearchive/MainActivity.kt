@@ -2132,6 +2132,7 @@ private fun BangumiPage(
     val bgmAccessToken = UserPrefs.getBangumiAccessToken(context)
     val lifecycleOwner = LocalLifecycleOwner.current
     val loading by viewModel.loading.observeAsState()
+    val refreshing by viewModel.refreshing.observeAsState()
     val error by viewModel.error.observeAsState()
     val collections by viewModel.collections.observeAsState()
     val bgmUser by viewModel.user.observeAsState()
@@ -2193,7 +2194,7 @@ private fun BangumiPage(
     }
 
     PullToRefresh(
-        isRefreshing = false,
+        isRefreshing = refreshing == true,
         onRefresh = { viewModel.refresh(bgmUsername, bgmAccessToken, context) },
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = topBarInsetDp),

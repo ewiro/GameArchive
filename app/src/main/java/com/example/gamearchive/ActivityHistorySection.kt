@@ -28,6 +28,7 @@ fun ActivityHistorySection(
     records: List<ItemActivityRecord>,
     dimTitle: Boolean = false,
     titleFontSize: TextUnit = DesignTokens.TextBody1.sp,
+    onRecordClick: ((ItemActivityRecord) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -100,7 +101,18 @@ fun ActivityHistorySection(
                                 )
                             },
                             fontSize = DesignTokens.TextBody1.sp,
-                            color = dim
+                            color = dim,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (onRecordClick != null) {
+                                        Modifier.noRippleClickable {
+                                            onRecordClick(record)
+                                        }
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                         )
                     }
                 }
