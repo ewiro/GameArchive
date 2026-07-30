@@ -46,6 +46,10 @@ object DataBackup {
         val themePrefs = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE)
         prefs.put("theme_mode", themePrefs.getInt("theme_mode", 2))
         prefs.put("language", themePrefs.getInt("language", 0))
+        prefs.put(
+            "show_playtime_badge_background",
+            themePrefs.getBoolean("show_playtime_badge_background", true)
+        )
         prefs.put("enable_grouping", themePrefs.getBoolean("enable_grouping", false))
         prefs.put("sort_mode", themePrefs.getInt("sort_mode", 0))
         prefs.put("show_specials", themePrefs.getBoolean("show_specials", true))
@@ -130,6 +134,12 @@ object DataBackup {
                 val editor = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE).edit()
                 if (p.has("theme_mode")) editor.putInt("theme_mode", p.getInt("theme_mode"))
                 if (p.has("language")) editor.putInt("language", p.getInt("language"))
+                if (p.has("show_playtime_badge_background")) {
+                    editor.putBoolean(
+                        "show_playtime_badge_background",
+                        p.getBoolean("show_playtime_badge_background")
+                    )
+                }
                 if (p.has("enable_grouping")) editor.putBoolean("enable_grouping", p.getBoolean("enable_grouping"))
                 if (p.has("sort_mode")) editor.putInt("sort_mode", p.getInt("sort_mode"))
                 if (p.has("show_specials")) editor.putBoolean("show_specials", p.getBoolean("show_specials"))
