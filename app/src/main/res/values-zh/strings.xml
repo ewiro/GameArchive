@@ -62,6 +62,7 @@
     <string name="settings_show_bangumi">展示动漫页</string>
     <string name="settings_show_activity">展示记录页</string>
     <string name="settings_grouping">开启状态分组</string>
+    <string name="settings_playtime_background">显示游戏时长底色</string>
     <string name="settings_sort_mode">默认排序方式</string>
     <string name="settings_sort_playtime">按游戏时长 (从高到低)</string>
     <string name="settings_sort_name">按名称 (A-Z)</string>

@@ -566,6 +566,7 @@ private fun LibraryScreen(
     }
 
     val isGrouping = ThemeUtils.isGroupingEnabled(context)
+    val showPlaytimeBackground = ThemeUtils.isPlaytimeBadgeBackgroundEnabled(context)
     val sortMode = ThemeUtils.getSortMode(context)
     val showProfile = UserPrefs.isShowProfile(context)
     val gameList = games ?: emptyList()
@@ -721,6 +722,7 @@ private fun LibraryScreen(
                         customName = nameSnapshot[game.appid],
                         markRes = markSnapshot[game.appid] ?: -1,
                         viewModel = viewModel,
+                        showPlaytimeBackground = showPlaytimeBackground,
                         onClick = {
                         onNavigateToDetail(game.appid, game.name,
                             priceMap[game.appid] ?: "Free / Unknown")
@@ -744,7 +746,7 @@ private fun LibraryScreen(
                     }
                     if (recentExpanded) {
                         items(recent, key = { "r_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -758,7 +760,7 @@ private fun LibraryScreen(
                     }
                     if (playedExpanded) {
                         items(played, key = { "p_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -772,7 +774,7 @@ private fun LibraryScreen(
                     }
                     if (unplayedExpanded) {
                         items(unplayed, key = { "u_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -1041,12 +1043,18 @@ private fun GameItem(
     customName: String?,
     markRes: Int,
     viewModel: LibraryViewModel,
+    showPlaytimeBackground: Boolean,
     onClick: () -> Unit
 ) {
     val h = game.playtime_forever / 60.0
     val badgeColor = DesignTokens.badgeColor(h)
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val playtimeContentColor = if (showPlaytimeBackground) {
+        Color.White
+    } else {
+        MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+    }
 
     Column(
         modifier = Modifier
@@ -1110,22 +1118,34 @@ private fun GameItem(
                     // 时长胶囊徽章
                     Row(
                         modifier = Modifier
-                            .background(badgeColor, RoundedCornerShape(DesignTokens.CornerMedium))
-                            .padding(horizontal = 9.dp, vertical = 4.dp),
+                            .then(
+                                if (showPlaytimeBackground) {
+                                    Modifier.background(
+                                        badgeColor,
+                                        RoundedCornerShape(DesignTokens.CornerMedium)
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .padding(
+                                horizontal = if (showPlaytimeBackground) 9.dp else 0.dp,
+                                vertical = 4.dp
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Image(
                             painter = painterResource(R.drawable.ic_time),
                             contentDescription = null,
                             modifier = Modifier.size(DesignTokens.IconSm),
-                            colorFilter = ColorFilter.tint(Color.White)
+                            colorFilter = ColorFilter.tint(playtimeContentColor)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = if (h < 0.05) "0h" else String.format("%.1fh", h),
                             fontSize = DesignTokens.TextCaption.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = playtimeContentColor
                         )
                     }
                     // 近期时长（徽章下方）

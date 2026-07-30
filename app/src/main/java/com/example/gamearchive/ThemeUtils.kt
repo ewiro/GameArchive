@@ -13,6 +13,7 @@ object ThemeUtils {
 
     // 设置项键名定义
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_SHOW_PLAYTIME_BADGE_BACKGROUND = "show_playtime_badge_background"
     private const val KEY_ENABLE_GROUPING = "enable_grouping"
     private const val KEY_SORT_MODE = "sort_mode"
     private const val KEY_LANGUAGE = "language"
@@ -72,6 +73,15 @@ object ThemeUtils {
         isChanged = true
     }
     fun getThemeMode(context: Context) = getPrefs(context).getInt(KEY_THEME_MODE, 2)
+
+    fun savePlaytimeBadgeBackground(context: Context, enable: Boolean) {
+        getPrefs(context).edit()
+            .putBoolean(KEY_SHOW_PLAYTIME_BADGE_BACKGROUND, enable)
+            .apply()
+        isChanged = true
+    }
+    fun isPlaytimeBadgeBackgroundEnabled(context: Context) =
+        getPrefs(context).getBoolean(KEY_SHOW_PLAYTIME_BADGE_BACKGROUND, true)
 
     // 保存分组开关 (用于库存列表)
     fun saveGrouping(context: Context, enable: Boolean) {

@@ -116,6 +116,9 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var customUrlsExpanded by remember { mutableStateOf(false) }
 
     // ── 库存设置状态 ──
+    var showPlaytimeBackground by remember {
+        mutableStateOf(ThemeUtils.isPlaytimeBadgeBackgroundEnabled(context))
+    }
     var grouping by remember { mutableStateOf(ThemeUtils.isGroupingEnabled(context)) }
     var sortMode by remember { mutableIntStateOf(ThemeUtils.getSortMode(context)) }
     var showSpecials by remember { mutableStateOf(ThemeUtils.isSpecialsEnabled(context)) }
@@ -523,6 +526,17 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 cornerRadius = DesignTokens.CornerLarge
             ) {
                 Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                    SwitchRow(
+                        label = context.getString(R.string.settings_playtime_background),
+                        checked = showPlaytimeBackground,
+                        onCheckedChange = {
+                            showPlaytimeBackground = it
+                            ThemeUtils.savePlaytimeBadgeBackground(context, it)
+                        }
+                    )
+
+                    DividerLine()
+
                     // 分组
                     SwitchRow(
                         label = context.getString(R.string.settings_grouping),

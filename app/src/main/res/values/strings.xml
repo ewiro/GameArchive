@@ -62,6 +62,7 @@
     <string name="settings_show_bangumi">Show Anime</string>
     <string name="settings_show_activity">Show Activity</string>
     <string name="settings_grouping">Enable status grouping</string>
+    <string name="settings_playtime_background">Show playtime badge background</string>
     <string name="settings_sort_mode">Default Sort Mode</string>
     <string name="settings_sort_playtime">By Playtime (High to Low)</string>
     <string name="settings_sort_name">By Name (A-Z)</string>
