@@ -1143,7 +1143,11 @@ private fun GameItem(
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = if (h < 0.05) "0h" else String.format("%.1fh", h),
-                            fontSize = DesignTokens.TextCaption.sp,
+                            fontSize = if (showPlaytimeBackground) {
+                                DesignTokens.TextCaption.sp
+                            } else {
+                                DesignTokens.TextBody2.sp
+                            },
                             fontWeight = FontWeight.Bold,
                             color = playtimeContentColor
                         )
