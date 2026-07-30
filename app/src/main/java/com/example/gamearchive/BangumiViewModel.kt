@@ -66,12 +66,13 @@ class BangumiViewModel : ViewModel() {
     fun loadIfNeeded(username: String, accessToken: String, context: Context) {
         if (hasLoaded || isRefreshInProgress) return
         viewModelScope.launch {
-            val cached = withContext(Dispatchers.IO) {
-                BangumiPageCache.load(context, username)
+            val (cached, tagOrders) = withContext(Dispatchers.IO) {
+                BangumiPageCache.load(context, username) to
+                    BangumiTagOrder.snapshot(context, username)
             }
             if (cached != null && _collections.value == null) {
                 cached.user?.let { _user.value = it }
-                _collections.value = cached.collections
+                _collections.value = cached.collections.restoreTagOrders(tagOrders)
                 _ratings.value = cached.ratings
                 _episodeTotals.value = cached.episodeTotals
                 _watchedEpisodeCounts.value = cached.watchedEpisodeCounts
@@ -92,6 +93,9 @@ class BangumiViewModel : ViewModel() {
         viewModelScope.launch {
             _loading.value = _collections.value == null
             try {
+                val tagOrders = withContext(Dispatchers.IO) {
+                    BangumiTagOrder.snapshot(context, username)
+                }
                 // 并发：用户信息 + 所有分类收藏同时拉取
                 val userDeferred = async {
                     try { GameArchiveApp.bgmService.getUserInfo(username) } catch (_: Exception) { null }
@@ -110,7 +114,15 @@ class BangumiViewModel : ViewModel() {
                                 )
                                 page.data?.forEach { item ->
                                     val t = when (item.type) { 2 -> 3; 3 -> 2; else -> item.type }
-                                    list.add(item.copy(type = t))
+                                    list.add(
+                                        item.copy(
+                                            type = t,
+                                            tags = BangumiTagOrder.restore(
+                                                item.tags,
+                                                tagOrders[item.subject_id]
+                                            )
+                                        )
+                                    )
                                 }
                                 if (page.data == null || page.total <= offset + 50) break
                                 offset += 50
@@ -316,3 +328,16 @@ private data class CollectionBucketResult(
     val items: List<BangumiCollection>,
     val succeeded: Boolean
 )
+
+private fun Map<Int, List<BangumiCollection>>.restoreTagOrders(
+    tagOrders: Map<Int, List<String>>
+): Map<Int, List<BangumiCollection>> = mapValues { (_, collections) ->
+    collections.map { collection ->
+        collection.copy(
+            tags = BangumiTagOrder.restore(
+                collection.tags,
+                tagOrders[collection.subject_id]
+            )
+        )
+    }
+}

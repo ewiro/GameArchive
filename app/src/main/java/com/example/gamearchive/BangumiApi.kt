@@ -3,11 +3,11 @@ package com.example.gamearchive
 import androidx.annotation.Keep
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.Field
+import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -178,6 +178,11 @@ interface BangumiOAuthService {
     val `private`: Boolean
 )
 
+@Keep data class BangumiLegacyCollectionResult(
+    val code: Int? = null,
+    val error: String? = null
+)
+
 @Keep data class BangumiEpisode(
     val id: Int,
     val type: Int,
@@ -221,6 +226,18 @@ interface BangumiCollectionService {
         @Path("username") username: String,
         @Path("subject_id") subjectId: Int
     ): BangumiMyCollection
+
+    @FormUrlEncoded
+    @POST("bangumi/collection/{subject_id}/update")
+    suspend fun updateCollectionLegacy(
+        @Path("subject_id") subjectId: Int,
+        @Field("app_id") appId: String,
+        @Field("status") status: String,
+        @Field("tags") tags: String,
+        @Field("comment") comment: String,
+        @Field("rating") rating: Int,
+        @Field("privacy") privacy: Int
+    ): Response<BangumiLegacyCollectionResult>
 
     @POST("bangumi/v0/users/-/collections/{subject_id}")
     suspend fun updateCollection(
