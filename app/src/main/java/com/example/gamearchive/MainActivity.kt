@@ -548,14 +548,26 @@ private fun LibraryScreen(
     val context = LocalContext.current
     val games by viewModel.games.observeAsState()
     val player by viewModel.player.observeAsState()
+    val profileDecor by viewModel.profileDecor.observeAsState()
     val level by viewModel.level.observeAsState()
     val loading by viewModel.loading.observeAsState()
     val priceMap = viewModel.priceMap
 
     val apiKey = UserPrefs.getApiKey(context)
     val steamId = UserPrefs.getSteamId(context)
+    val showProfile = UserPrefs.isShowProfile(context)
 
     LaunchedEffect(Unit) { viewModel.loadIfNeeded(apiKey, steamId, context) }
+    LaunchedEffect(
+        player?.steamid,
+        showProfile
+    ) {
+        if (showProfile) {
+            player?.steamid?.let { id ->
+                viewModel.loadProfileDecor(context, id)
+            }
+        }
+    }
 
     LaunchedEffect(viewModel.error.value) {
         viewModel.error.value?.let { (resId, arg) ->
@@ -569,7 +581,6 @@ private fun LibraryScreen(
     val showPlaytimeBackground = ThemeUtils.isPlaytimeBadgeBackgroundEnabled(context)
     val usePlaytimeBadgeTextColor = ThemeUtils.isPlaytimeBadgeTextColorEnabled(context)
     val sortMode = ThemeUtils.getSortMode(context)
-    val showProfile = UserPrefs.isShowProfile(context)
     val gameList = games ?: emptyList()
 
     // 从详情页/设置页返回时刷新标记和标签显示
@@ -651,7 +662,13 @@ private fun LibraryScreen(
             item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
             if (showProfile && player != null) {
                 item("profile") {
-                    ProfileHeader(player!!, gameList.size, gameList.sumOf { it.playtime_forever } / 60.0, level ?: 0)
+                    ProfileHeader(
+                        player = player!!,
+                        gameCount = gameList.size,
+                        totalHours = gameList.sumOf { it.playtime_forever } / 60.0,
+                        level = level ?: 0,
+                        decor = profileDecor
+                    )
                 }
             }
 
@@ -791,11 +808,24 @@ private fun LibraryScreen(
 // ── 状态颜色 → DesignTokens.Status*
 
 @Composable
-private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double, level: Int) {
+private fun ProfileHeader(
+    player: PlayerInfo,
+    gameCount: Int,
+    totalHours: Double,
+    level: Int,
+    decor: SteamProfileDecor?
+) {
     val context = LocalContext.current
     val customBgUrl = UserPrefs.getCustomBgUrl(context)
     val customFrameUrl = UserPrefs.getCustomFrameUrl(context)
     val customAvatar = UserPrefs.getCustomAvatarUrl(context)
+    val automaticAvatar = SteamProfileDecorRepository.proxiedMediaUrl(decor?.avatarUrl)
+    val automaticFrame = SteamProfileDecorRepository.proxiedMediaUrl(decor?.avatarFrameUrl)
+    val avatarModel = customAvatar.ifBlank { automaticAvatar ?: player.avatarfull }
+    val frameModel = customFrameUrl.ifBlank { automaticFrame.orEmpty() }
+    val automaticBackgroundDecor = decor?.takeIf {
+        it.backgroundMp4Url != null || it.backgroundWebmUrl != null
+    }
     val textShadow = androidx.compose.ui.graphics.Shadow(
         color = DesignTokens.TextShadowColor, offset = androidx.compose.ui.geometry.Offset(1f, 1f), blurRadius = 2f
     )
@@ -817,6 +847,15 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                     contentScale = ContentScale.Crop
                 )
                 Box(modifier = Modifier.matchParentSize().background(DesignTokens.ProfileOverlay))
+            } else {
+                automaticBackgroundDecor?.let { backgroundDecor ->
+                    SteamProfileBackground(
+                        decor = backgroundDecor,
+                        playMotion = true,
+                        modifier = Modifier.matchParentSize()
+                    )
+                    Box(modifier = Modifier.matchParentSize().background(DesignTokens.ProfileOverlay))
+                }
             }
 
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -828,16 +867,16 @@ private fun ProfileHeader(player: PlayerInfo, gameCount: Int, totalHours: Double
                     // 头像 + 挂件框 — 挂件为外框，头像居中在内
                     Box(modifier = Modifier.size(DesignTokens.AvatarOuter)) {
                         AsyncImage(
-                            model = if (customAvatar.isNotEmpty()) customAvatar else player.avatarfull,
+                            model = avatarModel,
                             contentDescription = null,
                             modifier = Modifier.size(DesignTokens.AvatarInner)
                                 .align(Alignment.Center),
                             contentScale = ContentScale.Crop
                         )
                         // 挂件铺满外框，叠在头像上方
-                        if (customFrameUrl.isNotEmpty()) {
+                        if (frameModel.isNotEmpty()) {
                             AsyncImage(
-                                model = customFrameUrl,
+                                model = frameModel,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit

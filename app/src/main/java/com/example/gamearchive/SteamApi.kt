@@ -1,6 +1,7 @@
 package com.example.gamearchive
 
 import androidx.annotation.Keep
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -90,6 +91,9 @@ interface SteamApiService {
 
     @GET("IPlayerService/GetSteamLevel/v1/")
     suspend fun getSteamLevel(@Query("key") k: String, @Query("steamid") s: String): SteamLevelResponse
+
+    @GET("community/miniprofile/{accountId}/json/")
+    suspend fun getSteamMiniProfile(@Path("accountId") accountId: Long): JsonObject
 
     @GET("api/appdetails/")
     suspend fun getGamePrices(@Query("appids") ids: String, @Query("filters") f: String = "price_overview", @Query("l") l: String = "schinese", @Query("cc") cc: String = "cn"): Map<String, StoreAppDetails>
