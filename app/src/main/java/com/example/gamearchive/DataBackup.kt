@@ -41,6 +41,9 @@ object DataBackup {
         // ── 活动统计（不包含任何账号凭证） ──
         root.put("activity_stats", preferencesToJson(context, ActivityStats.PREF_NAME))
 
+        // ── Bangumi 标签输入顺序 ──
+        root.put("bangumi_tag_order", preferencesToJson(context, BangumiTagOrder.PREF_NAME))
+
         // ── 偏好设置 ──
         val prefs = JSONObject()
         val themePrefs = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE)
@@ -130,6 +133,16 @@ object DataBackup {
                 stats.keys().forEach { key -> editor.putString(key, stats.getString(key)) }
                 editor.apply()
                 ActivityStats.notifyChanged()
+            }
+
+            // ── 恢复 Bangumi 标签输入顺序 ──
+            if (root.has("bangumi_tag_order")) {
+                val editor = context.getSharedPreferences(BangumiTagOrder.PREF_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .clear()
+                val orders = root.getJSONObject("bangumi_tag_order")
+                orders.keys().forEach { key -> editor.putString(key, orders.getString(key)) }
+                editor.apply()
             }
 
             // ── 恢复偏好设置 ──
