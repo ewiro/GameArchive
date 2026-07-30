@@ -119,6 +119,9 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     var showPlaytimeBackground by remember {
         mutableStateOf(ThemeUtils.isPlaytimeBadgeBackgroundEnabled(context))
     }
+    var usePlaytimeBadgeTextColor by remember {
+        mutableStateOf(ThemeUtils.isPlaytimeBadgeTextColorEnabled(context))
+    }
     var grouping by remember { mutableStateOf(ThemeUtils.isGroupingEnabled(context)) }
     var sortMode by remember { mutableIntStateOf(ThemeUtils.getSortMode(context)) }
     var showSpecials by remember { mutableStateOf(ThemeUtils.isSpecialsEnabled(context)) }
@@ -534,6 +537,26 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                             ThemeUtils.savePlaytimeBadgeBackground(context, it)
                         }
                     )
+
+                    AnimatedVisibility(
+                        visible = !showPlaytimeBackground,
+                        enter = smoothExpandEnter(),
+                        exit = smoothExpandExit()
+                    ) {
+                        Column {
+                            DividerLine()
+                            SwitchRow(
+                                label = context.getString(
+                                    R.string.settings_playtime_text_color
+                                ),
+                                checked = usePlaytimeBadgeTextColor,
+                                onCheckedChange = {
+                                    usePlaytimeBadgeTextColor = it
+                                    ThemeUtils.savePlaytimeBadgeTextColor(context, it)
+                                }
+                            )
+                        }
+                    }
 
                     DividerLine()
 

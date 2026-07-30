@@ -567,6 +567,7 @@ private fun LibraryScreen(
 
     val isGrouping = ThemeUtils.isGroupingEnabled(context)
     val showPlaytimeBackground = ThemeUtils.isPlaytimeBadgeBackgroundEnabled(context)
+    val usePlaytimeBadgeTextColor = ThemeUtils.isPlaytimeBadgeTextColorEnabled(context)
     val sortMode = ThemeUtils.getSortMode(context)
     val showProfile = UserPrefs.isShowProfile(context)
     val gameList = games ?: emptyList()
@@ -723,6 +724,7 @@ private fun LibraryScreen(
                         markRes = markSnapshot[game.appid] ?: -1,
                         viewModel = viewModel,
                         showPlaytimeBackground = showPlaytimeBackground,
+                        usePlaytimeBadgeTextColor = usePlaytimeBadgeTextColor,
                         onClick = {
                         onNavigateToDetail(game.appid, game.name,
                             priceMap[game.appid] ?: "Free / Unknown")
@@ -746,7 +748,7 @@ private fun LibraryScreen(
                     }
                     if (recentExpanded) {
                         items(recent, key = { "r_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground, usePlaytimeBadgeTextColor) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -760,7 +762,7 @@ private fun LibraryScreen(
                     }
                     if (playedExpanded) {
                         items(played, key = { "p_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground, usePlaytimeBadgeTextColor) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -774,7 +776,7 @@ private fun LibraryScreen(
                     }
                     if (unplayedExpanded) {
                         items(unplayed, key = { "u_${it.appid}" }) { game ->
-                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
+                            GameItem(game, priceMap[game.appid] ?: "", nameSnapshot[game.appid], markSnapshot[game.appid] ?: -1, viewModel, showPlaytimeBackground, usePlaytimeBadgeTextColor) { onNavigateToDetail(game.appid, game.name, priceMap[game.appid] ?: "Free / Unknown") }
                         }
                     }
                 }
@@ -1044,6 +1046,7 @@ private fun GameItem(
     markRes: Int,
     viewModel: LibraryViewModel,
     showPlaytimeBackground: Boolean,
+    usePlaytimeBadgeTextColor: Boolean,
     onClick: () -> Unit
 ) {
     val h = game.playtime_forever / 60.0
@@ -1054,6 +1057,11 @@ private fun GameItem(
         Color.White
     } else {
         MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+    }
+    val playtimeTextColor = if (!showPlaytimeBackground && usePlaytimeBadgeTextColor) {
+        badgeColor
+    } else {
+        playtimeContentColor
     }
 
     Column(
@@ -1149,7 +1157,7 @@ private fun GameItem(
                                 DesignTokens.TextBody2.sp
                             },
                             fontWeight = FontWeight.Bold,
-                            color = playtimeContentColor
+                            color = playtimeTextColor
                         )
                     }
                     // 近期时长（徽章下方）
