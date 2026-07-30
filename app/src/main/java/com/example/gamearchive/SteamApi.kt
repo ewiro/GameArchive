@@ -81,6 +81,44 @@ import retrofit2.http.Query
 @Keep data class SteamLevelResponse(val response: SteamLevelData)
 @Keep data class SteamLevelData(val player_level: Int?)
 
+// --- 6. Steam achievements ---
+@Keep data class PlayerAchievementsResponse(
+    val playerstats: PlayerAchievementsStats?
+)
+
+@Keep data class PlayerAchievementsStats(
+    val success: Boolean? = null,
+    val error: String? = null,
+    val achievements: List<PlayerAchievement>? = null
+)
+
+@Keep data class PlayerAchievement(
+    val apiname: String,
+    val achieved: Int = 0,
+    val unlocktime: Long = 0L
+)
+
+@Keep data class AchievementSchemaResponse(
+    val game: AchievementSchemaGame?
+)
+
+@Keep data class AchievementSchemaGame(
+    val availableGameStats: AvailableGameStats?
+)
+
+@Keep data class AvailableGameStats(
+    val achievements: List<AchievementDefinition>? = null
+)
+
+@Keep data class AchievementDefinition(
+    val name: String,
+    val displayName: String? = null,
+    val description: String? = null,
+    val icon: String? = null,
+    val icongray: String? = null,
+    val hidden: Int = 0
+)
+
 // --- 接口定义 ---
 interface SteamApiService {
     @GET("IPlayerService/GetOwnedGames/v0001/")
@@ -91,6 +129,21 @@ interface SteamApiService {
 
     @GET("IPlayerService/GetSteamLevel/v1/")
     suspend fun getSteamLevel(@Query("key") k: String, @Query("steamid") s: String): SteamLevelResponse
+
+    @GET("ISteamUserStats/GetPlayerAchievements/v0001/")
+    suspend fun getPlayerAchievements(
+        @Query("key") key: String,
+        @Query("steamid") steamId: String,
+        @Query("appid") appId: Int,
+        @Query("l") language: String
+    ): PlayerAchievementsResponse
+
+    @GET("ISteamUserStats/GetSchemaForGame/v2/")
+    suspend fun getAchievementSchema(
+        @Query("key") key: String,
+        @Query("appid") appId: Int,
+        @Query("l") language: String
+    ): AchievementSchemaResponse
 
     @GET("community/miniprofile/{accountId}/json/")
     suspend fun getSteamMiniProfile(@Path("accountId") accountId: Long): JsonObject

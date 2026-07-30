@@ -694,6 +694,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     dimTitle = true,
                     modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)
                 )
+                SteamAchievementsSection(
+                    appId = appId,
+                    modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)
+                )
                 Spacer(Modifier.height(DesignTokens.SpaceMassive))
                 Box(
                     modifier = Modifier
