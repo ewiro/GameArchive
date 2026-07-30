@@ -30,6 +30,11 @@ class LibraryViewModel : ViewModel() {
     private val _player = MutableLiveData<PlayerInfo?>()
     val player: LiveData<PlayerInfo?> = _player
 
+    // Steam 社区公开资料装扮（不影响库存主流程）
+    private val _profileDecor = MutableLiveData<SteamProfileDecor?>()
+    val profileDecor: LiveData<SteamProfileDecor?> = _profileDecor
+    private var profileDecorSteamId: String? = null
+
     // Steam 等级
     private val _level = MutableLiveData<Int>()
     val level: LiveData<Int> = _level
@@ -109,6 +114,29 @@ class LibraryViewModel : ViewModel() {
     fun loadIfNeeded(apiKey: String, steamId: String, context: android.content.Context? = null) {
         if (hasLoaded && lastLanguage == LocaleHelper.currentApiLanguage) return
         refresh(apiKey, steamId, context)
+    }
+
+    fun loadProfileDecor(
+        context: Context,
+        steamId: String,
+        forceRefresh: Boolean = false
+    ) {
+        if (!forceRefresh && profileDecorSteamId == steamId && _profileDecor.value != null) return
+        if (profileDecorSteamId != steamId) {
+            profileDecorSteamId = steamId
+            _profileDecor.value = null
+        }
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            val decor = SteamProfileDecorRepository.load(
+                context = appContext,
+                steamId = steamId,
+                forceRefresh = forceRefresh
+            )
+            if (profileDecorSteamId == steamId) {
+                _profileDecor.value = decor
+            }
+        }
     }
 
     /** 下拉刷新或首次加载 */
@@ -201,6 +229,17 @@ class LibraryViewModel : ViewModel() {
                     _games.value = merged
                     _player.value = playerInfo
                     _level.value = playerLevel
+                    if (
+                        context != null &&
+                        playerInfo != null &&
+                        UserPrefs.isShowProfile(context)
+                    ) {
+                        loadProfileDecor(
+                            context = context,
+                            steamId = playerInfo.steamid,
+                            forceRefresh = hasLoaded
+                        )
+                    }
                     hasLoaded = true
                     lastLanguage = LocaleHelper.currentApiLanguage
                 }

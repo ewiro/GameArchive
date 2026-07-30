@@ -1,9 +1,42 @@
 export default {
   async fetch(request, env, ctx) {
-    const url = new URL(request.url);
+    const incomingUrl = new URL(request.url);
+    let url = new URL(incomingUrl);
+    let publicSteamRoute = false;
     
     // 1. 智能路由
-    if (url.pathname.startsWith('/bangumi/')) {
+    if (url.pathname.startsWith('/community/miniprofile/')) {
+      if (request.method !== 'GET') {
+        return methodNotAllowed('GET');
+      }
+      const match = url.pathname.match(/^\/community\/miniprofile\/(\d+)\/json\/?$/);
+      if (!match) {
+        return new Response('Invalid Steam account ID', { status: 400 });
+      }
+      url.hostname = 'steamcommunity.com';
+      url.pathname = `/miniprofile/${match[1]}/json/`;
+      url.search = '';
+      publicSteamRoute = true;
+    } else if (url.pathname === '/steam-media') {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return methodNotAllowed('GET, HEAD');
+      }
+      const mediaUrl = incomingUrl.searchParams.get('url');
+      if (!mediaUrl) {
+        return new Response('Missing media URL', { status: 400 });
+      }
+      let parsedMediaUrl;
+      try {
+        parsedMediaUrl = new URL(mediaUrl);
+      } catch {
+        return new Response('Invalid media URL', { status: 400 });
+      }
+      if (!isAllowedSteamMediaUrl(parsedMediaUrl)) {
+        return new Response('Steam media host is not allowed', { status: 403 });
+      }
+      url = parsedMediaUrl;
+      publicSteamRoute = true;
+    } else if (url.pathname.startsWith('/bangumi/')) {
       // Bangumi API 代理
       url.hostname = "api.bgm.tv";
       url.pathname = url.pathname.replace('/bangumi', '');
@@ -23,13 +56,23 @@ export default {
       url.hostname = "api.steampowered.com";
     }
 
-    // 2. 伪装头 — 显式保留原始 Authorization 并追加伪装头
+    // 2. 伪装头。公开 Steam 装扮路由不转发任何账号凭证。
     const newHeaders = new Headers();
-    for (const [k, v] of request.headers) {
-        newHeaders.set(k, v);
+    if (!publicSteamRoute) {
+      for (const [k, v] of request.headers) {
+          newHeaders.set(k, v);
+      }
+    } else {
+      const range = request.headers.get('Range');
+      if (range) newHeaders.set('Range', range);
+      const accept = request.headers.get('Accept');
+      if (accept) newHeaders.set('Accept', accept);
     }
     newHeaders.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-    newHeaders.set("Referer", "https://store.steampowered.com/");
+    newHeaders.set(
+      "Referer",
+      publicSteamRoute ? "https://steamcommunity.com/" : "https://store.steampowered.com/"
+    );
     newHeaders.set("X-Requested-With", "XMLHttpRequest");
     
     // Steam 相关请求注入 Cookie
@@ -42,11 +85,13 @@ export default {
     const newRequest = new Request(url, {
         method: request.method,
         headers: newHeaders,
-        body: request.body,
-        redirect: 'follow'
+        body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
+        redirect: publicSteamRoute ? 'manual' : 'follow'
     });
 
-    const response = await fetch(newRequest);
+    const response = publicSteamRoute
+      ? await fetchSteamPublicResource(newRequest)
+      : await fetch(newRequest);
 
     // 3. 允许跨域
     const newResponse = new Response(response.body, response);
@@ -56,3 +101,41 @@ export default {
     return newResponse;
   },
 };
+
+function isAllowedSteamMediaUrl(url) {
+  const host = url.hostname.toLowerCase();
+  return url.protocol === 'https:' &&
+    (host === 'steamstatic.com' || host.endsWith('.steamstatic.com'));
+}
+
+async function fetchSteamPublicResource(initialRequest) {
+  let request = initialRequest;
+  for (let redirectCount = 0; redirectCount <= 3; redirectCount++) {
+    const response = await fetch(request);
+    if (response.status < 300 || response.status >= 400) {
+      return response;
+    }
+    const location = response.headers.get('Location');
+    if (!location) return response;
+    const nextUrl = new URL(location, request.url);
+    const isCommunity = nextUrl.protocol === 'https:' &&
+      (nextUrl.hostname === 'steamcommunity.com' ||
+        nextUrl.hostname.endsWith('.steamcommunity.com'));
+    if (!isCommunity && !isAllowedSteamMediaUrl(nextUrl)) {
+      return new Response('Steam redirect is not allowed', { status: 403 });
+    }
+    request = new Request(nextUrl, {
+      method: initialRequest.method,
+      headers: initialRequest.headers,
+      redirect: 'manual'
+    });
+  }
+  return new Response('Too many Steam redirects', { status: 508 });
+}
+
+function methodNotAllowed(allow) {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { Allow: allow }
+  });
+}
