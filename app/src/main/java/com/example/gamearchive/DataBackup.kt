@@ -50,6 +50,10 @@ object DataBackup {
             "show_playtime_badge_background",
             themePrefs.getBoolean("show_playtime_badge_background", true)
         )
+        prefs.put(
+            "use_playtime_badge_text_color",
+            themePrefs.getBoolean("use_playtime_badge_text_color", false)
+        )
         prefs.put("enable_grouping", themePrefs.getBoolean("enable_grouping", false))
         prefs.put("sort_mode", themePrefs.getInt("sort_mode", 0))
         prefs.put("show_specials", themePrefs.getBoolean("show_specials", true))
@@ -138,6 +142,12 @@ object DataBackup {
                     editor.putBoolean(
                         "show_playtime_badge_background",
                         p.getBoolean("show_playtime_badge_background")
+                    )
+                }
+                if (p.has("use_playtime_badge_text_color")) {
+                    editor.putBoolean(
+                        "use_playtime_badge_text_color",
+                        p.getBoolean("use_playtime_badge_text_color")
                     )
                 }
                 if (p.has("enable_grouping")) editor.putBoolean("enable_grouping", p.getBoolean("enable_grouping"))
