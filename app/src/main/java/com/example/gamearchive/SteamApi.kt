@@ -119,6 +119,19 @@ import retrofit2.http.Query
     val hidden: Int = 0
 )
 
+@Keep data class GlobalAchievementPercentagesResponse(
+    val achievementpercentages: GlobalAchievementPercentages?
+)
+
+@Keep data class GlobalAchievementPercentages(
+    val achievements: List<GlobalAchievementPercentage>? = null
+)
+
+@Keep data class GlobalAchievementPercentage(
+    val name: String,
+    val percent: Float = 0f
+)
+
 // --- 接口定义 ---
 interface SteamApiService {
     @GET("IPlayerService/GetOwnedGames/v0001/")
@@ -144,6 +157,11 @@ interface SteamApiService {
         @Query("appid") appId: Int,
         @Query("l") language: String
     ): AchievementSchemaResponse
+
+    @GET("ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/")
+    suspend fun getGlobalAchievementPercentages(
+        @Query("gameid") appId: Int
+    ): GlobalAchievementPercentagesResponse
 
     @GET("community/miniprofile/{accountId}/json/")
     suspend fun getSteamMiniProfile(@Path("accountId") accountId: Long): JsonObject
