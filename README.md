@@ -1,111 +1,166 @@
 <div align="center">
 
-<a href="README.md">
-  <img src="https://img.shields.io/badge/中文-简体-1976D2?logoColor=white" alt="中文" />
-</a>
-<a href="README_EN.md">
-  <img src="https://img.shields.io/badge/English-EN-546E7A?logoColor=white" alt="English" />
-</a>
+<img src="screenshots/app_icon.png" width="128" alt="GameArchive 图标">
 
 </div>
-<br>
 
-# Game Archive 
+## 项目简介
 
-> 基于 MIUI X 主题的现代化 Steam 库存管理与特惠查询工具，由 Compose 构建。
+GameArchive 最初用于整理 Steam 库存，现在也可以连接 Bangumi 管理动漫收藏，并把游玩时长与观看进度汇总为个人活动记录。
 
-![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
-![Language](https://img.shields.io/badge/Language-Kotlin-orange.svg)
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
+项目面向希望自行掌握数据的玩家和动漫观众：账号配置、标签、备注、进度基线和活动历史主要保存在设备本地，不提供账号体系或云端数据库。
 
+> [!NOTE]
+> 本项目是非官方、非商业的个人开源项目，与 Valve、Steam 或 Bangumi 没有隶属或合作关系。
 
----
+## 界面预览
 
-##  截图预览 
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/login.jpg" width="240"><br>登录</td>
+    <td align="center"><img src="screenshots/game.jpg" width="240"><br>游戏库</td>
+    <td align="center"><img src="screenshots/detail_game.jpg" width="240"><br>游戏详情</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/specials.jpg" width="240"><br>Steam 特惠</td>
+    <td align="center"><img src="screenshots/anime.jpg" width="240"><br>动漫收藏</td>
+    <td align="center"><img src="screenshots/detail_anime.jpg" width="240"><br>动漫详情</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/activity.jpg" width="240"><br>活动记录</td>
+    <td align="center"><img src="screenshots/sequence.jpg" width="240"><br>筛选与排序</td>
+    <td align="center"><img src="screenshots/setting.jpg" width="240"><br>设置</td>
+  </tr>
+</table>
 
-| 登录 | 游戏页 | 游戏详情 | 特惠页 | 排序 | 动漫页 | 动漫详情 | 记录页 | 设置 |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| <img src="screenshots/login.jpg" width="200"/> | <img src="screenshots/game.jpg" width="200"/> | <img src="screenshots/detail_game.jpg" width="200"/> | <img src="screenshots/specials.jpg" width="200"/> |<img src="screenshots/sequence.jpg" width="200"/> |<img src="screenshots/anime.jpg" width="200"/> |<img src="screenshots/detail_anime.jpg" width="200"/> |<img src="screenshots/activity.jpg" width="200"/> | <img src="screenshots/setting.jpg" width="200"/> |
+## 功能
 
+### Steam 游戏库
 
+- 读取玩家资料、等级和库存，支持多个 Steam 账号合并展示。
+- 按名称、游玩时长、自定义状态和标签筛选、排序或分组。
+- 提供未玩、在玩、通关、多周目、长期、完美、搁置和放弃八种本地状态。
+- 支持自定义名称、标签、备注、个人头像、挂件和资料背景。
+- 自动读取 Steam 资料装扮与动态背景，手动设置的内容优先。
+- 游戏详情包含媒体画廊、商店简介、玩家评价、本地评论、游玩记录与个人成就。
 
----
+### Bangumi 动漫
 
-##  核心功能 
+- 通过 Bangumi OAuth 登录并读取五类动漫收藏。
+- 支持列表与网格两种展示方式，以及评分显示偏好。
+- 支持模糊搜索 Bangumi 动漫条目并打开详情。
+- 在详情页编辑收藏状态、正篇进度、评分、标签和吐槽，并同步到 Bangumi。
+- 展示条目信息、制作人员、简介和观看记录。
+- 本地保留标签输入顺序；观看记录可以修改，并同步修正记录页统计。
 
-###  个人库存
-*   **视觉**：基于 **MIUI X** 主题，支持深色/浅色/跟随系统。
-*   **统计**：顶部展示个人头像、等级、游戏总数及总时长。
-*   **卡片**：列表卡片颜色根据游玩时长动态分级（由浅入深），直观展示你的”肝度”。
-*   **标记**：支持 8 种游玩状态标记，每种状态独特色系，一眼分辨。
+### 活动记录
 
-###  特惠查询
-*   **体验**：内置过滤，自动剔除 DLC、原声带、季票等干扰项，只展示**游戏本体**。
-*   **数据**：采用并发抓取技术，一次性加载数百个打折游戏。
-*   **排序**：支持按 **好评率**、**现价**、**折扣力度**、**销量** 进行多维度排序。
-*   **好评**：列表直接展示好评率（如 "95% 好评"），并以不同颜色区分评价等级。
+- 使用年度热力图展示每天的游戏与动漫活动。
+- Steam 仅统计标记为“在玩”的游戏在刷新时检测到的新增时长。
+- Bangumi 仅统计标记为“在看”的动漫新增正篇话数，不计番外。
+- 首次同步只建立基线，不会把过去的累计数据算入当天。
+- 可以查看某一天或从首次记录至指定日期的封面历史，并跳转到对应详情页。
+- 如果关闭动漫页，只展示游戏活动记录。
 
-###  沉浸式详情 
-*   **画廊**：横向滑动的 16:9 自适应画廊，无缝拼接视频与截图，无黑边体验。
-*   **评论**：直接集成 Steam 玩家评论区，支持查看长评，拒绝截断。
-*   **排版**：通过 JS/CSS 注入技术，重排 Steam 杂乱的简介 HTML，去除多余间距，实现优美的图文混排。
-*   **封面**：自动修复不规范的活动宣传图，优先展示 Steam 标准封面。
+### Steam 特惠与个性化
 
-###  个性化
-*   支持自定义个人资料背景图、头像及**头像挂件**（支持 GIF 动图）。
-*   库存支持分组显示（近期活跃 / 已玩 / 堆积库存）与多种排序方式。
-*   主题支持浅色 / 深色 / 跟随系统，状态栏颜色自动适配。
-*   **自定义标签**：为游戏添加个性化标签，支持增删改查。
+- 抓取 Steam 特惠列表，过滤常见 DLC、原声带和季票。
+- 支持按评价、价格、折扣和销量排序。
+- 支持浅色、深色和跟随系统主题，以及中英文界面。
+- 游戏时长胶囊、状态分组、页面显示和动漫展示方式均可配置。
+- 本地备份可导出和恢复标记、标签、备注、自定义名称、活动统计及部分外观设置。
 
+## 下载与使用
 
----
+前往 [Releases](https://github.com/ewiro/GameArchive/releases) 下载 APK：
 
-##  隐私与安全
+- `arm64-v8a`：推荐用于绝大多数现代 Android 手机。
+- `armeabi-v7a`：用于仍为 32 位架构的旧设备。
 
-我们深知 Steam 账号安全的重要性，因此：
+最低系统版本为 Android 7.0（API 24）。
 
-1.  **本地保存**：Steam ID、Web API Key 和 Bangumi OAuth Token 保存在应用私有的本地存储中，不会写入软件的手动备份文件。
-2.  **Steam 凭证边界**：应用不会获取或保存 Steam 密码、Steam Guard 验证码和登录 Cookie。Web API Key 不是 Steam 登录凭证，但仍属于需要保密的敏感信息。
-3.  **代理说明**：为保证中国大陆地区的可用性，Steam API 与 Bangumi API 请求会经过默认的 Cloudflare Worker。代理不建立用户数据库，也不主动持久化凭证，但在转发时能够接触 Steam Web API Key 和 Bangumi Access Token。默认代理的 Cloudflare 账号已启用通行密钥和 2FA。
-4.  **Bangumi 授权边界**：Bangumi Access Token 可用于读取和修改授权范围内的收藏与章节数据；如怀疑代理或设备失守，请及时撤销授权。
-5.  **开源透明**：客户端及代理脚本均开源，可自行审计或部署独立 Worker。
+### Steam
 
----
+首次使用需要：
 
-##  部署与使用
+1. SteamID，即个人资料对应的数字 ID。
+2. [Steam Web API Key](https://steamcommunity.com/dev/apikey)。
 
-### 1. 下载安装
-前往 [Releases 页面](https://github.com/ewiro/GameArchive/releases) 下载最新版本的 APK。
-*   现代手机推荐下载 `arm64` 版本。
+应用不会要求 Steam 密码、Steam Guard 验证码或登录 Cookie。库存必须设为公开，Steam API 才能返回完整数据。
 
-### 2. 获取必要信息
-首次使用需要输入您的 Steam 信息：
-*   **ID**: 您的数字ID，非账户名（可在个人资料链接中找到）。
-*   **API**: 前往 [Steam 开发者页面](https://steamcommunity.com/dev/apikey) 免费申请（**域名可随意填写**）。
+### Bangumi
 
-### 3. (进阶) 自建代理服务
-为了保证在中国大陆地区的稳定访问，App 默认使用内置的 Cloudflare Worker 代理（地址统一配置于 `AppConfig.kt` 中的 `PROXY_URL` 常量）。
-如果希望减少对默认公共代理的信任，或需要独立控制日志和部署权限，可以自行部署 Worker：
-1. 在 [Cloudflare Workers](https://workers.cloudflare.com/) 创建新 Worker
-2. 将项目根目录的 `cloudflare_worker.js` 内容复制进去
-3. 将 `AppConfig.kt` 中的 `PROXY_URL` 改为你的 Worker 地址
-4. 重新编译即可
+Bangumi 功能为可选项。点击设置中的添加账号并选择 Bangumi 后，应用会打开浏览器完成 OAuth 授权。
 
----
+## 从源码构建
 
-##  技术栈
-本项目采用现代 Android 开发标准构建：
+### 环境
 
-*   **语言**: [Kotlin](https://kotlinlang.org/)
-*   **架构**: MVVM (Compose + HorizontalPager + ViewModel + LiveData)
-*   **网络**: [Retrofit](https://square.github.io/retrofit/) + [OkHttp](https://square.github.io/okhttp/) + [GSON](https://github.com/google/gson)
-*   **图片加载**: [Coil](https://coil-kt.github.io/coil/) (针对 GIF 动图及内存缓存优化)
-*   **UI 组件**: Compose Multiplatform + MIUI X (miuix-ui 0.9.2)
-*   **异步处理**: Kotlin Coroutines (Async/Await 并发请求)
-*   **后端/代理**: Cloudflare Worker (反爬虫伪装 + CORS 跨域处理)
+- Android Studio
+- JDK 17
+- Android SDK 37
 
----
+### 配置
 
-##  许可证
+1. 克隆仓库：
 
-本项目基于 MIT 许可证开源 - 详见 [LICENSE](LICENSE) 文件。
+   ```bash
+   git clone https://github.com/ewiro/GameArchive.git
+   cd GameArchive
+   ```
+2. 将配置模板复制为本地配置：
+
+   ```text
+   app/src/main/java/com/example/gamearchive/AppConfig.kt.example
+   → app/src/main/java/com/example/gamearchive/AppConfig.kt
+   ```
+3. 根据需要配置：
+
+   - `PROXY_URL`：默认公共代理或自行部署的 Worker 地址。
+   - `BANGUMI_CLIENT_ID`、`BANGUMI_CLIENT_SECRET`：在 [Bangumi 开发者平台](https://bgm.tv/dev/app) 注册应用后获得。
+   - `BANGUMI_REDIRECT_URI`：须与开发者平台登记值及 Manifest 回调保持一致。
+
+   `AppConfig.kt` 已被 `.gitignore` 排除，不要提交真实凭证。
+4. 构建 Debug APK：
+
+   ```bash
+   # Windows
+   .\gradlew.bat assembleDebug
+
+   # macOS / Linux
+   ./gradlew assembleDebug
+   ```
+
+### 自建代理
+
+根目录的 [`cloudflare_worker.js`](cloudflare_worker.js) 是默认代理脚本。部署到自己的 Cloudflare Worker 后，将 `AppConfig.kt` 中的 `PROXY_URL` 替换为对应地址即可。
+
+## 技术实现
+
+- Kotlin 2.4.0、JVM 17
+- Compose Multiplatform 1.11.1
+- MIUI X (`miuix-ui` / `miuix-icons`)
+- Activity 导航与 MVVM
+- Retrofit、OkHttp、Gson
+- Kotlin Coroutines
+- Coil
+- SharedPreferences 本地存储
+- Cloudflare Worker 请求转发
+
+## 反馈与贡献
+
+欢迎通过 [Issues](https://github.com/ewiro/GameArchive/issues) 报告问题或提出建议。报告问题时建议附上：
+
+- GameArchive 版本、设备型号和 Android 版本
+- 可重复的操作步骤
+- 实际结果与预期结果
+- 必要的截图或已去除账号凭证的日志
+
+提交 Pull Request 前，请尽量让改动保持单一目标，并确认没有提交 Steam API Key、Bangumi OAuth 凭证、签名文件或本地配置。
+
+## 致谢
+
+- [Steam Web API](https://steamcommunity.com/dev)
+- [Bangumi API](https://github.com/bangumi/api)
+- [MIUI X](https://github.com/compose-miuix-ui/miuix)
+- [DSEG](https://www.keshikan.net/fonts-e.html)
