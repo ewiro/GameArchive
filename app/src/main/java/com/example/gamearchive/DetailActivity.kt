@@ -573,7 +573,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showMarkSheet = true }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(
+                            horizontal = DesignTokens.SpaceXl,
+                            vertical = DesignTokens.SpaceLg
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -606,7 +609,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showTagSheet = true }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(
+                            horizontal = DesignTokens.SpaceXl,
+                            vertical = DesignTokens.SpaceLg
+                        ),
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -649,7 +655,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                            .padding(
+                                horizontal = DesignTokens.SpaceXl,
+                                vertical = DesignTokens.SpaceLg
+                            ),
                         verticalAlignment = Alignment.Top,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
