@@ -2667,14 +2667,42 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
     // Bangumi 用户头像（medium 尺寸，56dp 圆形 — 对齐游戏页 AvatarInner）
     val avatarUrl = user?.avatar?.medium ?: user?.avatar?.small
     val displayName = user?.nickname?.ifBlank { null } ?: "@$username"
+    val backgroundFile = remember {
+        BangumiProfileBackground.file(context).takeIf { it.isFile }
+    }
+    val hasCustomBackground = backgroundFile != null
+    val primaryTextColor = if (hasCustomBackground) {
+        Color.White
+    } else {
+        MiuixTheme.colorScheme.onSurface
+    }
+    val secondaryTextColor = primaryTextColor.copy(alpha = DesignTokens.OpacityBody)
+    val cardShape = RoundedCornerShape(DesignTokens.CornerXLarge)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 6.dp)
-            .background(MiuixTheme.colorScheme.secondaryContainer, RoundedCornerShape(DesignTokens.CornerXLarge))
-            .clip(RoundedCornerShape(DesignTokens.CornerXLarge))
+            .clip(cardShape)
+            .background(MiuixTheme.colorScheme.secondaryContainer)
     ) {
+        if (backgroundFile != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(backgroundFile)
+                    .memoryCacheKey("${backgroundFile.absolutePath}:${backgroundFile.lastModified()}")
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(DesignTokens.ScrimDark.copy(alpha = 0.42f))
+            )
+        }
+
         Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp)) {
             // 头像 + 用户名行
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2683,7 +2711,13 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
                     modifier = Modifier
                         .size(70.dp)
                         .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                        .background(MiuixTheme.colorScheme.surfaceVariant),
+                        .background(
+                            if (hasCustomBackground) {
+                                Color.White.copy(alpha = 0.16f)
+                            } else {
+                                MiuixTheme.colorScheme.surfaceVariant
+                            }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     if (avatarUrl != null) {
@@ -2698,7 +2732,7 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
                             imageVector = MiuixIcons.Light.Album,
                             contentDescription = null,
                             modifier = Modifier.size(28.dp),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
+                            colorFilter = ColorFilter.tint(secondaryTextColor)
                         )
                     }
                 }
@@ -2706,7 +2740,7 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
                 Column {
                     Text(
                         text = displayName,
-                        color = MiuixTheme.colorScheme.onSurface,
+                        color = primaryTextColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = DesignTokens.TextHeadline.sp,
                         maxLines = 1,
@@ -2714,7 +2748,7 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
                     )
                     Text(
                         text = context.getString(R.string.bangumi_profile_total, totalCount),
-                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                        color = secondaryTextColor,
                         fontSize = DesignTokens.TextBody2.sp
                     )
                 }
@@ -2728,13 +2762,13 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "$count",
-                            color = MiuixTheme.colorScheme.onSurface,
+                            color = primaryTextColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = DesignTokens.TextSubtitle.sp
                         )
                         Text(
                             text = context.getString(nameRes),
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+                            color = secondaryTextColor,
                             fontSize = DesignTokens.TextCaption.sp
                         )
                     }

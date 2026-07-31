@@ -18,6 +18,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.verticalScroll
@@ -42,6 +43,7 @@ import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -253,6 +255,37 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                 }
             }
         }
+    }
+
+    var hasBangumiProfileBackground by remember {
+        mutableStateOf(BangumiProfileBackground.exists(context))
+    }
+    val bangumiBackgroundLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    BangumiProfileBackground.save(context, uri)
+                }
+                if (saved) {
+                    hasBangumiProfileBackground = true
+                    ThemeUtils.isChanged = true
+                }
+                Toast.makeText(
+                    context,
+                    if (saved) {
+                        R.string.settings_bangumi_background_saved
+                    } else {
+                        R.string.settings_bangumi_background_failed
+                    },
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+    val openBangumiBackgroundPicker = {
+        bangumiBackgroundLauncher.launch(arrayOf("image/*"))
     }
 
     var dropdownPopup by remember { mutableStateOf<DropdownPopupData?>(null) }
@@ -729,6 +762,62 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         selectedIndex = displayStyle,
                         onSelect = { displayStyle = it; ThemeUtils.setBangumiDisplayStyle(context, it) }
                     )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable(openBangumiBackgroundPicker)
+                            .heightIn(min = 56.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = context.getString(R.string.settings_bangumi_profile_background),
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = systemFontWeight(),
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(DesignTokens.CornerSmall))
+                                .pointerInput(hasBangumiProfileBackground) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            openBangumiBackgroundPicker()
+                                        },
+                                        onLongPress = {
+                                            if (
+                                                hasBangumiProfileBackground &&
+                                                BangumiProfileBackground.clear(context)
+                                            ) {
+                                                hasBangumiProfileBackground = false
+                                                ThemeUtils.isChanged = true
+                                                Toast.makeText(
+                                                    context,
+                                                    R.string.settings_bangumi_background_cleared,
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
+                                    )
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Image(
+                                imageVector = MiuixIcons.Basic.ArrowRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(DesignTokens.IconMd),
+                                colorFilter = ColorFilter.tint(
+                                    MiuixTheme.colorScheme.onSurface.copy(
+                                        alpha = DesignTokens.OpacityBody
+                                    )
+                                )
+                            )
+                        }
+                    }
                 }
             }
         }
