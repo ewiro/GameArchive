@@ -31,32 +31,40 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+@Composable
+internal fun loadingSkeletonBaseColor(): Color = lerp(
+    MiuixTheme.colorScheme.surface,
+    MiuixTheme.colorScheme.surfaceVariant,
+    0.58f
+)
 
 @Composable
 internal fun rememberLoadingSkeletonBrush(
     baseColor: Color? = null,
     highlightColor: Color? = null
 ): Brush {
-    val base = baseColor ?: MiuixTheme.colorScheme.surfaceVariant
+    val base = baseColor ?: loadingSkeletonBaseColor()
     val highlight = highlightColor
-        ?: MiuixTheme.colorScheme.onSurface.copy(alpha = 0.10f)
+        ?: lerp(base, MiuixTheme.colorScheme.onSurface, 0.035f)
     val transition = rememberInfiniteTransition(label = "loading_skeleton")
     val offset by transition.animateFloat(
         initialValue = -300f,
         targetValue = 900f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1_200, easing = LinearEasing),
+            animation = tween(durationMillis = 1_650, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "loading_skeleton_offset"
     )
     return Brush.linearGradient(
         colors = listOf(base, highlight, base),
-        start = Offset(offset - 180f, 0f),
-        end = Offset(offset + 180f, 0f)
+        start = Offset(offset - 240f, 0f),
+        end = Offset(offset + 240f, 0f)
     )
 }
 

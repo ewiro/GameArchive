@@ -460,15 +460,18 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     ) {
                         Column {
                             DividerLine()
-                            Row(
+                            ExpandableSectionTrigger(
+                                expanded = customUrlsExpanded,
+                                onToggle = {
+                                    customUrlsExpanded = !customUrlsExpanded
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                                    .noRippleClickable {
-                                        customUrlsExpanded = !customUrlsExpanded
-                                    }
-                                    .padding(vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .clip(RoundedCornerShape(DesignTokens.CornerMedium)),
+                                contentPadding = PaddingValues(vertical = 14.dp),
+                                arrowColor = MiuixTheme.colorScheme.onSurface.copy(
+                                    alpha = DesignTokens.OpacityBody
+                                )
                             ) {
                                 Text(
                                     text = context.getString(R.string.settings_custom_urls),
@@ -477,19 +480,9 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     color = MiuixTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f)
                                 )
-                                ExpandableArrow(
-                                    expanded = customUrlsExpanded,
-                                    color = MiuixTheme.colorScheme.onSurface.copy(
-                                        alpha = DesignTokens.OpacityBody
-                                    )
-                                )
                             }
 
-                            AnimatedVisibility(
-                                visible = customUrlsExpanded,
-                                enter = smoothExpandEnter(),
-                                exit = smoothExpandExit()
-                            ) {
+                            ExpandableSectionContent(expanded = customUrlsExpanded) {
                                 Column {
                                     LabeledTextField(
                                         label = context.getString(R.string.settings_avatar_url),
@@ -1127,20 +1120,16 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     }
 
         // ── 标签管理弹窗 ──
-        if (showTagDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DesignTokens.ScrimDark)
-                    .noRippleClickable { showTagDialog = false },
-                contentAlignment = Alignment.Center
-            ) {
+        MotionModalOverlay(
+            visible = showTagDialog,
+            onDismissRequest = { showTagDialog = false }
+        ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(32.dp)
                         .heightIn(max = 540.dp)
-                        .clickable(enabled = false, onClick = {})
+                        .noRippleClickable { }
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
@@ -1189,23 +1178,18 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         }
                     }
                 }
-            }
         }
 
         // ── 选择账号类型 ──
-        if (showAccountTypeDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DesignTokens.ScrimDark)
-                    .noRippleClickable { showAccountTypeDialog = false },
-                contentAlignment = Alignment.Center
-            ) {
+        MotionModalOverlay(
+            visible = showAccountTypeDialog,
+            onDismissRequest = { showAccountTypeDialog = false }
+        ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(32.dp)
-                        .clickable(enabled = false, onClick = {})
+                        .noRippleClickable { }
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
@@ -1235,23 +1219,18 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         )
                     }
                 }
-            }
         }
 
         // ── 添加 Steam 账号弹窗 ──
-        if (showAddAccountDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DesignTokens.ScrimDark)
-                    .noRippleClickable { showAddAccountDialog = false },
-                contentAlignment = Alignment.Center
-            ) {
+        MotionModalOverlay(
+            visible = showAddAccountDialog,
+            onDismissRequest = { showAddAccountDialog = false }
+        ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(32.dp)
-                        .clickable(enabled = false, onClick = {})
+                        .noRippleClickable { }
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
@@ -1312,7 +1291,6 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         }
                     }
                 }
-            }
         }
 
     } // close Surface
@@ -1350,8 +1328,8 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                     val paddingEnd = maxOf(0.dp, screenWidthDp - triggerRightDp)
                     AnimatedVisibility(
                         visible = dropdownPopupVisible,
-                        enter = smoothExpandEnter(),
-                        exit = smoothExpandExit()
+                        enter = dropdownPopupEnter(),
+                        exit = dropdownPopupExit()
                     ) {
                         Card(
                             modifier = Modifier
@@ -1365,7 +1343,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .noRippleClickable {
+                                            .motionClickable {
                                                 popup.onSelect(index)
                                                 dismissDropdown()
                                             }
@@ -1507,7 +1485,7 @@ private fun DropdownSelector(
                     }
                 }
                 .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                .noRippleClickable {
+                .motionClickable {
                     dropdownHost(
                         DropdownPopupData(
                             options = options,

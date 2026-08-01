@@ -6,6 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -169,33 +171,40 @@ private fun BangumiSearchScreen(
                     singleLine = true
                 )
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (isLoading) {
-                        BangumiSearchLoadingSkeleton()
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                top = DesignTokens.SpaceXs,
-                                bottom = DesignTokens.SpaceMassive
-                            )
-                        ) {
-                            items(results, key = { it.id!! }) { subject ->
-                                BangumiSearchResult(
-                                    subject = subject,
-                                    showRating = showRating
-                                ) {
-                                    onOpenSubject(subject)
+                    Crossfade(
+                        targetState = isLoading,
+                        animationSpec = tween(DesignTokens.AnimDuration),
+                        label = "bangumi_search_loading"
+                    ) { loading ->
+                        if (loading) {
+                            BangumiSearchLoadingSkeleton()
+                        } else {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    top = DesignTokens.SpaceXs,
+                                    bottom = DesignTokens.SpaceMassive
+                                )
+                            ) {
+                                items(results, key = { it.id!! }) { subject ->
+                                    BangumiSearchResult(
+                                        subject = subject,
+                                        showRating = showRating,
+                                        modifier = Modifier.animateItem()
+                                    ) {
+                                        onOpenSubject(subject)
+                                    }
                                 }
                             }
-                        }
-                        when {
-                            searchFailed -> SearchMessage(
-                                text = context.getString(R.string.bangumi_search_failed)
-                            )
-                            hasSearched && results.isEmpty() -> SearchMessage(
-                                text = context.getString(R.string.bangumi_search_no_results)
-                            )
+                            when {
+                                searchFailed -> SearchMessage(
+                                    text = context.getString(R.string.bangumi_search_failed)
+                                )
+                                hasSearched && results.isEmpty() -> SearchMessage(
+                                    text = context.getString(R.string.bangumi_search_no_results)
+                                )
+                            }
                         }
                     }
                 }
@@ -219,6 +228,7 @@ private fun SearchMessage(text: String) {
 private fun BangumiSearchResult(
     subject: BangumiSubjectDetail,
     showRating: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -239,9 +249,9 @@ private fun BangumiSearchResult(
     val score = if (showRating) extractSearchScore(subject.rating) else null
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .noRippleClickable(onClick)
+            .motionClickable(pressedScale = 0.985f, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top
     ) {

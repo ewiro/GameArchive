@@ -4,42 +4,65 @@ import android.os.Build
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -173,11 +196,16 @@ object DesignTokens {
     const val CollapseDuration = 220
     const val FadeInDuration = 180
     const val FadeOutDuration = 140
+    const val PressInDuration = 45
+    const val PressOutDuration = 160
+    const val PressScale = 0.97f
+    const val PressAlpha = 0.84f
 
     // ═══════════════════ 图标尺寸 ═══════════════════
 
     val IconSm   = 10.dp
     val IconMd   = 14.dp
+    val IconExpandable = 16.dp
     val IconStd  = 18.dp
     val IconLg   = 20.dp
     val IconXl   = 24.dp
@@ -195,24 +223,326 @@ fun smoothExpandEnter(): EnterTransition =
     ) + fadeIn(
         animationSpec = tween(
             durationMillis = DesignTokens.FadeInDuration,
-            easing = FastOutSlowInEasing
+            easing = LinearOutSlowInEasing
         ),
-        initialAlpha = 0.45f
+        initialAlpha = 0f
+    ) + slideInVertically(
+        animationSpec = tween(
+            durationMillis = DesignTokens.ExpandDuration,
+            easing = LinearOutSlowInEasing
+        ),
+        initialOffsetY = { fullHeight -> -fullHeight / 16 }
     )
 
 fun smoothExpandExit(): ExitTransition =
     shrinkVertically(
         animationSpec = tween(
             durationMillis = DesignTokens.CollapseDuration,
-            easing = FastOutSlowInEasing
+            easing = FastOutLinearInEasing
         ),
         shrinkTowards = Alignment.Top
     ) + fadeOut(
         animationSpec = tween(
             durationMillis = DesignTokens.FadeOutDuration,
+            easing = FastOutLinearInEasing
+        )
+    ) + slideOutVertically(
+        animationSpec = tween(
+            durationMillis = DesignTokens.CollapseDuration,
+            easing = FastOutLinearInEasing
+        ),
+        targetOffsetY = { fullHeight -> -fullHeight / 24 }
+    )
+
+/** 统一展开触发器：整行点击、轻量按压反馈、箭头状态和无涟漪外观。 */
+@Composable
+fun ExpandableSectionTrigger(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    arrowColor: Color = MiuixTheme.colorScheme.onSurface.copy(
+        alpha = DesignTokens.OpacityBody
+    ),
+    expandedArrowColor: Color = DesignTokens.AccentBlue,
+    content: @Composable RowScope.() -> Unit
+) {
+    val context = LocalContext.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) DesignTokens.PressScale else 1f,
+        animationSpec = if (pressed) {
+            tween(
+                durationMillis = DesignTokens.PressInDuration,
+                easing = FastOutLinearInEasing
+            )
+        } else {
+            spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        },
+        label = "expandable_trigger_scale"
+    )
+    val pressAlpha by animateFloatAsState(
+        targetValue = if (pressed) DesignTokens.PressAlpha else 1f,
+        animationSpec = tween(
+            durationMillis = if (pressed) {
+                DesignTokens.PressInDuration
+            } else {
+                DesignTokens.PressOutDuration
+            },
+            easing = if (pressed) FastOutLinearInEasing else LinearOutSlowInEasing
+        ),
+        label = "expandable_trigger_alpha"
+    )
+    val animatedArrowColor by animateColorAsState(
+        targetValue = if (expanded) expandedArrowColor else arrowColor,
+        animationSpec = tween(
+            durationMillis = DesignTokens.AnimDuration,
             easing = FastOutSlowInEasing
+        ),
+        label = "expandable_trigger_arrow_color"
+    )
+
+    Row(
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+                alpha = pressAlpha
+            }
+            .then(modifier)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClick = onToggle
+            )
+            .semantics {
+                stateDescription = context.getString(
+                    if (expanded) R.string.accessibility_expanded
+                    else R.string.accessibility_collapsed
+                )
+            }
+            .padding(contentPadding),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        content()
+        ExpandableArrow(expanded = expanded, color = animatedArrowColor)
+    }
+}
+
+/** 与 [ExpandableSectionTrigger] 配套的可中断展开内容动画。 */
+@Composable
+fun ExpandableSectionContent(
+    expanded: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable AnimatedVisibilityScope.() -> Unit
+) {
+    AnimatedVisibility(
+        visible = expanded,
+        modifier = modifier,
+        enter = smoothExpandEnter(),
+        exit = smoothExpandExit(),
+        content = content
+    )
+}
+
+fun dropdownPopupEnter(): EnterTransition =
+    fadeIn(
+        animationSpec = tween(
+            durationMillis = DesignTokens.FadeInDuration,
+            easing = LinearOutSlowInEasing
+        )
+    ) + scaleIn(
+        initialScale = 0.94f,
+        transformOrigin = TransformOrigin(1f, 0f),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        )
+    ) + slideInVertically(
+        initialOffsetY = { fullHeight -> -fullHeight / 12 },
+        animationSpec = tween(
+            durationMillis = DesignTokens.ExpandDuration,
+            easing = LinearOutSlowInEasing
         )
     )
+
+fun dropdownPopupExit(): ExitTransition =
+    fadeOut(
+        animationSpec = tween(
+            durationMillis = DesignTokens.FadeOutDuration,
+            easing = FastOutLinearInEasing
+        )
+    ) + scaleOut(
+        targetScale = 0.97f,
+        transformOrigin = TransformOrigin(1f, 0f),
+        animationSpec = tween(
+            durationMillis = DesignTokens.CollapseDuration,
+            easing = FastOutLinearInEasing
+        )
+    )
+
+@Composable
+fun MotionModalOverlay(
+    visible: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.Center,
+    bottomSheet: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(
+            animationSpec = tween(
+                durationMillis = DesignTokens.FadeInDuration,
+                easing = LinearOutSlowInEasing
+            )
+        ),
+        exit = fadeOut(
+            animationSpec = tween(
+                durationMillis = DesignTokens.FadeOutDuration,
+                easing = FastOutLinearInEasing
+            )
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DesignTokens.ScrimDark)
+                    .noRippleClickable(onDismissRequest)
+            )
+            AnimatedVisibility(
+                visible = visible,
+                modifier = Modifier.align(contentAlignment),
+                enter = if (bottomSheet) {
+                    slideInVertically(
+                        initialOffsetY = { fullHeight -> fullHeight },
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) + fadeIn(
+                        initialAlpha = 0.82f,
+                        animationSpec = tween(DesignTokens.FadeInDuration)
+                    )
+                } else {
+                    scaleIn(
+                        initialScale = 0.92f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) + fadeIn(tween(DesignTokens.FadeInDuration))
+                },
+                exit = if (bottomSheet) {
+                    slideOutVertically(
+                        targetOffsetY = { fullHeight -> fullHeight },
+                        animationSpec = tween(
+                            durationMillis = DesignTokens.CollapseDuration,
+                            easing = FastOutLinearInEasing
+                        )
+                    ) + fadeOut(tween(DesignTokens.FadeOutDuration))
+                } else {
+                    scaleOut(
+                        targetScale = 0.96f,
+                        animationSpec = tween(
+                            durationMillis = DesignTokens.CollapseDuration,
+                            easing = FastOutLinearInEasing
+                        )
+                    ) + fadeOut(tween(DesignTokens.FadeOutDuration))
+                },
+                content = { content() }
+            )
+        }
+    }
+}
+
+/** 无暗色状态层的通用按压反馈，适用于卡片、封面和选择器。 */
+@Composable
+fun Modifier.motionClickable(
+    enabled: Boolean = true,
+    pressedScale: Float = 0.975f,
+    pressedAlpha: Float = 0.88f,
+    onClick: () -> Unit
+): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) pressedScale else 1f,
+        animationSpec = if (pressed && enabled) {
+            tween(DesignTokens.PressInDuration, easing = FastOutLinearInEasing)
+        } else {
+            spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        },
+        label = "motion_clickable_scale"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (pressed && enabled) pressedAlpha else 1f,
+        animationSpec = tween(
+            durationMillis = if (pressed) {
+                DesignTokens.PressInDuration
+            } else {
+                DesignTokens.PressOutDuration
+            },
+            easing = if (pressed) FastOutLinearInEasing else LinearOutSlowInEasing
+        ),
+        label = "motion_clickable_alpha"
+    )
+    return Modifier
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+        }
+        .then(this)
+        .clickable(
+            enabled = enabled,
+            interactionSource = interactionSource,
+            indication = null,
+            role = Role.Button,
+            onClick = onClick
+        )
+}
+
+/** 系统 Dialog 内容入场；系统窗口负责退出淡化，此处补齐原生弹性浮起。 */
+@Composable
+fun Modifier.motionDialogSurface(): Modifier {
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+    val scale by animateFloatAsState(
+        targetValue = if (entered) 1f else 0.92f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "dialog_surface_scale"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (entered) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = DesignTokens.FadeInDuration,
+            easing = LinearOutSlowInEasing
+        ),
+        label = "dialog_surface_alpha"
+    )
+    return Modifier
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+        }
+        .then(this)
+}
 
 @Composable
 fun ExpandableArrow(
@@ -223,8 +553,8 @@ fun ExpandableArrow(
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 90f else 0f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "expandable_arrow_rotation"
     )
@@ -232,7 +562,7 @@ fun ExpandableArrow(
         imageVector = MiuixIcons.Basic.ArrowRight,
         contentDescription = null,
         modifier = modifier
-            .size(DesignTokens.IconMd)
+            .size(DesignTokens.IconExpandable)
             .rotate(rotation),
         colorFilter = ColorFilter.tint(color)
     )

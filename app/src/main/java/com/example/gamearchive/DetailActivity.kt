@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -350,7 +351,12 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     Surface(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(DesignTokens.CornerXLarge))) {
     androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
 
-        if (isLoading) {
+        Crossfade(
+            targetState = isLoading,
+            animationSpec = tween(DesignTokens.AnimDuration),
+            label = "game_detail_loading"
+        ) { loading ->
+        if (loading) {
             GameDetailLoadingSkeleton(topBarHeightDp)
         } else {
             LazyColumn(
@@ -608,7 +614,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showTagSheet = true }
+                        .motionClickable(
+                            pressedScale = 0.99f,
+                            onClick = { showTagSheet = true }
+                        )
                         .padding(
                             horizontal = DesignTokens.SpaceXl,
                             vertical = DesignTokens.SpaceLg
@@ -680,7 +689,10 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                             modifier = Modifier
                                 .weight(1f)
-                                .noRippleClickable { showNoteSheet = true },
+                                .motionClickable(
+                                    pressedScale = 0.99f,
+                                    onClick = { showNoteSheet = true }
+                                ),
                             maxLines = if (noteExpanded) Int.MAX_VALUE else 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -788,6 +800,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 item("bottom_spacer") { Spacer(Modifier.height(32.dp)) }
             }
         }
+        }
 
         // ── 顶栏叠加层（滑动自动显隐） ──
         Surface(
@@ -826,18 +839,16 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     } // close Box
 
         // ── 标记选择底部弹窗 ──
-        if (showMarkSheet) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DesignTokens.ScrimDark)
-                    .clickable { showMarkSheet = false },
-                contentAlignment = Alignment.BottomCenter
-            ) {
+        MotionModalOverlay(
+            visible = showMarkSheet,
+            onDismissRequest = { showMarkSheet = false },
+            contentAlignment = Alignment.BottomCenter,
+            bottomSheet = true
+        ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = false, onClick = {})  // 阻止事件穿透
+                        .noRippleClickable { }  // 阻止事件穿透
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
@@ -921,22 +932,19 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         }
                     }
                 }
-            }
         }
 
         // ── 标签选择底部弹窗 ──
-        if (showTagSheet) {
-Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DesignTokens.ScrimDark)
-                    .clickable { showTagSheet = false },
-                contentAlignment = Alignment.BottomCenter
-            ) {
+        MotionModalOverlay(
+            visible = showTagSheet,
+            onDismissRequest = { showTagSheet = false },
+            contentAlignment = Alignment.BottomCenter,
+            bottomSheet = true
+        ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = false, onClick = {})
+                        .noRippleClickable { }
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
@@ -1051,24 +1059,21 @@ Box(
                         }
                     }
                 }
-            }
         }
 
         // ── 本地评论弹窗 ──
-        if (showNoteSheet) {
+        MotionModalOverlay(
+            visible = showNoteSheet,
+            onDismissRequest = { showNoteSheet = false },
+            contentAlignment = Alignment.BottomCenter,
+            bottomSheet = true
+        ) {
             var editText by remember { mutableStateOf(gameNote) }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DesignTokens.ScrimDark)
-                    .clickable { showNoteSheet = false },
-                contentAlignment = Alignment.BottomCenter
-            ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .imePadding()
-                        .clickable(enabled = false, onClick = {})
+                        .noRippleClickable { }
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
@@ -1133,7 +1138,6 @@ Box(
                         }
                     }
                 }
-            }
         }
         // ── 重命名弹窗 ──
         if (showRenameDialog) {
@@ -1141,7 +1145,13 @@ Box(
                 onDismissRequest = { showRenameDialog = false },
                 properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
             ) {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), cornerRadius = DesignTokens.CornerLarge) {
+                Card(
+                    modifier = Modifier
+                        .motionDialogSurface()
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    cornerRadius = DesignTokens.CornerLarge
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = context.getString(R.string.game_rename),

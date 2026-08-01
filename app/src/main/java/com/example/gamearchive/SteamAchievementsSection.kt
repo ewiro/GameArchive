@@ -2,7 +2,6 @@ package com.example.gamearchive
 
 import android.content.Context
 import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -14,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -99,12 +99,15 @@ fun SteamAchievementsSection(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Row(
+        ExpandableSectionTrigger(
+            expanded = expanded,
+            onToggle = { expanded = !expanded },
             modifier = Modifier
-                .fillMaxWidth()
-                .noRippleClickable { expanded = !expanded }
-                .padding(vertical = DesignTokens.SpaceLg),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = DesignTokens.SpaceLg),
+            arrowColor = MiuixTheme.colorScheme.onSurface.copy(
+                alpha = DesignTokens.OpacityHint
+            )
         ) {
             Text(
                 text = context.getString(R.string.achievement_title),
@@ -113,19 +116,9 @@ fun SteamAchievementsSection(
                 color = dim,
                 modifier = Modifier.weight(1f)
             )
-            ExpandableArrow(
-                expanded = expanded,
-                color = MiuixTheme.colorScheme.onSurface.copy(
-                    alpha = DesignTokens.OpacityHint
-                )
-            )
         }
 
-        AnimatedVisibility(
-            visible = expanded,
-            enter = smoothExpandEnter(),
-            exit = smoothExpandExit()
-        ) {
+        ExpandableSectionContent(expanded = expanded) {
             val rareGlowTransition = rememberInfiniteTransition(
                 label = "rare_achievement_glow"
             )
@@ -207,17 +200,21 @@ private fun AchievementGroup(
     rareGlowRotation: State<Float>,
     rareGlowPulse: State<Float>
 ) {
-    Row(
+    ExpandableSectionTrigger(
+        expanded = expanded,
+        onToggle = { onExpandedChange(!expanded) },
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-            .background(DesignTokens.AccentBlue.copy(alpha = 0.11f))
-            .noRippleClickable { onExpandedChange(!expanded) }
-            .padding(
-                horizontal = DesignTokens.SpaceLg,
-                vertical = DesignTokens.SpaceMd
-            ),
-        verticalAlignment = Alignment.CenterVertically
+            .background(DesignTokens.AccentBlue.copy(alpha = 0.11f)),
+        contentPadding = PaddingValues(
+            horizontal = DesignTokens.SpaceLg,
+            vertical = DesignTokens.SpaceMd
+        ),
+        arrowColor = DesignTokens.AccentBlue.copy(
+            alpha = DesignTokens.OpacityEmphasis
+        ),
+        expandedArrowColor = DesignTokens.AccentBlue
     ) {
         Text(
             text = title,
@@ -226,16 +223,8 @@ private fun AchievementGroup(
             color = DesignTokens.AccentBlue,
             modifier = Modifier.weight(1f)
         )
-        ExpandableArrow(
-            expanded = expanded,
-            color = DesignTokens.AccentBlue.copy(alpha = DesignTokens.OpacityEmphasis)
-        )
     }
-    AnimatedVisibility(
-        visible = expanded,
-        enter = smoothExpandEnter(),
-        exit = smoothExpandExit()
-    ) {
+    ExpandableSectionContent(expanded = expanded) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

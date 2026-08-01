@@ -245,6 +245,8 @@
     <string name="general_delete">删除</string>
     <string name="general_load_failed">加载失败</string>
     <string name="general_sort">排序</string>
+    <string name="accessibility_expanded">已展开</string>
+    <string name="accessibility_collapsed">已收起</string>
     <string name="tag_create">新建</string>
     <string name="bangumi_tags_title">标签</string>
     <string name="bangumi_summary_title">简介</string>

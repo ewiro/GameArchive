@@ -7,7 +7,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -742,6 +748,7 @@ private fun LibraryScreen(
                         viewModel = viewModel,
                         showPlaytimeBackground = showPlaytimeBackground,
                         usePlaytimeBadgeTextColor = usePlaytimeBadgeTextColor,
+                        modifier = Modifier.animateItem(),
                         onClick = {
                         onNavigateToDetail(game.appid, game.name,
                             priceMap[game.appid] ?: "Free / Unknown")
@@ -990,7 +997,7 @@ private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .motionClickable(pressedScale = 0.985f, onClick = onClick)
             .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1024,7 +1031,7 @@ private fun MarkFilterChip(label: String, selected: Boolean, color: Color?, onCl
                 if (selected && color != null) Modifier.border(DesignTokens.BorderThick, color, RoundedCornerShape(DesignTokens.CornerLarge))
                 else Modifier.border(DesignTokens.BorderThin, MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled), RoundedCornerShape(DesignTokens.CornerLarge))
             )
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .motionClickable(pressedScale = 0.96f, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
@@ -1086,6 +1093,7 @@ private fun GameItem(
     viewModel: LibraryViewModel,
     showPlaytimeBackground: Boolean,
     usePlaytimeBadgeTextColor: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val h = game.playtime_forever / 60.0
@@ -1104,9 +1112,9 @@ private fun GameItem(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .motionClickable(pressedScale = 0.985f, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 6.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -1332,7 +1340,7 @@ private fun SpecialsScreen(
             contentPadding = PaddingValues(top = topBarInsetDp, bottom = 72.dp)
         ) {
             itemsIndexed(filteredList, key = { idx, item -> "s_${item.id}_$idx" }) { _, game ->
-                MarketGameItem(game) {
+                MarketGameItem(game, modifier = Modifier.animateItem()) {
                     onNavigateToDetail(game.id, game.name, game.finalPriceStr)
                 }
             }
@@ -1397,7 +1405,12 @@ private fun SortDialog(
         modifier = Modifier.fillMaxSize().background(DesignTokens.ScrimDark).clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center
     ) {
-        Card(modifier = Modifier.padding(32.dp).then(stopPropagation)) {
+        Card(
+            modifier = Modifier
+                .motionDialogSurface()
+                .padding(32.dp)
+                .then(stopPropagation)
+        ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
                     text = context.getString(R.string.specials_filter),
@@ -1410,7 +1423,10 @@ private fun SortDialog(
                 Row(
                     modifier = Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                        .clickable { showSortOptions = !showSortOptions; showPriceOptions = false }
+                        .motionClickable {
+                            showSortOptions = !showSortOptions
+                            showPriceOptions = false
+                        }
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1427,10 +1443,15 @@ private fun SortDialog(
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.width(4.dp))
-                    DropdownArrowEndAction(
-                        actionColor = MiuixTheme.colorScheme.onSurface.copy(
-                            alpha = DesignTokens.OpacityBody
-                        )
+                    ExpandableArrow(
+                        expanded = showSortOptions,
+                        color = if (showSortOptions) {
+                            DesignTokens.AccentBlue
+                        } else {
+                            MiuixTheme.colorScheme.onSurface.copy(
+                                alpha = DesignTokens.OpacityBody
+                            )
+                        }
                     )
                 }
                 AnimatedVisibility(
@@ -1443,7 +1464,10 @@ private fun SortDialog(
                             val sel = currentSort == i
                             Row(
                                 modifier = Modifier.fillMaxWidth()
-                                    .clickable { onSortSelected(i); showSortOptions = false }
+                                    .motionClickable {
+                                        onSortSelected(i)
+                                        showSortOptions = false
+                                    }
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -1469,7 +1493,10 @@ private fun SortDialog(
                 Row(
                     modifier = Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                        .clickable { showPriceOptions = !showPriceOptions; showSortOptions = false }
+                        .motionClickable {
+                            showPriceOptions = !showPriceOptions
+                            showSortOptions = false
+                        }
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1486,10 +1513,15 @@ private fun SortDialog(
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                     Spacer(Modifier.width(4.dp))
-                    DropdownArrowEndAction(
-                        actionColor = MiuixTheme.colorScheme.onSurface.copy(
-                            alpha = DesignTokens.OpacityBody
-                        )
+                    ExpandableArrow(
+                        expanded = showPriceOptions,
+                        color = if (showPriceOptions) {
+                            DesignTokens.AccentBlue
+                        } else {
+                            MiuixTheme.colorScheme.onSurface.copy(
+                                alpha = DesignTokens.OpacityBody
+                            )
+                        }
                     )
                 }
                 AnimatedVisibility(
@@ -1502,7 +1534,10 @@ private fun SortDialog(
                             val sel = currentPrice == i
                             Row(
                                 modifier = Modifier.fillMaxWidth()
-                                    .clickable { onPriceSelected(i); showPriceOptions = false }
+                                    .motionClickable {
+                                        onPriceSelected(i)
+                                        showPriceOptions = false
+                                    }
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -1542,12 +1577,16 @@ private fun SortDialog(
 }
 
 @Composable
-private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
+private fun MarketGameItem(
+    game: MarketGame,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     val context = LocalContext.current
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .motionClickable(pressedScale = 0.985f, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Top
     ) {
@@ -1640,7 +1679,7 @@ private fun MarketGameItem(game: MarketGame, onClick: () -> Unit) {
 // ── 动漫条目骨架（100×140 封面 + 文字行 + 状态行） ──
 @Composable
 private fun BangumiSkeletonCard() {
-    val bg = MiuixTheme.colorScheme.surfaceVariant
+    val bg = loadingSkeletonBaseColor()
     val shimmer = rememberLoadingSkeletonBrush()
     val coverW = 80.dp; val coverH = 112.dp
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.Top) {
@@ -1666,7 +1705,7 @@ private fun BangumiSkeletonCard() {
 
 @Composable
 private fun SkeletonCard() {
-    val bg = MiuixTheme.colorScheme.surfaceVariant
+    val bg = loadingSkeletonBaseColor()
     val shimmer = rememberLoadingSkeletonBrush()
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight).clip(RoundedCornerShape(DesignTokens.CornerMedium)).background(bg))
@@ -1693,7 +1732,7 @@ private fun ShimmerBox(
 // 库存页顶部骨架
 @Composable
 private fun LibraryTopSkeleton(showProfile: Boolean) {
-    val bg = MiuixTheme.colorScheme.surfaceVariant
+    val bg = loadingSkeletonBaseColor()
     Column(Modifier.fillMaxWidth()) {
         if (showProfile) {
             Box(Modifier
@@ -1825,7 +1864,12 @@ private fun ActivityPage(
     val activityLoading =
         snapshotLoading || steamLoading == true || includeAnime && bangumiLoading == true
 
-    if (activityLoading) {
+    Crossfade(
+        targetState = activityLoading,
+        animationSpec = tween(DesignTokens.AnimDuration),
+        label = "activity_page_loading"
+    ) { loading ->
+    if (loading) {
         ActivityPageLoadingSkeleton(topBarInsetDp)
     } else {
         PullToRefresh(
@@ -1888,14 +1932,27 @@ private fun ActivityPage(
                             )
                         )
                     }
-                    Text(
-                        text = selectedYear.toString(),
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        fontSize = 42.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = yearFontFamily,
-                        color = DesignTokens.AccentBlue
-                    )
+                    AnimatedContent(
+                        targetState = selectedYear,
+                        transitionSpec = {
+                            (fadeIn(tween(DesignTokens.FadeInDuration)) +
+                                slideInVertically { height -> height / 3 })
+                                .togetherWith(
+                                    fadeOut(tween(DesignTokens.FadeOutDuration)) +
+                                        slideOutVertically { height -> -height / 3 }
+                                )
+                        },
+                        label = "activity_year_change"
+                    ) { year ->
+                        Text(
+                            text = year.toString(),
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            fontSize = 42.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = yearFontFamily,
+                            color = DesignTokens.AccentBlue
+                        )
+                    }
                     IconButton(
                         onClick = {
                             selectedYear++
@@ -1929,39 +1986,58 @@ private fun ActivityPage(
                 )
             }
             item("activity_summary") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (showExactDate) {
+                val summaryState = ActivitySummaryUi(
+                    date = selectedDate.takeIf { showExactDate },
+                    gameMinutes = summaryGameMinutes,
+                    animeEpisodes = summaryAnimeEpisodes,
+                    includeAnime = includeAnime
+                )
+                AnimatedContent(
+                    targetState = summaryState,
+                    transitionSpec = {
+                        (fadeIn(tween(DesignTokens.FadeInDuration)) +
+                            slideInVertically { height -> height / 4 })
+                            .togetherWith(
+                                fadeOut(tween(DesignTokens.FadeOutDuration)) +
+                                    slideOutVertically { height -> -height / 4 }
+                            )
+                    },
+                    label = "activity_summary_change"
+                ) { summary ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (summary.date != null) {
+                            Text(
+                                text = summary.date,
+                                fontSize = DesignTokens.TextBody1.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = yearFontFamily
+                            )
+                            Spacer(Modifier.height(DesignTokens.SpaceSm))
+                        }
                         Text(
-                            text = selectedDate,
-                            fontSize = DesignTokens.TextBody1.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = yearFontFamily
+                            text = if (summary.includeAnime) {
+                                context.getString(
+                                    R.string.activity_stats_combined,
+                                    formatActivityHours(summary.gameMinutes),
+                                    summary.animeEpisodes
+                                )
+                            } else {
+                                context.getString(
+                                    R.string.activity_stats_game_only,
+                                    formatActivityHours(summary.gameMinutes)
+                                )
+                            },
+                            fontSize = DesignTokens.TextBody2.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(
+                                alpha = DesignTokens.OpacityBody
+                            )
                         )
-                        Spacer(Modifier.height(DesignTokens.SpaceSm))
                     }
-                    Text(
-                        text = if (includeAnime) {
-                            context.getString(
-                                R.string.activity_stats_combined,
-                                formatActivityHours(summaryGameMinutes),
-                                summaryAnimeEpisodes
-                            )
-                        } else {
-                            context.getString(
-                                R.string.activity_stats_game_only,
-                                formatActivityHours(summaryGameMinutes)
-                            )
-                        },
-                        fontSize = DesignTokens.TextBody2.sp,
-                        color = MiuixTheme.colorScheme.onSurface.copy(
-                            alpha = DesignTokens.OpacityBody
-                        )
-                    )
                 }
             }
 
@@ -1999,6 +2075,7 @@ private fun ActivityPage(
                 ) { rowIndex ->
                     Row(
                         modifier = Modifier
+                            .animateItem()
                             .fillMaxWidth()
                             .padding(horizontal = 18.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2027,6 +2104,7 @@ private fun ActivityPage(
                 }
             }
         }
+    }
     }
     }
 }
@@ -2127,7 +2205,7 @@ private fun ActivityCover(entry: ActivityEntry, modifier: Modifier, onClick: () 
             .aspectRatio(0.67f)
             .clip(RoundedCornerShape(DesignTokens.CornerMedium))
             .background(MiuixTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
+            .motionClickable(pressedScale = 0.95f, onClick = onClick)
     ) {
         val imageRequest = remember(imageModel, entry.kind, entry.id) {
             ImageRequest.Builder(context)
@@ -2176,6 +2254,13 @@ private fun activityDateString(calendar: Calendar): String = String.format(
 
 private fun formatActivityHours(minutes: Int): String =
     String.format(Locale.US, "%.1f", minutes / 60.0)
+
+private data class ActivitySummaryUi(
+    val date: String?,
+    val gameMinutes: Int,
+    val animeEpisodes: Int,
+    val includeAnime: Boolean
+)
 
 /** Bangumi 收藏类型 → 标签颜色 */
 private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
@@ -2289,7 +2374,7 @@ private fun BangumiPage(
         }
         // 骨架材质（@Composable，在此处初始化供 LazyColumn 使用）
         val shimmer = rememberLoadingSkeletonBrush()
-        val skelBg = MiuixTheme.colorScheme.secondaryContainer
+        val skelBg = loadingSkeletonBaseColor()
 
         // ── 状态变量 ──
         val allItems = remember(collectionMap) {
@@ -2350,7 +2435,7 @@ private fun BangumiPage(
                 item("skel_search") {
                     Box(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 18.dp, vertical = 4.dp)
                         .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                        .background(MiuixTheme.colorScheme.surfaceVariant))
+                        .background(loadingSkeletonBaseColor()))
                 }
                 // 筛选条骨架
                 item("skel_filters") {
@@ -2463,6 +2548,7 @@ private fun BangumiPage(
                             ratings = ratingsMap,
                             episodeTotals = episodeTotalsMap,
                             watchedEpisodeCounts = watchedEpisodeCountsMap,
+                            modifier = Modifier.animateItem(),
                             onClick = {
                             onNavigateToDetail(item.subject_id,
                                 item.subject?.name ?: "",
@@ -2485,6 +2571,7 @@ private fun BangumiItem(
     ratings: Map<Int, Any?>,
     episodeTotals: Map<Int, Int>,
     watchedEpisodeCounts: Map<Int, Int>,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val sub = item.subject ?: return
@@ -2525,9 +2612,9 @@ private fun BangumiItem(
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .noRippleClickable { onClick() }
+            .motionClickable(pressedScale = 0.985f, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top
     ) {
@@ -2627,7 +2714,7 @@ private fun BangumiGridItem(imageUrl: String?, modifier: Modifier = Modifier, on
             .aspectRatio(aspectRatio)
             .clip(RoundedCornerShape(6.dp))
             .background(MiuixTheme.colorScheme.surfaceVariant)
-            .noRippleClickable { onClick() },
+            .motionClickable(pressedScale = 0.95f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (imageUrl != null) {

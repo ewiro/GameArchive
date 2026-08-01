@@ -245,6 +245,8 @@
     <string name="general_delete">Delete</string>
     <string name="general_load_failed">Failed to load</string>
     <string name="general_sort">Sort</string>
+    <string name="accessibility_expanded">Expanded</string>
+    <string name="accessibility_collapsed">Collapsed</string>
     <string name="tag_create">Create</string>
     <string name="bangumi_tags_title">Tags</string>
     <string name="bangumi_summary_title">Summary</string>

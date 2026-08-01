@@ -1,8 +1,7 @@
 package com.example.gamearchive
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -36,12 +34,15 @@ fun ActivityHistorySection(
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Row(
+        ExpandableSectionTrigger(
+            expanded = expanded,
+            onToggle = { expanded = !expanded },
             modifier = Modifier
-                .fillMaxWidth()
-                .noRippleClickable { expanded = !expanded }
-                .padding(vertical = DesignTokens.SpaceLg),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = DesignTokens.SpaceLg),
+            arrowColor = MiuixTheme.colorScheme.onSurface.copy(
+                alpha = DesignTokens.OpacityHint
+            )
         ) {
             Text(
                 text = context.getString(
@@ -56,18 +57,8 @@ fun ActivityHistorySection(
                 color = if (dimTitle) dim else MiuixTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
-            ExpandableArrow(
-                expanded = expanded,
-                color = MiuixTheme.colorScheme.onSurface.copy(
-                    alpha = DesignTokens.OpacityHint
-                )
-            )
         }
-        AnimatedVisibility(
-            visible = expanded,
-            enter = smoothExpandEnter(),
-            exit = smoothExpandExit()
-        ) {
+        ExpandableSectionContent(expanded = expanded) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

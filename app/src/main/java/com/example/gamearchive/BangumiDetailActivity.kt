@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -418,7 +420,13 @@ private fun BangumiDetailScreen(
                     )
                 }
 
-                if (isLoading) {
+                Crossfade(
+                    targetState = isLoading,
+                    modifier = Modifier.weight(1f),
+                    animationSpec = tween(DesignTokens.AnimDuration),
+                    label = "anime_detail_loading"
+                ) { loading ->
+                if (loading) {
                     AnimeDetailLoadingSkeleton()
                 } else if (detail != null) {
                     val d = detail!!
@@ -576,11 +584,7 @@ private fun BangumiDetailScreen(
                                     expanded = isProgressExpanded,
                                     onToggle = { isProgressExpanded = !isProgressExpanded }
                                 )
-                                AnimatedVisibility(
-                                    visible = isProgressExpanded,
-                                    enter = smoothExpandEnter(),
-                                    exit = smoothExpandExit()
-                                ) {
+                                ExpandableSectionContent(expanded = isProgressExpanded) {
                                     Column(
                                         modifier = Modifier.padding(
                                             start = DesignTokens.SpaceXl,
@@ -810,32 +814,45 @@ private fun BangumiDetailScreen(
                                     )
                                     Spacer(Modifier.height(DesignTokens.SpaceXxl))
 
+                                    val saveButtonColor by animateColorAsState(
+                                        targetValue = if (isSaving || draftType == 0) {
+                                            buttonBgColor().copy(
+                                                alpha = DesignTokens.OpacityDisabled
+                                            )
+                                        } else {
+                                            buttonBgColor()
+                                        },
+                                        animationSpec = tween(DesignTokens.AnimDuration),
+                                        label = "bangumi_save_button_color"
+                                    )
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(DesignTokens.ButtonHeight)
                                             .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                            .background(
-                                                if (isSaving || draftType == 0) {
-                                                    buttonBgColor().copy(alpha = DesignTokens.OpacityDisabled)
-                                                } else {
-                                                    buttonBgColor()
-                                                }
-                                            )
-                                            .noRippleClickable {
-                                                if (!isSaving && draftType != 0) saveCollection()
-                                            },
+                                            .background(saveButtonColor)
+                                            .motionClickable(
+                                                enabled = !isSaving && draftType != 0,
+                                                pressedScale = 0.98f,
+                                                onClick = { saveCollection() }
+                                            ),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = context.getString(
-                                                if (isSaving) R.string.bangumi_saving
-                                                else R.string.bangumi_save_collection
-                                            ),
-                                            fontSize = DesignTokens.TextBody1.sp,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Crossfade(
+                                            targetState = isSaving,
+                                            animationSpec = tween(DesignTokens.AnimDuration),
+                                            label = "bangumi_save_text"
+                                        ) { saving ->
+                                            Text(
+                                                text = context.getString(
+                                                    if (saving) R.string.bangumi_saving
+                                                    else R.string.bangumi_save_collection
+                                                ),
+                                                fontSize = DesignTokens.TextBody1.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                     }
                                 }
@@ -980,6 +997,7 @@ private fun BangumiDetailScreen(
                         Text(context.getString(R.string.general_load_failed), color = dim)
                     }
                 }
+                }
             }
         }
 
@@ -1017,8 +1035,8 @@ private fun BangumiDetailScreen(
                     }
                     AnimatedVisibility(
                         visible = isStatusDropdownVisible,
-                        enter = smoothExpandEnter(),
-                        exit = smoothExpandExit()
+                        enter = dropdownPopupEnter(),
+                        exit = dropdownPopupExit()
                     ) {
                         Card(
                             modifier = Modifier
@@ -1032,7 +1050,7 @@ private fun BangumiDetailScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .noRippleClickable {
+                                            .motionClickable {
                                                 draftType = apiType
                                                 isStatusDropdownVisible = false
                                             }
@@ -1081,6 +1099,7 @@ private fun BangumiDetailScreen(
             ) {
                 Card(
                     modifier = Modifier
+                        .motionDialogSurface()
                         .fillMaxWidth()
                         .padding(horizontal = DesignTokens.SpaceXl)
                         .imePadding(),
@@ -1204,19 +1223,16 @@ private fun ProgressSectionHeader(
     onToggle: () -> Unit
 ) {
     val context = LocalContext.current
-    Row(
+    ExpandableSectionTrigger(
+        expanded = expanded,
+        onToggle = onToggle,
         modifier = Modifier
             .fillMaxWidth()
             .height(DesignTokens.ButtonHeight)
-            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-            .semantics {
-                contentDescription = context.getString(
-                    if (expanded) R.string.bangumi_progress_collapse
-                    else R.string.bangumi_progress_expand
-                )
-            }
-            .noRippleClickable { onToggle() },
-        verticalAlignment = Alignment.CenterVertically
+            .clip(RoundedCornerShape(DesignTokens.CornerMedium)),
+        arrowColor = MiuixTheme.colorScheme.onSurface.copy(
+            alpha = DesignTokens.OpacityBody
+        )
     ) {
         Text(
             text = context.getString(R.string.bangumi_my_collection),
@@ -1224,12 +1240,6 @@ private fun ProgressSectionHeader(
             fontWeight = FontWeight.Bold,
             color = MiuixTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
-        )
-        ExpandableArrow(
-            expanded = expanded,
-            color = MiuixTheme.colorScheme.onSurface.copy(
-                alpha = DesignTokens.OpacityBody
-            )
         )
     }
 }
