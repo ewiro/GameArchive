@@ -61,7 +61,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.Collator
+import java.util.Locale
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -74,6 +77,25 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.icon.basic.*
 import androidx.compose.ui.state.ToggleableState
+
+private val TAG_PINYIN_INITIAL_BOUNDARIES = listOf(
+    'A' to "阿", 'B' to "芭", 'C' to "擦", 'D' to "搭", 'E' to "蛾",
+    'F' to "发", 'G' to "噶", 'H' to "哈", 'J' to "击", 'K' to "喀",
+    'L' to "垃", 'M' to "妈", 'N' to "拿", 'O' to "哦", 'P' to "啪",
+    'Q' to "期", 'R' to "然", 'S' to "撒", 'T' to "塌", 'W' to "挖",
+    'X' to "昔", 'Y' to "压", 'Z' to "匝"
+)
+
+private fun tagAlphabetGroup(tag: String, collator: Collator): Char {
+    val first = tag.firstOrNull() ?: return Char.MIN_VALUE
+    if (first in 'a'..'z') return first.uppercaseChar()
+    if (first in 'A'..'Z') return first
+    if (first !in '\u4E00'..'\u9FFF') return first.uppercaseChar()
+    return TAG_PINYIN_INITIAL_BOUNDARIES
+        .lastOrNull { (_, boundary) -> collator.compare(first.toString(), boundary) >= 0 }
+        ?.first
+        ?: first
+}
 
 @Suppress("DEPRECATION")
 class DetailActivity : ComponentActivity() {
@@ -124,7 +146,20 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
     var gameTags by remember { mutableStateOf(GameTags.getTagsForGame(context, appId)) }
     var showTagSheet by remember { mutableStateOf(false) }
     var tagRefresh by remember { mutableIntStateOf(0) }
-    val allTags = remember(tagRefresh) { GameTags.getAllTags(context).distinctBy { it.lowercase() } }
+    val tagCollator = remember {
+        Collator.getInstance(Locale.SIMPLIFIED_CHINESE).apply {
+            strength = Collator.PRIMARY
+        }
+    }
+    val allTags = remember(tagRefresh) {
+        GameTags.getAllTags(context)
+            .distinctBy { it.lowercase() }
+            .sortedWith { first, second ->
+                val groupComparison = tagAlphabetGroup(first, tagCollator)
+                    .compareTo(tagAlphabetGroup(second, tagCollator))
+                if (groupComparison != 0) groupComparison else tagCollator.compare(first, second)
+            }
+    }
 
     // 备注状态
     var gameNote by remember { mutableStateOf(GameNotes.getNote(context, appId)) }
@@ -954,6 +989,8 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         )
                         // ── 新建标签 ──
                         var newTagInput by remember { mutableStateOf("") }
+                        val tagListState = rememberLazyListState()
+                        val tagListScope = rememberCoroutineScope()
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(IntrinsicSize.Max)) {
                             top.yukonga.miuix.kmp.basic.TextField(
                                 value = newTagInput,
@@ -973,14 +1010,19 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                     .then(if (newTagInput.trim().isNotEmpty()) Modifier.noRippleClickable {
                                         val trimmed = newTagInput.trim()
                                         if (trimmed.isEmpty()) return@noRippleClickable
-                                        if (allTags.any { it.equals(trimmed, ignoreCase = true) }) {
+                                        val existingTagIndex = allTags.indexOfFirst { it.equals(trimmed, ignoreCase = true) }
+                                        if (existingTagIndex >= 0) {
                                             android.widget.Toast.makeText(context, R.string.tag_exists, android.widget.Toast.LENGTH_SHORT).show()
+                                            tagListScope.launch {
+                                                tagListState.animateScrollToItem(existingTagIndex)
+                                            }
                                             return@noRippleClickable
                                         }
                                         GameTags.addTag(context, trimmed)
                                         gameTags = gameTags + trimmed
                                         GameTags.setTagsForGame(context, appId, gameTags)
                                         newTagInput = ""
+                                        tagRefresh++
                                     } else Modifier)
                                     .padding(horizontal = DesignTokens.SpaceXl),
                                 contentAlignment = Alignment.Center
@@ -998,13 +1040,13 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
                         } else {
-                            Column(
+                            LazyColumn(
+                                state = tagListState,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(max = 420.dp)
-                                    .verticalScroll(rememberScrollState())
                             ) {
-                                allTags.forEach { tag ->
+                                items(allTags, key = { it.lowercase() }) { tag ->
                                     val checked = gameTags.contains(tag)
                                     Row(
                                         modifier = Modifier
