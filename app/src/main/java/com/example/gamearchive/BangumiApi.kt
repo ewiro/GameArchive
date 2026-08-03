@@ -141,10 +141,10 @@ interface BangumiService {
     val images: BangumiImages? = null
 )
 
-// --- OAuth 接口（直连 bgm.tv）---
+// --- OAuth 接口（通过公共代理转发到 bgm.tv）---
 interface BangumiOAuthService {
     @FormUrlEncoded
-    @POST("oauth/access_token")
+    @POST("bangumi-oauth/access_token")
     suspend fun getToken(
         @Field("grant_type") grantType: String,
         @Field("client_id") clientId: String,

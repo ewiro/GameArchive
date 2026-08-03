@@ -3,6 +3,7 @@ export default {
     const incomingUrl = new URL(request.url);
     let url = new URL(incomingUrl);
     let publicSteamRoute = false;
+    let bangumiOAuthRoute = false;
     
     // 1. 智能路由
     if (url.pathname.startsWith('/community/miniprofile/')) {
@@ -36,6 +37,14 @@ export default {
       }
       url = parsedMediaUrl;
       publicSteamRoute = true;
+    } else if (url.pathname === '/bangumi-oauth/access_token') {
+      if (request.method !== 'POST') {
+        return methodNotAllowed('POST');
+      }
+      url.hostname = 'bgm.tv';
+      url.pathname = '/oauth/access_token';
+      url.search = '';
+      bangumiOAuthRoute = true;
     } else if (url.pathname.startsWith('/bangumi/')) {
       // Bangumi API 代理
       url.hostname = "api.bgm.tv";
@@ -71,7 +80,11 @@ export default {
     newHeaders.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
     newHeaders.set(
       "Referer",
-      publicSteamRoute ? "https://steamcommunity.com/" : "https://store.steampowered.com/"
+      publicSteamRoute
+        ? "https://steamcommunity.com/"
+        : bangumiOAuthRoute
+          ? "https://bgm.tv/"
+          : "https://store.steampowered.com/"
     );
     newHeaders.set("X-Requested-With", "XMLHttpRequest");
     
@@ -97,6 +110,10 @@ export default {
     const newResponse = new Response(response.body, response);
     newResponse.headers.set("Access-Control-Allow-Origin", "*");
     newResponse.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    if (bangumiOAuthRoute) {
+      newResponse.headers.set("Cache-Control", "no-store");
+      newResponse.headers.set("Pragma", "no-cache");
+    }
     
     return newResponse;
   },

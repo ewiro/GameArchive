@@ -43,10 +43,10 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
                 .create(BangumiService::class.java)
         }
 
-        /** Bangumi OAuth 服务（直连 bgm.tv） */
+        /** Bangumi OAuth 服务（通过公共代理转发到 bgm.tv） */
         val bgmOAuthService: BangumiOAuthService by lazy {
             Retrofit.Builder()
-                .baseUrl("https://bgm.tv/")
+                .baseUrl(AppConfig.PROXY_URL)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
