@@ -1791,7 +1791,7 @@ private fun ActivityPage(
 ) {
     val context = LocalContext.current
     val yearFontFamily = remember {
-        FontFamily(Font(R.font.dseg7_classic_bold, FontWeight.Bold))
+        FontFamily(Font(R.font.digital_numbers_regular, FontWeight.Bold))
     }
     val steamLoading by libraryViewModel.loading.observeAsState()
     val bangumiLoading by bangumiViewModel.loading.observeAsState()

@@ -637,11 +637,6 @@ fun isAppInDarkTheme(): Boolean {
 fun buttonBgColor(lightColor: Color = DesignTokens.AccentBlue): Color =
     if (isAppInDarkTheme()) Color(0xFF3A3A3C) else lightColor
 
-/** 主题自适应标签背景色 — 浅色蓝底 / 深色灰底 */
-@Composable
-fun tagBgColor(): Color =
-    if (isAppInDarkTheme()) Color(0xFF3A3A3C) else DesignTokens.AccentBlue
-
 /** 获取状态栏高度（dp），消除 5 处重复代码 */
 @Composable
 fun statusBarHeightDp(): Dp {

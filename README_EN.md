@@ -61,6 +61,7 @@ The project is designed for players and anime viewers who want to keep control o
 - The first sync creates a baseline and never counts existing totals as today's activity.
 - Browse a single day or the complete cover history up to a selected date, then open the corresponding details.
 - When the Anime page is disabled, only game activity is shown.
+- Imports game tags, play history, and anime watch history from Obsidian Markdown notes.
 
 ### Steam specials and customization
 
@@ -93,6 +94,49 @@ The app never asks for your Steam password, Steam Guard code, or login cookies. 
 ### Bangumi
 
 Bangumi support is optional. In Settings, add an account and choose Bangumi. The app opens your browser to complete OAuth authorization.
+
+### Importing Obsidian Markdown
+
+Open **Settings → Data Management → Import Obsidian Records** and select the folder containing your notes. The app recursively reads `.md` files in that folder and its subfolders. Each note must start with `---`, with all importable data in the front matter at the top of the file.
+
+Game note example:
+
+```yaml
+---
+中文名: 古墓丽影9
+英文名: Tomb Raider Game of the Year
+历史记录:
+  2026-06-04: 2
+  2026-06-05: 1.4
+tags:
+  - 游戏记录
+  - Action
+  - Adventure
+---
+```
+
+Anime note example:
+
+```yaml
+---
+中文名: 紫罗兰永恒花园
+外文名: Violet Evergarden
+历史记录:
+  2026-05-19: 1
+  2026-05-20: 2
+tags:
+  - 动漫记录
+---
+```
+
+Format and import rules:
+
+- Front-matter field names are literal and must remain in Chinese exactly as shown in the examples.
+- `tags` must be a multiline list containing either `游戏记录` for games or `动漫记录` for anime. Inline forms such as `tags: [游戏记录]` are not supported.
+- Subjects can be matched by the filename or the `中文名`, `英文名`, and `外文名` fields. Full-title exact matching is attempted first; game edition suffixes and anime movie prefixes are considered only as a fallback. A note is skipped if it cannot be matched uniquely.
+- A game must exist in the library of a configured Steam account. Game notes import history and every tag except `游戏记录`; anime notes import history only.
+- Dates under `历史记录` must use `YYYY-MM-DD`, and values must be greater than `0`. Game values are hours, so `1.4` means 84 minutes. Anime values are episode counts and may be fractional.
+- Imported data stays on the device and is never written to Bangumi. Existing records for the same subject and date are neither added to nor overwritten, so importing the same folder again is safe.
 
 ## Build from source
 

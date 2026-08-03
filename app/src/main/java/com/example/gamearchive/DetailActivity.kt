@@ -643,9 +643,8 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                 Text(
                                     text = tag,
                                     fontSize = DesignTokens.TextBody1.sp,
-                                    color = Color.White,
+                                    color = DesignTokens.AccentBlue,
                                     modifier = Modifier
-                                        .background(tagBgColor(), RoundedCornerShape(DesignTokens.CornerSmall))
                                         .padding(horizontal = 6.dp, vertical = 3.dp)
                                 )
                             }
