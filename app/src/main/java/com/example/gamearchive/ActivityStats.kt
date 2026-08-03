@@ -6,9 +6,11 @@ import androidx.lifecycle.MutableLiveData
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
+import java.math.BigDecimal
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.abs
 
 enum class ActivityKind { GAME, ANIME }
 
@@ -19,14 +21,14 @@ data class ActivityEntry(
     val secondaryTitle: String,
     val imageUrl: String,
     val gameMinutes: Int,
-    val animeEpisodes: Int,
+    val animeEpisodes: Double,
     val lastRecordedAt: Long
 )
 
 data class DailyActivity(
     val date: String,
     val gameMinutes: Int,
-    val animeEpisodes: Int,
+    val animeEpisodes: Double,
     val entries: List<ActivityEntry>
 ) {
     val score: Double get() = gameMinutes / 60.0 + animeEpisodes
@@ -34,8 +36,28 @@ data class DailyActivity(
 
 data class ItemActivityRecord(
     val date: String,
-    val amount: Int
+    val amount: Double
 )
+
+data class ActivityImportRecord(
+    val kind: ActivityKind,
+    val id: Int,
+    val title: String,
+    val secondaryTitle: String,
+    val imageUrl: String,
+    val date: String,
+    val gameMinutes: Int = 0,
+    val animeEpisodes: Double = 0.0
+)
+
+fun formatEpisodeAmount(amount: Double): String {
+    val rounded = amount.toLong()
+    return if (abs(amount - rounded) < 0.000001) {
+        rounded.toString()
+    } else {
+        BigDecimal.valueOf(amount).stripTrailingZeros().toPlainString()
+    }
+}
 
 data class ActivityYearSnapshot(
     val stats: Map<String, DailyActivity>,
@@ -90,7 +112,7 @@ object ActivityStats {
                     secondaryTitle = "",
                     imageUrl = steamPortraitUrl(game.appid),
                     gameMinutes = current - previous,
-                    animeEpisodes = 0,
+                    animeEpisodes = 0.0,
                     recordedAt = playedAt ?: observedAt
                 )
             }
@@ -155,7 +177,7 @@ object ActivityStats {
                                 ?: subject?.images?.medium
                                 ?: "",
                             gameMinutes = 0,
-                            animeEpisodes = 1,
+                            animeEpisodes = 1.0,
                             recordedAt = bangumiEpisodeUpdatedAt(
                                 episode.updated_at,
                                 observedAt
@@ -174,7 +196,7 @@ object ActivityStats {
                                 ?: subject?.images?.medium
                                 ?: "",
                             gameMinutes = 0,
-                            animeEpisodes = 1,
+                            animeEpisodes = 1.0,
                             recordedAt = observedAt
                         )
                     }
@@ -238,7 +260,7 @@ object ActivityStats {
                 secondaryTitle = secondaryTitle,
                 imageUrl = imageUrl,
                 gameMinutes = 0,
-                animeEpisodes = delta,
+                animeEpisodes = delta.toDouble(),
                 recordedAt = recordedAt
             )
         }
@@ -289,7 +311,7 @@ object ActivityStats {
         context: Context,
         subjectId: Int,
         date: String,
-        episodes: Int
+        episodes: Double
     ): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
@@ -297,30 +319,30 @@ object ActivityStats {
         val entries = day.optJSONObject("entries") ?: return false
         val entryKey = "${ActivityKind.ANIME.name.lowercase(Locale.US)}:$subjectId"
         val entry = entries.optJSONObject(entryKey) ?: return false
-        val previousEpisodes = entry.optInt("anime_episodes")
-        val updatedEpisodes = episodes.coerceAtLeast(0)
+        val previousEpisodes = entry.optDouble("anime_episodes", 0.0)
+        val updatedEpisodes = episodes.coerceAtLeast(0.0)
         if (previousEpisodes == updatedEpisodes) return false
 
-        if (updatedEpisodes == 0) {
+        if (updatedEpisodes == 0.0) {
             entries.remove(entryKey)
         } else {
             entry.put("anime_episodes", updatedEpisodes)
             entries.put(entryKey, entry)
         }
 
-        var animeTotal = 0
+        var animeTotal = 0.0
         val entryKeys = entries.keys()
         while (entryKeys.hasNext()) {
             animeTotal += entries.optJSONObject(entryKeys.next())
-                ?.optInt("anime_episodes")
-                ?: 0
+                ?.optDouble("anime_episodes", 0.0)
+                ?: 0.0
         }
         day
-            .put("anime_episodes", animeTotal.coerceAtLeast(0))
+            .put("anime_episodes", animeTotal.coerceAtLeast(0.0))
             .put("entries", entries)
         if (
             day.optInt("game_minutes") == 0 &&
-            day.optInt("anime_episodes") == 0 &&
+            day.optDouble("anime_episodes", 0.0) == 0.0 &&
             entries.length() == 0
         ) {
             days.remove(date)
@@ -330,6 +352,107 @@ object ActivityStats {
         prefs.edit().putString(KEY_DAILY_ACTIVITY, days.toString()).apply()
         notifyChanged()
         return true
+    }
+
+    /**
+     * 导入本地历史记录。已有的同条目同日期记录保持不变，确保重复导入不会叠加，
+     * 也不会覆盖由 Steam 或 Bangumi 同步得到的本地记录。
+     */
+    @Synchronized
+    fun importRecords(context: Context, records: List<ActivityImportRecord>): Int {
+        if (records.isEmpty()) return 0
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
+        var importedCount = 0
+
+        records.forEach { record ->
+            val recordedAt = dateTimestamp(record.date) ?: return@forEach
+            val day = days.optJSONObject(record.date) ?: JSONObject()
+            val entries = day.optJSONObject("entries") ?: JSONObject()
+            val entryKey = "${record.kind.name.lowercase(Locale.US)}:${record.id}"
+            if (entries.optJSONObject(entryKey) != null) return@forEach
+            if (record.gameMinutes <= 0 && record.animeEpisodes <= 0.0) return@forEach
+
+            val entry = JSONObject()
+                .put("kind", record.kind.name)
+                .put("id", record.id)
+                .put("title", record.title)
+                .put("secondary_title", record.secondaryTitle)
+                .put("image_url", record.imageUrl)
+                .put("game_minutes", record.gameMinutes.coerceAtLeast(0))
+                .put("anime_episodes", record.animeEpisodes.coerceAtLeast(0.0))
+                .put("last_recorded_at", recordedAt)
+                .put("source", "obsidian")
+            entries.put(entryKey, entry)
+            day
+                .put("game_minutes", day.optInt("game_minutes") + record.gameMinutes)
+                .put(
+                    "anime_episodes",
+                    day.optDouble("anime_episodes", 0.0) + record.animeEpisodes
+                )
+                .put("entries", entries)
+            days.put(record.date, day)
+            importedCount++
+        }
+
+        if (importedCount > 0) {
+            prefs.edit().putString(KEY_DAILY_ACTIVITY, days.toString()).apply()
+            notifyChanged()
+        }
+        return importedCount
+    }
+
+    /** 移除旧版导入器误匹配到其他条目的 Obsidian 记录。 */
+    @Synchronized
+    fun removeImportedRecords(
+        context: Context,
+        kind: ActivityKind,
+        id: Int,
+        dates: Set<String>
+    ): Int {
+        if (dates.isEmpty()) return 0
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
+        val entryKey = "${kind.name.lowercase(Locale.US)}:$id"
+        var removedCount = 0
+
+        dates.forEach { date ->
+            val day = days.optJSONObject(date) ?: return@forEach
+            val entries = day.optJSONObject("entries") ?: return@forEach
+            val entry = entries.optJSONObject(entryKey) ?: return@forEach
+            if (entry.optString("source") != "obsidian") return@forEach
+            entries.remove(entryKey)
+            day
+                .put(
+                    "game_minutes",
+                    (day.optInt("game_minutes") - entry.optInt("game_minutes"))
+                        .coerceAtLeast(0)
+                )
+                .put(
+                    "anime_episodes",
+                    (
+                        day.optDouble("anime_episodes", 0.0) -
+                            entry.optDouble("anime_episodes", 0.0)
+                        ).coerceAtLeast(0.0)
+                )
+                .put("entries", entries)
+            if (
+                day.optInt("game_minutes") == 0 &&
+                day.optDouble("anime_episodes", 0.0) == 0.0 &&
+                entries.length() == 0
+            ) {
+                days.remove(date)
+            } else {
+                days.put(date, day)
+            }
+            removedCount++
+        }
+
+        if (removedCount > 0) {
+            prefs.edit().putString(KEY_DAILY_ACTIVITY, days.toString()).apply()
+            notifyChanged()
+        }
+        return removedCount
     }
 
     @Synchronized
@@ -362,7 +485,7 @@ object ActivityStats {
                 day
             } else {
                 day.copy(
-                    animeEpisodes = 0,
+                    animeEpisodes = 0.0,
                     entries = day.entries.filter { it.kind == ActivityKind.GAME }
                 )
             }
@@ -431,14 +554,14 @@ object ActivityStats {
                 ?.optJSONObject("entries")
                 ?.optJSONObject(entryKey)
                 ?: continue
-            val amount = entry.optInt(amountKey)
-            if (amount > 0) records += ItemActivityRecord(date, amount)
+            val amount = entry.optDouble(amountKey, 0.0)
+            if (amount > 0.0) records += ItemActivityRecord(date, amount)
         }
         return records.sortedBy { it.date }
     }
 
     private fun decodeDay(date: String, source: JSONObject?): DailyActivity {
-        if (source == null) return DailyActivity(date, 0, 0, emptyList())
+        if (source == null) return DailyActivity(date, 0, 0.0, emptyList())
         val entriesObject = source.optJSONObject("entries") ?: JSONObject()
         val entries = mutableListOf<ActivityEntry>()
         val keys = entriesObject.keys()
@@ -454,14 +577,14 @@ object ActivityStats {
                 secondaryTitle = entry.optString("secondary_title"),
                 imageUrl = entry.optString("image_url"),
                 gameMinutes = entry.optInt("game_minutes"),
-                animeEpisodes = entry.optInt("anime_episodes"),
+                animeEpisodes = entry.optDouble("anime_episodes", 0.0),
                 lastRecordedAt = entry.optLong("last_recorded_at")
             )
         }
         return DailyActivity(
             date = date,
             gameMinutes = source.optInt("game_minutes"),
-            animeEpisodes = source.optInt("anime_episodes"),
+            animeEpisodes = source.optDouble("anime_episodes", 0.0),
             entries = entries.sortedByDescending { it.lastRecordedAt }
         )
     }
@@ -474,7 +597,7 @@ object ActivityStats {
         secondaryTitle: String,
         imageUrl: String,
         gameMinutes: Int,
-        animeEpisodes: Int,
+        animeEpisodes: Double,
         recordedAt: Long
     ) {
         val date = localDate(recordedAt)
@@ -489,12 +612,18 @@ object ActivityStats {
             .put("secondary_title", secondaryTitle)
             .put("image_url", imageUrl)
             .put("game_minutes", existing.optInt("game_minutes") + gameMinutes)
-            .put("anime_episodes", existing.optInt("anime_episodes") + animeEpisodes)
+            .put(
+                "anime_episodes",
+                existing.optDouble("anime_episodes", 0.0) + animeEpisodes
+            )
             .put("last_recorded_at", recordedAt)
         entries.put(entryKey, existing)
         day
             .put("game_minutes", day.optInt("game_minutes") + gameMinutes)
-            .put("anime_episodes", day.optInt("anime_episodes") + animeEpisodes)
+            .put(
+                "anime_episodes",
+                day.optDouble("anime_episodes", 0.0) + animeEpisodes
+            )
             .put("entries", entries)
         days.put(date, day)
     }
@@ -529,21 +658,28 @@ object ActivityStats {
         watchedEpisodes: List<BangumiUserEpisodeCollection>,
         observedAt: Long
     ) {
+        if (hasObsidianAnimeRecords(days, item.subject_id)) return
         val existingAmounts = animeRecordAmounts(days, item.subject_id)
         val recordedTotal = existingAmounts.values.sum()
-        if (recordedTotal <= 0 || recordedTotal > watchedEpisodes.size) return
+        val recordedTotalInt = recordedTotal.toInt()
+        if (
+            recordedTotal <= 0.0 ||
+            abs(recordedTotal - recordedTotalInt) > 0.000001 ||
+            recordedTotalInt > watchedEpisodes.size
+        ) return
 
         val timestampedEpisodes = watchedEpisodes.mapNotNull { episode ->
             bangumiEpisodeUpdatedAtOrNull(episode.updated_at, observedAt)?.let {
                 episode to it
             }
         }.sortedByDescending { it.second }
-        if (timestampedEpisodes.size < recordedTotal) return
+        if (timestampedEpisodes.size < recordedTotalInt) return
 
-        val recordedEpisodes = timestampedEpisodes.take(recordedTotal)
+        val recordedEpisodes = timestampedEpisodes.take(recordedTotalInt)
         val expectedAmounts = recordedEpisodes
             .groupingBy { localDate(it.second) }
             .eachCount()
+            .mapValues { (_, amount) -> amount.toDouble() }
         if (expectedAmounts == existingAmounts) return
 
         removeAnimeRecords(days, item.subject_id)
@@ -560,13 +696,13 @@ object ActivityStats {
                     ?: subject?.images?.medium
                     ?: "",
                 gameMinutes = 0,
-                animeEpisodes = 1,
+                animeEpisodes = 1.0,
                 recordedAt = recordedAt
             )
         }
     }
 
-    private fun animeRecordAmounts(days: JSONObject, subjectId: Int): Map<String, Int> {
+    private fun animeRecordAmounts(days: JSONObject, subjectId: Int): Map<String, Double> {
         val entryKey = "${ActivityKind.ANIME.name.lowercase(Locale.US)}:$subjectId"
         return buildMap {
             val dates = days.keys()
@@ -575,11 +711,24 @@ object ActivityStats {
                 val amount = days.optJSONObject(date)
                     ?.optJSONObject("entries")
                     ?.optJSONObject(entryKey)
-                    ?.optInt("anime_episodes")
-                    ?: 0
-                if (amount > 0) put(date, amount)
+                    ?.optDouble("anime_episodes", 0.0)
+                    ?: 0.0
+                if (amount > 0.0) put(date, amount)
             }
         }
+    }
+
+    private fun hasObsidianAnimeRecords(days: JSONObject, subjectId: Int): Boolean {
+        val entryKey = "${ActivityKind.ANIME.name.lowercase(Locale.US)}:$subjectId"
+        val dates = days.keys()
+        while (dates.hasNext()) {
+            val entry = days.optJSONObject(dates.next())
+                ?.optJSONObject("entries")
+                ?.optJSONObject(entryKey)
+                ?: continue
+            if (entry.optString("source") == "obsidian") return true
+        }
+        return false
     }
 
     private fun removeAnimeRecords(days: JSONObject, subjectId: Int) {
@@ -592,17 +741,17 @@ object ActivityStats {
             val day = days.optJSONObject(date) ?: return@forEach
             val entries = day.optJSONObject("entries") ?: return@forEach
             val entry = entries.optJSONObject(entryKey) ?: return@forEach
-            val episodes = entry.optInt("anime_episodes")
+            val episodes = entry.optDouble("anime_episodes", 0.0)
             entries.remove(entryKey)
             day
                 .put(
                     "anime_episodes",
-                    (day.optInt("anime_episodes") - episodes).coerceAtLeast(0)
+                    (day.optDouble("anime_episodes", 0.0) - episodes).coerceAtLeast(0.0)
                 )
                 .put("entries", entries)
             if (
                 day.optInt("game_minutes") == 0 &&
-                day.optInt("anime_episodes") == 0 &&
+                day.optDouble("anime_episodes", 0.0) == 0.0 &&
                 entries.length() == 0
             ) {
                 days.remove(date)
@@ -675,7 +824,7 @@ object ActivityStats {
         if (
             sourceEntries.length() == 0 &&
             sourceDay.optInt("game_minutes") == 0 &&
-            sourceDay.optInt("anime_episodes") == 0
+            sourceDay.optDouble("anime_episodes", 0.0) == 0.0
         ) {
             days.remove(detectedDate)
         } else {
@@ -690,13 +839,21 @@ object ActivityStats {
             secondaryTitle = "",
             imageUrl = imageUrl,
             gameMinutes = minutes,
-            animeEpisodes = 0,
+            animeEpisodes = 0.0,
             recordedAt = playedAt
         )
     }
 
     private fun localDate(timestamp: Long): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(timestamp))
+
+    private fun dateTimestamp(date: String): Long? {
+        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            isLenient = false
+        }
+        val parsed = runCatching { formatter.parse(date) }.getOrNull() ?: return null
+        return parsed.time.takeIf { formatter.format(parsed) == date }
+    }
 
     private fun uiCollectionTypeToApi(type: Int): Int = when (type) {
         2 -> 3

@@ -1846,7 +1846,7 @@ private fun ActivityPage(
     val historyTotals = remember(activityHistory, selectedDate) {
         activityHistory.asSequence()
             .filter { (date, _) -> date <= selectedDate }
-            .fold(0 to 0) { (gameMinutes, animeEpisodes), (_, day) ->
+            .fold(0 to 0.0) { (gameMinutes, animeEpisodes), (_, day) ->
                 gameMinutes + day.gameMinutes to animeEpisodes + day.animeEpisodes
             }
     }
@@ -1854,7 +1854,7 @@ private fun ActivityPage(
     val summaryGameMinutes =
         if (showExactDate) selectedDay?.gameMinutes ?: 0 else historyTotals.first
     val summaryAnimeEpisodes =
-        if (showExactDate) selectedDay?.animeEpisodes ?: 0 else historyTotals.second
+        if (showExactDate) selectedDay?.animeEpisodes ?: 0.0 else historyTotals.second
     val minYear = availableYears.minOrNull() ?: currentYear
     val apiKey = UserPrefs.getApiKey(context)
     val steamId = UserPrefs.getSteamId(context)
@@ -2024,7 +2024,7 @@ private fun ActivityPage(
                                 context.getString(
                                     R.string.activity_stats_combined,
                                     formatActivityHours(summary.gameMinutes),
-                                    summary.animeEpisodes
+                                    formatEpisodeAmount(summary.animeEpisodes)
                                 )
                             } else {
                                 context.getString(
@@ -2258,7 +2258,7 @@ private fun formatActivityHours(minutes: Int): String =
 private data class ActivitySummaryUi(
     val date: String?,
     val gameMinutes: Int,
-    val animeEpisodes: Int,
+    val animeEpisodes: Double,
     val includeAnime: Boolean
 )
 

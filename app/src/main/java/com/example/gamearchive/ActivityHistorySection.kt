@@ -88,7 +88,7 @@ fun ActivityHistorySection(
                                 context.getString(
                                     R.string.activity_anime_record,
                                     record.date,
-                                    record.amount
+                                    formatEpisodeAmount(record.amount)
                                 )
                             },
                             fontSize = DesignTokens.TextBody1.sp,
@@ -112,5 +112,5 @@ fun ActivityHistorySection(
     }
 }
 
-private fun formatHours(minutes: Int): String =
+private fun formatHours(minutes: Double): String =
     String.format(Locale.US, "%.1f", minutes / 60.0)

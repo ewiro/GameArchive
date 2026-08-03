@@ -874,7 +874,7 @@ private fun BangumiDetailScreen(
                             titleFontSize = DesignTokens.TextSubtitle.sp,
                             onRecordClick = { record ->
                                 editingWatchRecord = record
-                                editingWatchAmount = record.amount.toString()
+                                editingWatchAmount = formatEpisodeAmount(record.amount)
                             }
                         )
                         Spacer(Modifier.height(DesignTokens.SpaceXxl))
@@ -1122,9 +1122,9 @@ private fun BangumiDetailScreen(
                         TextField(
                             value = editingWatchAmount,
                             onValueChange = { value ->
-                                editingWatchAmount = value
-                                    .filter(Char::isDigit)
-                                    .take(4)
+                                if (value.matches(Regex("""\d{0,4}(\.\d{0,2})?"""))) {
+                                    editingWatchAmount = value
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             label = context.getString(R.string.activity_anime_record_amount),
@@ -1160,7 +1160,7 @@ private fun BangumiDetailScreen(
                                 )
                             }
                             Spacer(Modifier.width(DesignTokens.SpaceMd))
-                            val canSave = editingWatchAmount.toIntOrNull() != null
+                            val canSave = editingWatchAmount.toDoubleOrNull() != null
                             Box(
                                 modifier = Modifier
                                     .height(DesignTokens.ButtonHeightSmall)
@@ -1178,7 +1178,7 @@ private fun BangumiDetailScreen(
                                         if (canSave) {
                                             Modifier.noRippleClickable {
                                                 val episodes =
-                                                    editingWatchAmount.toIntOrNull()
+                                                    editingWatchAmount.toDoubleOrNull()
                                                         ?: return@noRippleClickable
                                                 coroutineScope.launch {
                                                     withContext(Dispatchers.IO) {

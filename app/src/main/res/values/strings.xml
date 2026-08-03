@@ -139,7 +139,7 @@
     <string name="activity_baseline_ready">Baseline ready. Refresh again to start tracking.</string>
     <string name="activity_game_cover">Game cover for %s</string>
     <string name="activity_anime_cover">Anime cover for %s</string>
-    <string name="activity_stats_combined">Played %1$s hours  Watched %2$d episodes</string>
+    <string name="activity_stats_combined">Played %1$s hours  Watched %2$s episodes</string>
     <string name="activity_stats_game_only">Played %1$s hours</string>
 
     <!-- Tags -->
@@ -156,7 +156,7 @@
     <string name="activity_anime_record_amount">Episodes watched</string>
     <string name="activity_anime_record_zero_hint">Enter 0 to delete this record</string>
     <string name="activity_game_record">%1$s: %2$sh</string>
-    <string name="activity_anime_record">%1$s: %2$d ep</string>
+    <string name="activity_anime_record">%1$s: %2$s ep</string>
     <string name="achievement_title">My Achievements</string>
     <string name="achievement_progress">Unlocked %1$d/%2$d</string>
     <string name="achievement_locked_progress">Locked %1$d/%2$d</string>
@@ -175,6 +175,12 @@
     <string name="settings_export_fail">Export failed</string>
     <string name="settings_import_ok">Configuration imported</string>
     <string name="settings_import_fail">Import failed: invalid file</string>
+    <string name="settings_import_obsidian">Import Obsidian Records</string>
+    <string name="settings_obsidian_import_result">Imported %1$d games, %2$d anime, %3$d history entries, and %4$d tags; skipped %5$d notes</string>
+    <string name="settings_obsidian_import_empty">No game or anime record notes found</string>
+    <string name="settings_obsidian_import_fail">Failed to import Obsidian records</string>
+    <string name="settings_obsidian_skipped_title">Skipped Notes</string>
+    <string name="settings_obsidian_skipped_hint">No unique Steam or Bangumi match was found for:</string>
 
     <!-- Update -->
     <string name="settings_check_update">Check for Updates</string>

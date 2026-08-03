@@ -257,6 +257,57 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         }
     }
 
+    var obsidianImporting by remember { mutableStateOf(false) }
+    var skippedImportNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    val obsidianImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            skippedImportNames = emptyList()
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            scope.launch {
+                obsidianImporting = true
+                val result = withContext(Dispatchers.IO) {
+                    runCatching { ObsidianImporter.importTree(context, uri) }.getOrNull()
+                }
+                obsidianImporting = false
+                if (result == null) {
+                    Toast.makeText(
+                        context,
+                        R.string.settings_obsidian_import_fail,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else if (result.mediaNoteCount == 0) {
+                    Toast.makeText(
+                        context,
+                        R.string.settings_obsidian_import_empty,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    tagListRefresh++
+                    skippedImportNames = result.skippedNames
+                    Toast.makeText(
+                        context,
+                        context.getString(
+                            R.string.settings_obsidian_import_result,
+                            result.gameCount,
+                            result.animeCount,
+                            result.recordCount,
+                            result.tagCount,
+                            result.skippedCount
+                        ),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
     var hasBangumiProfileBackground by remember {
         mutableStateOf(BangumiProfileBackground.exists(context))
     }
@@ -714,6 +765,37 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         )
                     }
 
+                    DividerLine()
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable {
+                                if (!obsidianImporting) obsidianImportLauncher.launch(null)
+                            }
+                            .padding(vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = context.getString(R.string.settings_import_obsidian),
+                            fontSize = DesignTokens.TextSubtitle.sp,
+                            fontWeight = systemFontWeight(),
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Image(
+                            imageVector = MiuixIcons.Basic.ArrowRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.IconMd),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(
+                                    alpha = DesignTokens.OpacityBody
+                                )
+                            )
+                        )
+                    }
+
                 }
             }
         }
@@ -1118,6 +1200,70 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         }
 
     }
+
+        MotionModalOverlay(
+            visible = skippedImportNames.isNotEmpty(),
+            onDismissRequest = { skippedImportNames = emptyList() }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
+                    .heightIn(max = 540.dp)
+                    .noRippleClickable { }
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = context.getString(R.string.settings_obsidian_skipped_title),
+                        fontSize = DesignTokens.TextSubtitle.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MiuixTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(DesignTokens.SpaceSm))
+                    Text(
+                        text = context.getString(R.string.settings_obsidian_skipped_hint),
+                        fontSize = DesignTokens.TextBody1.sp,
+                        color = MiuixTheme.colorScheme.onSurface.copy(
+                            alpha = DesignTokens.OpacityBody
+                        )
+                    )
+                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        skippedImportNames.forEach { fileName ->
+                            Text(
+                                text = fileName,
+                                fontSize = DesignTokens.TextBody1.sp,
+                                color = MiuixTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(vertical = DesignTokens.SpaceXs)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .noRippleClickable { skippedImportNames = emptyList() }
+                            .padding(
+                                horizontal = DesignTokens.SpaceLg,
+                                vertical = DesignTokens.SpaceSm
+                            )
+                    ) {
+                        Text(
+                            text = context.getString(R.string.general_close),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MiuixTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
 
         // ── 标签管理弹窗 ──
         MotionModalOverlay(
