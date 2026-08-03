@@ -74,6 +74,8 @@ GameArchive 最初用于整理 Steam 库存，现在也可以连接 Bangumi 管�
 
 前往 [Releases](https://github.com/ewiro/GameArchive/releases) 下载 APK：
 
+也可通过 [CI频道](https://t.me/GameArchiveCI) 获取 `main` 分支每次推送后自动构建的安装包。
+
 - `arm64-v8a`：推荐用于绝大多数现代 Android 手机。
 - `armeabi-v7a`：用于仍为 32 位架构的旧设备。
 

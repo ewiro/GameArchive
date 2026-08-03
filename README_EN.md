@@ -74,6 +74,8 @@ The project is designed for players and anime viewers who want to keep control o
 
 Download APKs from [Releases](https://github.com/ewiro/GameArchive/releases):
 
+You can also get APKs automatically built after each push to `main` from the [CI channel](https://t.me/GameArchiveCI).
+
 - `arm64-v8a`: recommended for most modern Android devices.
 - `armeabi-v7a`: intended for older 32-bit devices.
 
