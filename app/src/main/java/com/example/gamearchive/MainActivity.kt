@@ -1800,7 +1800,7 @@ private fun ActivityPage(
     val today = remember { activityDateString(Calendar.getInstance()) }
     var selectedYear by remember { mutableIntStateOf(currentYear) }
     var selectedDate by remember { mutableStateOf(today) }
-    var showExactDate by remember { mutableStateOf(false) }
+    var showExactDate by remember { mutableStateOf(true) }
     var yearStats by remember { mutableStateOf<Map<String, DailyActivity>>(emptyMap()) }
     var activityHistory by remember { mutableStateOf<Map<String, DailyActivity>>(emptyMap()) }
     var availableYears by remember { mutableStateOf(setOf(currentYear)) }
