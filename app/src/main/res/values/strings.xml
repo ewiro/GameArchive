@@ -256,6 +256,7 @@
     <string name="tag_create">Create</string>
     <string name="bangumi_tags_title">Tags</string>
     <string name="bangumi_summary_title">Summary</string>
+    <string name="bangumi_staff_title">Staff</string>
     <string name="bangumi_details_title">Details</string>
     <string name="media_play">Play</string>
     <string name="bangumi_oauth_config_missing">Configure Bangumi OAuth credentials in AppConfig.kt first</string>

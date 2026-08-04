@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -99,6 +100,7 @@ private fun BangumiDetailScreen(
 
     var detail by remember { mutableStateOf<BangumiSubjectDetail?>(null) }
     var subjectPersons by remember { mutableStateOf<List<BangumiPerson>>(emptyList()) }
+    var subjectCharacters by remember { mutableStateOf<List<BangumiRelatedCharacter>>(emptyList()) }
     var myCollection by remember { mutableStateOf<BangumiMyCollection?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isCollectionLoaded by remember { mutableStateOf(false) }
@@ -121,13 +123,18 @@ private fun BangumiDetailScreen(
     var editingWatchAmount by remember { mutableStateOf("") }
 
     LaunchedEffect(subjectId) {
-        val (loadedDetail, loadedPersons, loadedEpisodePage) = coroutineScope {
+        val (loadedSubject, loadedRelatedData) = coroutineScope {
             val detailDeferred = async {
                 runCatching { GameArchiveApp.bgmService.getSubject(subjectId) }.getOrNull()
             }
             val personsDeferred = async {
                 runCatching {
                     GameArchiveApp.bgmService.getSubjectPersons(subjectId)
+                }.getOrDefault(emptyList())
+            }
+            val charactersDeferred = async {
+                runCatching {
+                    GameArchiveApp.bgmService.getSubjectCharacters(subjectId)
                 }.getOrDefault(emptyList())
             }
             val episodesDeferred = async {
@@ -154,14 +161,14 @@ private fun BangumiDetailScreen(
                     }
                 }.getOrNull()
             }
-            Triple(
-                detailDeferred.await(),
-                personsDeferred.await(),
-                episodesDeferred.await()
-            )
+            (detailDeferred.await() to personsDeferred.await()) to
+                (charactersDeferred.await() to episodesDeferred.await())
         }
+        val (loadedDetail, loadedPersons) = loadedSubject
+        val (loadedCharacters, loadedEpisodePage) = loadedRelatedData
         detail = loadedDetail
         subjectPersons = loadedPersons
+        subjectCharacters = loadedCharacters
         mainEpisodeCount = loadedEpisodePage?.total?.takeIf { it > 0 }
         mainEpisodes = loadedEpisodePage?.data.orEmpty()
             .sortedWith(compareBy(
@@ -480,6 +487,20 @@ private fun BangumiDetailScreen(
                                 }
                             }
                         infoboxRows + personRows
+                    }
+                    val voiceActors = remember(subjectCharacters) {
+                        subjectCharacters
+                            .flatMap { character ->
+                                character.actors.orEmpty()
+                                    .filter { actor ->
+                                        !actor.name.isNullOrBlank() &&
+                                            actor.career.orEmpty().any {
+                                                it.equals("seiyu", ignoreCase = true)
+                                            }
+                                    }
+                                    .map { actor -> character to actor }
+                            }
+                            .distinctBy { (character, actor) -> character.id to actor.id }
                     }
                     Column(
                         modifier = Modifier.fillMaxSize()
@@ -959,6 +980,67 @@ private fun BangumiDetailScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 100.dp)
                             )
+                        }
+
+                        if (voiceActors.isNotEmpty()) {
+                            Spacer(Modifier.height(20.dp))
+                            Text(
+                                text = context.getString(R.string.bangumi_staff_title),
+                                fontSize = DesignTokens.TextSubtitle.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MiuixTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                voiceActors.forEach { (character, actor) ->
+                                    Column(modifier = Modifier.width(108.dp)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(width = 108.dp, height = 136.dp)
+                                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                                .background(MiuixTheme.colorScheme.secondaryContainer)
+                                        ) {
+                                            val actorImage = actor.images?.large
+                                                ?: actor.images?.common
+                                                ?: actor.images?.medium
+                                                ?: actor.images?.small
+                                            if (!actorImage.isNullOrEmpty()) {
+                                                AsyncImage(
+                                                    model = ImageRequest.Builder(context)
+                                                        .data(actorImage)
+                                                        .crossfade(true)
+                                                        .build(),
+                                                    contentDescription = actor.name,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            text = actor.name.orEmpty(),
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            color = MiuixTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (!character.name.isNullOrBlank()) {
+                                            Text(
+                                                text = character.name,
+                                                fontSize = DesignTokens.TextBody2.sp,
+                                                color = dim,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // 详情

@@ -87,6 +87,11 @@ interface BangumiService {
         @Path("subject_id") subjectId: Int
     ): List<BangumiPerson>
 
+    @GET("bangumi/v0/subjects/{subject_id}/characters")
+    suspend fun getSubjectCharacters(
+        @Path("subject_id") subjectId: Int
+    ): List<BangumiRelatedCharacter>
+
     @GET("bangumi/v0/episodes")
     suspend fun getSubjectEpisodes(
         @Query("subject_id") subjectId: Int,
@@ -139,6 +144,12 @@ interface BangumiService {
     val type: Int? = null,
     val career: List<String>? = null,
     val images: BangumiImages? = null
+)
+@Keep data class BangumiRelatedCharacter(
+    val id: Int? = null,
+    val name: String? = null,
+    val relation: String? = null,
+    val actors: List<BangumiPerson>? = null
 )
 
 // --- OAuth 接口（通过公共代理转发到 bgm.tv）---

@@ -256,6 +256,7 @@
     <string name="tag_create">新建</string>
     <string name="bangumi_tags_title">标签</string>
     <string name="bangumi_summary_title">简介</string>
+    <string name="bangumi_staff_title">Staff</string>
     <string name="bangumi_details_title">详情</string>
     <string name="media_play">播放</string>
     <string name="bangumi_oauth_config_missing">请先在 AppConfig.kt 中填入 Bangumi OAuth 凭证</string>
