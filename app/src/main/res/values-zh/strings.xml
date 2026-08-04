@@ -263,4 +263,19 @@
     <string name="bangumi_oauth_canceled">授权已取消</string>
     <string name="bangumi_oauth_success">授权成功，用户 ID：%1$d</string>
     <string name="bangumi_oauth_failed">授权失败：%1$s</string>
+    <string name="general_retry">重试</string>
+    <string name="general_open_link_failed">无法打开链接</string>
+    <string name="game_collection_title">游戏</string>
+    <string name="game_collection_developer_title">%1$s 的游戏</string>
+    <string name="game_collection_tag_title">标签：%1$s</string>
+    <string name="game_collection_fallback_name">Steam #%1$d</string>
+    <string name="bangumi_person">人物</string>
+    <string name="bangumi_company">公司</string>
+    <string name="bangumi_person_works">参与作品</string>
+    <string name="bangumi_career_producer">制作人员</string>
+    <string name="bangumi_career_seiyu">声优</string>
+    <string name="bangumi_career_artist">艺术家</string>
+    <string name="bangumi_career_writer">作家</string>
+    <string name="bangumi_career_illustrator">绘师</string>
+    <string name="bangumi_career_actor">演员</string>
 </resources>

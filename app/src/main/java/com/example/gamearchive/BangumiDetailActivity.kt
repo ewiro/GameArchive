@@ -87,6 +87,17 @@ class BangumiDetailActivity : ComponentActivity() {
     }
 }
 
+private data class BangumiDetailValue(
+    val text: String,
+    val label: String? = null,
+    val person: BangumiPerson? = null
+)
+
+private data class BangumiDetailRow(
+    val key: String,
+    val values: List<BangumiDetailValue>
+)
+
 @Composable
 private fun BangumiDetailScreen(
     subjectId: Int,
@@ -442,12 +453,13 @@ private fun BangumiDetailScreen(
                         ?: d.eps?.takeIf { it > 0 }
                     val detailRows = remember(d, subjectPersons, chapterCount, context) {
                         val infoboxRows = d.infobox.orEmpty().mapNotNull { item ->
-                            val value = when (item.value) {
-                                is String -> item.value
-                                is Number -> item.value.toString()
-                                else -> ""
-                            }.trim()
-                            if (value.isEmpty()) null else item.key.trim() to value
+                            val values = flattenBangumiInfoboxValue(item.value).map {
+                                BangumiDetailValue(text = it.text, label = it.label)
+                            }
+                            if (values.isEmpty()) null else BangumiDetailRow(
+                                key = item.key.trim(),
+                                values = values
+                            )
                         }.toMutableList()
                         if (chapterCount != null) {
                             val episodeKeys = setOf("话数", "話数", "集数", "episode", "episodes")
@@ -456,37 +468,63 @@ private fun BangumiDetailScreen(
                                 chapterCount
                             )
                             val episodeIndex = infoboxRows.indexOfFirst {
-                                it.first.lowercase() in episodeKeys
+                                it.key.lowercase() in episodeKeys
                             }
                             if (episodeIndex >= 0) {
-                                infoboxRows[episodeIndex] =
-                                    infoboxRows[episodeIndex].first to episodeValue
+                                infoboxRows[episodeIndex] = infoboxRows[episodeIndex].copy(
+                                    values = listOf(BangumiDetailValue(episodeValue))
+                                )
                             } else {
                                 infoboxRows.add(
-                                    context.getString(R.string.bangumi_detail_episode_count_label) to
-                                        episodeValue
+                                    BangumiDetailRow(
+                                        key = context.getString(
+                                            R.string.bangumi_detail_episode_count_label
+                                        ),
+                                        values = listOf(BangumiDetailValue(episodeValue))
+                                    )
                                 )
                             }
                         }
-                        val existingKeys = infoboxRows
-                            .map { it.first.lowercase() }
-                            .toSet()
-                        val personRows = subjectPersons
+                        val personGroups = subjectPersons
                             .asSequence()
                             .filter { !it.relation.isNullOrBlank() && !it.name.isNullOrBlank() }
                             .groupBy { it.relation!!.trim() }
-                            .mapNotNull { (relation, persons) ->
-                                if (relation.lowercase() in existingKeys) {
-                                    null
+                        personGroups.forEach { (relation, persons) ->
+                            val values = persons
+                                .distinctBy { it.id ?: it.name }
+                                .mapNotNull { person ->
+                                    person.name?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                                        BangumiDetailValue(text = it, person = person)
+                                    }
+                                }
+                            if (values.isNotEmpty()) {
+                                val existingIndex = infoboxRows.indexOfFirst {
+                                    it.key.equals(relation, ignoreCase = true)
+                                }
+                                if (existingIndex >= 0) {
+                                    infoboxRows[existingIndex] =
+                                        infoboxRows[existingIndex].copy(values = values)
                                 } else {
-                                    val names = persons
-                                        .mapNotNull { it.name?.trim() }
-                                        .filter { it.isNotEmpty() }
-                                        .distinct()
-                                    if (names.isEmpty()) null else relation to names.joinToString("、")
+                                    infoboxRows.add(BangumiDetailRow(relation, values))
                                 }
                             }
-                        infoboxRows + personRows
+                        }
+                        val productionIndex = infoboxRows.indexOfFirst {
+                            isAnimationProductionKey(it.key)
+                        }
+                        val directorIndex = infoboxRows.indexOfFirst {
+                            isDirectorInfoboxKey(it.key)
+                        }
+                        if (productionIndex >= 0 && directorIndex >= 0 &&
+                            productionIndex != directorIndex + 1
+                        ) {
+                            val productionRow = infoboxRows.removeAt(productionIndex)
+                            val updatedDirectorIndex = infoboxRows.indexOfFirst {
+                                isDirectorInfoboxKey(it.key)
+                            }
+                            infoboxRows.add(updatedDirectorIndex + 1, productionRow)
+                        }
+                        infoboxRows
                     }
                     val voiceActors = remember(subjectCharacters) {
                         subjectCharacters
@@ -991,14 +1029,32 @@ private fun BangumiDetailScreen(
                                 color = MiuixTheme.colorScheme.onSurface
                             )
                             Spacer(Modifier.height(8.dp))
+                            val staffScrollState = rememberScrollState()
+                            Box(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
+                                    .horizontalScroll(staffScrollState),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 voiceActors.forEach { (character, actor) ->
-                                    Column(modifier = Modifier.width(108.dp)) {
+                                    Column(
+                                        modifier = Modifier
+                                            .width(108.dp)
+                                            .then(
+                                                actor.id?.let { personId ->
+                                                    Modifier.motionClickable {
+                                                        context.startActivity(
+                                                            BangumiPersonDetailActivity.createIntent(
+                                                                context,
+                                                                personId,
+                                                                actor.name.orEmpty()
+                                                            )
+                                                        )
+                                                    }
+                                                } ?: Modifier
+                                            )
+                                    ) {
                                         Box(
                                             modifier = Modifier
                                                 .size(width = 108.dp, height = 136.dp)
@@ -1041,6 +1097,12 @@ private fun BangumiDetailScreen(
                                     }
                                 }
                             }
+                            HorizontalScrollEdgeFades(
+                                canScrollBackward = staffScrollState.canScrollBackward,
+                                canScrollForward = staffScrollState.canScrollForward,
+                                width = 18.dp
+                            )
+                            }
                         }
 
                         // 详情
@@ -1053,21 +1115,52 @@ private fun BangumiDetailScreen(
                                 color = MiuixTheme.colorScheme.onSurface
                             )
                             Spacer(Modifier.height(8.dp))
-                            detailRows.forEach { (key, value) ->
+                            detailRows.forEach { row ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = key,
+                                        text = row.key,
                                         fontSize = 13.sp,
                                         color = dim,
                                         modifier = Modifier.width(100.dp)
                                     )
-                                    Text(
-                                        text = value,
-                                        fontSize = 13.sp,
-                                        color = MiuixTheme.colorScheme.onSurface
-                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        row.values.forEach { value ->
+                                            val isWebsite = isWebsiteInfoboxKey(row.key)
+                                            val isAnimationCompany =
+                                                isAnimationProductionKey(row.key) &&
+                                                    value.person?.id != null
+                                            val displayValue = value.label?.let {
+                                                "$it: ${value.text}"
+                                            } ?: value.text
+                                            val clickModifier = when {
+                                                value.person?.id != null -> Modifier.motionClickable {
+                                                    context.startActivity(
+                                                        BangumiPersonDetailActivity.createIntent(
+                                                            context,
+                                                            value.person.id,
+                                                            value.text
+                                                        )
+                                                    )
+                                                }
+                                                isWebsite -> Modifier.motionClickable {
+                                                    openExternalWebLink(context, value.text)
+                                                }
+                                                else -> Modifier
+                                            }
+                                            Text(
+                                                text = displayValue,
+                                                fontSize = 13.sp,
+                                                color = if (isWebsite || isAnimationCompany) {
+                                                    DesignTokens.AccentBlue
+                                                } else {
+                                                    MiuixTheme.colorScheme.onSurface
+                                                },
+                                                modifier = clickModifier
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

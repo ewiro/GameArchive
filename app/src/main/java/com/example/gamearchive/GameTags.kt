@@ -107,6 +107,19 @@ object GameTags {
         return counts
     }
 
+    /** 获取使用指定标签的全部游戏 AppID，标签名按大小写不敏感匹配。 */
+    fun getGameIdsForTag(context: Context, tag: String): List<Int> {
+        val prefs = context.getSharedPreferences(MAP_PREF, Context.MODE_PRIVATE)
+        return prefs.all.keys.asSequence()
+            .filter { it.startsWith("tags_") }
+            .filter { key ->
+                getTagsForGameRaw(prefs, key).any { it.equals(tag, ignoreCase = true) }
+            }
+            .mapNotNull { it.removePrefix("tags_").toIntOrNull() }
+            .distinct()
+            .toList()
+    }
+
     private fun getTagsForGameRaw(prefs: android.content.SharedPreferences, key: String): List<String> {
         val json = prefs.getString(key, null) ?: return emptyList()
         return try {

@@ -92,6 +92,16 @@ interface BangumiService {
         @Path("subject_id") subjectId: Int
     ): List<BangumiRelatedCharacter>
 
+    @GET("bangumi/v0/persons/{person_id}")
+    suspend fun getPerson(
+        @Path("person_id") personId: Int
+    ): BangumiPersonDetail
+
+    @GET("bangumi/v0/persons/{person_id}/subjects")
+    suspend fun getPersonSubjects(
+        @Path("person_id") personId: Int
+    ): List<BangumiPersonSubject>
+
     @GET("bangumi/v0/episodes")
     suspend fun getSubjectEpisodes(
         @Query("subject_id") subjectId: Int,
@@ -144,6 +154,24 @@ interface BangumiService {
     val type: Int? = null,
     val career: List<String>? = null,
     val images: BangumiImages? = null
+)
+@Keep data class BangumiPersonDetail(
+    val id: Int? = null,
+    val name: String? = null,
+    val type: Int? = null,
+    val career: List<String>? = null,
+    val summary: String? = null,
+    val images: BangumiImages? = null,
+    val infobox: List<BangumiInfoboxItem>? = null
+)
+@Keep data class BangumiPersonSubject(
+    val id: Int,
+    val name: String? = null,
+    val name_cn: String? = null,
+    val type: Int? = null,
+    val image: String? = null,
+    val staff: String? = null,
+    val eps: String? = null
 )
 @Keep data class BangumiRelatedCharacter(
     val id: Int? = null,

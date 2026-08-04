@@ -699,10 +699,12 @@ private fun LibraryScreen(
             // 标记筛选横条
             item("mark_filter") {
                 Column {
+                    val markScrollState = rememberScrollState()
+                    Box(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
+                            .horizontalScroll(markScrollState)
                             .padding(horizontal = 18.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -725,6 +727,11 @@ private fun LibraryScreen(
                                 }
                             )
                         }
+                    }
+                    HorizontalScrollEdgeFades(
+                        canScrollBackward = markScrollState.canScrollBackward,
+                        canScrollForward = markScrollState.canScrollForward
+                    )
                     }
                     if (markFilter != -1) {
                         Text(
@@ -1085,7 +1092,7 @@ private fun addToSpecialsWhitelist(context: Context, appId: Int) {
 
 // ── 游戏卡片（库存） ──
 @Composable
-private fun GameItem(
+internal fun GameItem(
     game: GameInfo,
     price: String,
     customName: String?,
@@ -1577,9 +1584,10 @@ private fun SortDialog(
 }
 
 @Composable
-private fun MarketGameItem(
+internal fun MarketGameItem(
     game: MarketGame,
     modifier: Modifier = Modifier,
+    showPrice: Boolean = true,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1656,7 +1664,7 @@ private fun MarketGameItem(
                 Spacer(Modifier.height(4.dp))
             }
             // 原价（划线）
-            if (!game.originalPriceStr.isNullOrEmpty() && game.discount > 0) {
+            if (showPrice && !game.originalPriceStr.isNullOrEmpty() && game.discount > 0) {
                 Text(
                     text = game.originalPriceStr,
                     fontSize = DesignTokens.TextCaption.sp,
@@ -1667,11 +1675,13 @@ private fun MarketGameItem(
                 )
             }
             // 现价
-            Text(
-                text = game.finalPriceStr,
-                fontSize = DesignTokens.TextBody1.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (showPrice) {
+                Text(
+                    text = game.finalPriceStr,
+                    fontSize = DesignTokens.TextBody1.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -2564,7 +2574,7 @@ private fun BangumiPage(
 }
 
 @Composable
-private fun BangumiItem(
+internal fun BangumiItem(
     item: BangumiCollection,
     type: Int,
     ratingMode: Int,

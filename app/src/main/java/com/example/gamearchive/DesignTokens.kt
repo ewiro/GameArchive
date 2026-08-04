@@ -31,6 +31,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -48,10 +49,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -211,6 +215,54 @@ object DesignTokens {
     val IconXl   = 24.dp
     val IconHuge = 28.dp
     val IconPlay = 48.dp
+}
+
+@Composable
+fun BoxScope.HorizontalScrollEdgeFades(
+    canScrollBackward: Boolean,
+    canScrollForward: Boolean,
+    edgeColor: Color = MiuixTheme.colorScheme.surface,
+    width: Dp = 40.dp
+) {
+    val startAlpha by animateFloatAsState(
+        targetValue = if (canScrollBackward) 1f else 0f,
+        animationSpec = tween(DesignTokens.AnimDuration),
+        label = "horizontal_edge_fade_start"
+    )
+    val endAlpha by animateFloatAsState(
+        targetValue = if (canScrollForward) 1f else 0f,
+        animationSpec = tween(DesignTokens.AnimDuration),
+        label = "horizontal_edge_fade_end"
+    )
+    Canvas(modifier = Modifier.matchParentSize()) {
+        val fadeWidth = width.toPx().coerceAtMost(size.width / 2f)
+        val transparent = edgeColor.copy(alpha = 0f)
+
+        if (startAlpha > 0f) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(edgeColor, edgeColor.copy(alpha = 0.88f), transparent),
+                    startX = 0f,
+                    endX = fadeWidth
+                ),
+                topLeft = Offset.Zero,
+                size = Size(fadeWidth, size.height),
+                alpha = startAlpha
+            )
+        }
+        if (endAlpha > 0f) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(transparent, edgeColor.copy(alpha = 0.88f), edgeColor),
+                    startX = size.width - fadeWidth,
+                    endX = size.width
+                ),
+                topLeft = Offset(size.width - fadeWidth, 0f),
+                size = Size(fadeWidth, size.height),
+                alpha = endAlpha
+            )
+        }
+    }
 }
 
 fun smoothExpandEnter(): EnterTransition =

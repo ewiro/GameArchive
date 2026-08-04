@@ -1298,6 +1298,16 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .motionClickable {
+                                                showTagDialog = false
+                                                context.startActivity(
+                                                    GameCollectionActivity.createIntent(
+                                                        context,
+                                                        GameCollectionActivity.MODE_TAG,
+                                                        tag
+                                                    )
+                                                )
+                                            }
                                             .padding(vertical = 4.dp, horizontal = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {

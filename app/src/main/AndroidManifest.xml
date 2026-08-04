@@ -50,6 +50,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".GameCollectionActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MediaViewerActivity"
             android:windowSoftInputMode="adjustResize" />
 
@@ -70,6 +74,10 @@
         <activity
             android:name=".BangumiDetailActivity"
             android:windowSoftInputMode="adjustResize"
+            android:exported="false" />
+
+        <activity
+            android:name=".BangumiPersonDetailActivity"
             android:exported="false" />
 
         <activity

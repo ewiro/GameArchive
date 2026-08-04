@@ -557,7 +557,27 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         .padding(bottom = 12.dp)
                 ) {
                     // 开发商
-                    Column(modifier = Modifier.weight(1f)) {
+                    val canOpenDeveloper = developer.isNotBlank() &&
+                        developer != context.getString(R.string.detail_unknown)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(
+                                if (canOpenDeveloper) {
+                                    Modifier.motionClickable {
+                                        context.startActivity(
+                                            GameCollectionActivity.createIntent(
+                                                context,
+                                                GameCollectionActivity.MODE_DEVELOPER,
+                                                developer
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(
                                 imageVector = MiuixIcons.Demibold.Community,
@@ -613,6 +633,7 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 56.dp)
                         .clickable { showMarkSheet = true }
                         .padding(
                             horizontal = DesignTokens.SpaceXl,
@@ -649,16 +670,19 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .motionClickable(
-                            pressedScale = 0.99f,
-                            onClick = { showTagSheet = true }
+                        .heightIn(min = 56.dp)
+                        .then(
+                            if (gameTags.isEmpty()) {
+                                Modifier.motionClickable(
+                                    pressedScale = 0.99f,
+                                    onClick = { showTagSheet = true }
+                                )
+                            } else {
+                                Modifier
+                            }
                         )
-                        .padding(
-                            horizontal = DesignTokens.SpaceXl,
-                            vertical = DesignTokens.SpaceLg
-                        ),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = DesignTokens.SpaceXl),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (gameTags.isEmpty()) {
                         Text(
@@ -670,7 +694,13 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                         )
                     } else {
                         FlowRow(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(
+                                    end = DesignTokens.SpaceMd,
+                                    top = DesignTokens.SpaceLg,
+                                    bottom = DesignTokens.SpaceLg
+                                ),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -680,17 +710,38 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                                     fontSize = DesignTokens.TextBody1.sp,
                                     color = DesignTokens.AccentBlue,
                                     modifier = Modifier
+                                        .motionClickable {
+                                            context.startActivity(
+                                                GameCollectionActivity.createIntent(
+                                                    context,
+                                                    GameCollectionActivity.MODE_TAG,
+                                                    tag
+                                                )
+                                            )
+                                        }
                                         .padding(horizontal = 6.dp, vertical = 3.dp)
                                 )
                             }
                         }
                     }
-                    Image(
-                        imageVector = MiuixIcons.Basic.ArrowRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(DesignTokens.IconMd),
-                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint))
-                    )
+                    Box(
+                        modifier = Modifier
+                            .width(DesignTokens.ButtonHeight)
+                            .heightIn(min = 56.dp)
+                            .noRippleClickable { showTagSheet = true },
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Image(
+                            imageVector = MiuixIcons.Basic.ArrowRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.IconMd),
+                            colorFilter = ColorFilter.tint(
+                                MiuixTheme.colorScheme.onSurface.copy(
+                                    alpha = DesignTokens.OpacityHint
+                                )
+                            )
+                        )
+                    }
                 }
 
                 // ── 本地评论 ──
@@ -698,11 +749,12 @@ private fun DetailScreen(appId: Int, appName: String, price: String, onBack: () 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = 56.dp)
                             .padding(
                                 horizontal = DesignTokens.SpaceXl,
                                 vertical = DesignTokens.SpaceLg
                             ),
-                        verticalAlignment = Alignment.Top,
+                        verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
