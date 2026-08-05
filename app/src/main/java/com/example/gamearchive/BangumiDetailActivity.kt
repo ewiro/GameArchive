@@ -192,19 +192,28 @@ private fun BangumiDetailScreen(
         }
         val token = UserPrefs.getBangumiAccessToken(context)
         if (token.isNotEmpty()) {
-            val service = GameArchiveApp.createAuthenticatedBgmService(token)
-            var username = UserPrefs.getBangumiUsername(context)
-            if (username.isBlank()) {
-                username = runCatching { service.getCurrentUser().username }.getOrDefault("")
-                if (username.isNotBlank()) {
-                    UserPrefs.setBangumiUsername(context, username)
+            val collectionResult = runCatching {
+                BangumiAuthSession.execute(context) { service ->
+                    var username = UserPrefs.getBangumiUsername(context)
+                    if (username.isBlank()) {
+                        username = service.getCurrentUser().username
+                        UserPrefs.setBangumiUsername(context, username)
+                    }
+                    val collection = service.getMyCollection(username, subjectId)
+                    val episodes = try {
+                        service.getEpisodeCollections(subjectId)
+                    } catch (error: HttpException) {
+                        if (error.code() == 401) throw error
+                        null
+                    } catch (_: Exception) {
+                        null
+                    }
+                    Triple(username, collection, episodes)
                 }
             }
-            val collectionResult = runCatching {
-                service.getMyCollection(username, subjectId)
-            }
-            val collection = collectionResult.getOrNull()
-            if (collection != null) {
+            val loadedCollection = collectionResult.getOrNull()
+            if (loadedCollection != null) {
+                val (username, collection, loadedEpisodes) = loadedCollection
                 val preferredTagOrder = withContext(Dispatchers.IO) {
                     BangumiTagOrder.get(context, username, subjectId)
                 }
@@ -219,11 +228,8 @@ private fun BangumiDetailScreen(
                 savedEpisodeProgress = orderedCollection.ep_status ?: 0
                 savedRegularEpisodeProgress = savedEpisodeProgress
                 draftEpisodeProgress = savedEpisodeProgress
-                val loadedEpisodes = runCatching {
-                    service.getEpisodeCollections(subjectId).data.orEmpty()
-                }.getOrNull()
                 if (loadedEpisodes != null) {
-                    mainEpisodes = loadedEpisodes
+                    mainEpisodes = loadedEpisodes.data.orEmpty()
                         .sortedWith(compareBy(
                             { it.episode.ep ?: Double.MAX_VALUE },
                             { it.episode.sort ?: Double.MAX_VALUE }
@@ -237,9 +243,14 @@ private fun BangumiDetailScreen(
             } else {
                 val error = collectionResult.exceptionOrNull()
                 if ((error as? HttpException)?.code() != 404) {
+                    val messageRes = if ((error as? HttpException)?.code() == 401) {
+                        R.string.bangumi_authorization_expired
+                    } else {
+                        R.string.bangumi_collection_load_failed
+                    }
                     Toast.makeText(
                         context,
-                        context.getString(R.string.bangumi_collection_load_failed),
+                        context.getString(messageRes),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -265,117 +276,118 @@ private fun BangumiDetailScreen(
         isSaving = true
         coroutineScope.launch {
             try {
-                val service = GameArchiveApp.createAuthenticatedBgmService(token)
-                var username = UserPrefs.getBangumiUsername(context)
-                if (username.isBlank()) {
-                    username = service.getCurrentUser().username
-                    UserPrefs.setBangumiUsername(context, username)
-                }
-                val trimmedComment = draftComment.trim()
-                val isPrivate = myCollection?.private ?: false
-                val legacyStatus = legacyBangumiCollectionStatus(targetApiType)
-                val legacySaved = legacyStatus != null && runCatching {
-                    val legacyResponse = service.updateCollectionLegacy(
-                        subjectId = subjectId,
-                        appId = AppConfig.BANGUMI_CLIENT_ID,
-                        status = legacyStatus,
-                        tags = tags.joinToString(" "),
-                        comment = trimmedComment,
-                        rating = draftRate,
-                        privacy = if (isPrivate) 1 else 0
-                    )
-                    if (
-                        !legacyResponse.isSuccessful ||
-                        legacyResponse.body()?.code != null ||
-                        legacyResponse.body()?.error != null
-                    ) {
-                        return@runCatching false
+                BangumiAuthSession.execute(context) { service ->
+                    var username = UserPrefs.getBangumiUsername(context)
+                    if (username.isBlank()) {
+                        username = service.getCurrentUser().username
+                        UserPrefs.setBangumiUsername(context, username)
                     }
-                    val verified = service.getMyCollection(username, subjectId)
-                    verified.type == targetApiType &&
-                        verified.rate == draftRate &&
-                        verified.comment.orEmpty() == trimmedComment &&
-                        verified.private == isPrivate &&
-                        BangumiTagOrder.hasSameOrder(verified.tags, tags)
-                }.getOrDefault(false)
-
-                if (!legacySaved) {
-                    val response = service.updateCollection(
-                        subjectId,
-                        BangumiCollectionUpdate(
-                            type = targetApiType,
-                            rate = draftRate,
+                    val trimmedComment = draftComment.trim()
+                    val isPrivate = myCollection?.private ?: false
+                    val legacyStatus = legacyBangumiCollectionStatus(targetApiType)
+                    val legacySaved = legacyStatus != null && runCatching {
+                        val legacyResponse = service.updateCollectionLegacy(
+                            subjectId = subjectId,
+                            appId = AppConfig.BANGUMI_CLIENT_ID,
+                            status = legacyStatus,
+                            tags = tags.joinToString(" "),
                             comment = trimmedComment,
-                            tags = tags,
-                            `private` = isPrivate
+                            rating = draftRate,
+                            privacy = if (isPrivate) 1 else 0
                         )
-                    )
-                    if (!response.isSuccessful) throw HttpException(response)
-                }
-                withContext(Dispatchers.IO) {
-                    BangumiTagOrder.save(context, username, subjectId, tags)
-                }
+                        if (
+                            !legacyResponse.isSuccessful ||
+                            legacyResponse.body()?.code != null ||
+                            legacyResponse.body()?.error != null
+                        ) {
+                            return@runCatching false
+                        }
+                        val verified = service.getMyCollection(username, subjectId)
+                        verified.type == targetApiType &&
+                            verified.rate == draftRate &&
+                            verified.comment.orEmpty() == trimmedComment &&
+                            verified.private == isPrivate &&
+                            BangumiTagOrder.hasSameOrder(verified.tags, tags)
+                    }.getOrDefault(false)
 
-                val boundedEpisodeProgress = draftEpisodeProgress.coerceIn(0, mainEpisodes.size)
-                val boundedSavedProgress = savedEpisodeProgress.coerceIn(0, mainEpisodes.size)
-                val changedEpisodes = when {
-                    boundedEpisodeProgress > boundedSavedProgress ->
-                        mainEpisodes.subList(boundedSavedProgress, boundedEpisodeProgress) to 2
-                    boundedEpisodeProgress < boundedSavedProgress ->
-                        mainEpisodes.subList(boundedEpisodeProgress, boundedSavedProgress) to 0
-                    else -> emptyList<BangumiUserEpisodeCollection>() to 0
-                }
-                if (changedEpisodes.first.isNotEmpty()) {
-                    val episodeResponse = service.updateEpisodeCollections(
-                        subjectId,
-                        BangumiEpisodeCollectionUpdate(
-                            episode_id = changedEpisodes.first.map { it.episode.id },
-                            type = changedEpisodes.second
+                    if (!legacySaved) {
+                        val response = service.updateCollection(
+                            subjectId,
+                            BangumiCollectionUpdate(
+                                type = targetApiType,
+                                rate = draftRate,
+                                comment = trimmedComment,
+                                tags = tags,
+                                `private` = isPrivate
+                            )
                         )
-                    )
-                    if (!episodeResponse.isSuccessful) throw HttpException(episodeResponse)
-                }
-                val changedEpisodeIds = changedEpisodes.first
-                    .mapTo(hashSetOf()) { it.episode.id }
-                val currentWatchedEpisodeIds = mainEpisodes.mapNotNull { episode ->
-                    val type = if (episode.episode.id in changedEpisodeIds) {
-                        changedEpisodes.second
-                    } else {
-                        episode.type
+                        if (!response.isSuccessful) throw HttpException(response)
                     }
-                    episode.episode.id.takeIf { type == 2 }
-                }
+                    withContext(Dispatchers.IO) {
+                        BangumiTagOrder.save(context, username, subjectId, tags)
+                    }
 
-                val refreshedCollection = service.getMyCollection(username, subjectId)
-                val orderedTags = BangumiTagOrder.restore(refreshedCollection.tags, tags)
-                myCollection = refreshedCollection.copy(tags = orderedTags)
-                draftTags = orderedTags.orEmpty().joinToString(", ")
-                withContext(Dispatchers.IO) {
-                    ActivityStats.recordBangumiSave(
-                        context = context,
-                        subjectId = subjectId,
-                        title = detail?.name ?: subjectName,
-                        secondaryTitle = detail?.name_cn ?: subjectNameCn,
-                        imageUrl = detail?.images?.large
-                            ?: detail?.images?.common
-                            ?: subjectImage,
-                        previousApiType = previousApiType,
-                        currentApiType = targetApiType,
-                        previousEpisodes = previousRegularProgress,
-                        currentEpisodes = boundedEpisodeProgress,
-                        currentEpisodeIds = currentWatchedEpisodeIds
-                    )
+                    val boundedEpisodeProgress = draftEpisodeProgress.coerceIn(0, mainEpisodes.size)
+                    val boundedSavedProgress = savedEpisodeProgress.coerceIn(0, mainEpisodes.size)
+                    val changedEpisodes = when {
+                        boundedEpisodeProgress > boundedSavedProgress ->
+                            mainEpisodes.subList(boundedSavedProgress, boundedEpisodeProgress) to 2
+                        boundedEpisodeProgress < boundedSavedProgress ->
+                            mainEpisodes.subList(boundedEpisodeProgress, boundedSavedProgress) to 0
+                        else -> emptyList<BangumiUserEpisodeCollection>() to 0
+                    }
+                    if (changedEpisodes.first.isNotEmpty()) {
+                        val episodeResponse = service.updateEpisodeCollections(
+                            subjectId,
+                            BangumiEpisodeCollectionUpdate(
+                                episode_id = changedEpisodes.first.map { it.episode.id },
+                                type = changedEpisodes.second
+                            )
+                        )
+                        if (!episodeResponse.isSuccessful) throw HttpException(episodeResponse)
+                    }
+                    val changedEpisodeIds = changedEpisodes.first
+                        .mapTo(hashSetOf()) { it.episode.id }
+                    val currentWatchedEpisodeIds = mainEpisodes.mapNotNull { episode ->
+                        val type = if (episode.episode.id in changedEpisodeIds) {
+                            changedEpisodes.second
+                        } else {
+                            episode.type
+                        }
+                        episode.episode.id.takeIf { type == 2 }
+                    }
+
+                    val refreshedCollection = service.getMyCollection(username, subjectId)
+                    val orderedTags = BangumiTagOrder.restore(refreshedCollection.tags, tags)
+                    myCollection = refreshedCollection.copy(tags = orderedTags)
+                    draftTags = orderedTags.orEmpty().joinToString(", ")
+                    withContext(Dispatchers.IO) {
+                        ActivityStats.recordBangumiSave(
+                            context = context,
+                            subjectId = subjectId,
+                            title = detail?.name ?: subjectName,
+                            secondaryTitle = detail?.name_cn ?: subjectNameCn,
+                            imageUrl = detail?.images?.large
+                                ?: detail?.images?.common
+                                ?: subjectImage,
+                            previousApiType = previousApiType,
+                            currentApiType = targetApiType,
+                            previousEpisodes = previousRegularProgress,
+                            currentEpisodes = boundedEpisodeProgress,
+                            currentEpisodeIds = currentWatchedEpisodeIds
+                        )
+                    }
+                    activityHistoryRevision++
+                    savedRegularEpisodeProgress = boundedEpisodeProgress
+                    savedEpisodeProgress = boundedEpisodeProgress
+                    draftEpisodeProgress = savedEpisodeProgress
+                    BangumiViewModel.collectionChanged = true
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.bangumi_collection_saved),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-                activityHistoryRevision++
-                savedRegularEpisodeProgress = boundedEpisodeProgress
-                savedEpisodeProgress = boundedEpisodeProgress
-                draftEpisodeProgress = savedEpisodeProgress
-                BangumiViewModel.collectionChanged = true
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.bangumi_collection_saved),
-                    Toast.LENGTH_SHORT
-                ).show()
             } catch (e: Exception) {
                 val messageRes = if ((e as? HttpException)?.code() == 401) {
                     R.string.bangumi_authorization_expired

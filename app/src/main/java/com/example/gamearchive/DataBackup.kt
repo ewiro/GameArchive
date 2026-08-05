@@ -1,6 +1,7 @@
 package com.example.gamearchive
 
 import android.content.Context
+import android.content.SharedPreferences
 import org.json.JSONObject
 
 /** 配置导出/导入 — 将标记、标签、个人资料 URL、偏好设置序列化为单个 JSON 文件 */
@@ -68,123 +69,135 @@ object DataBackup {
         return root.toString(2)
     }
 
-    /** 从 JSON 字符串导入配置。成功返回 true，解析失败返回 false。 */
+    /** 从 JSON 字符串导入配置。导入前完整校验，任一写入失败时恢复原数据。 */
+    @Synchronized
     fun importFromJson(context: Context, json: String): Boolean {
+        val backup = runCatching { parseBackup(json) }.getOrElse { return false }
+        val touchedPrefs = buildSet {
+            backup.sections.forEach { add(it.preferenceName) }
+            if (backup.userPrefs.isNotEmpty()) add(UserPrefs.PREF_NAME)
+            if (backup.themePrefs.isNotEmpty()) add(ThemeUtils.PREF_NAME)
+        }
+        val originals = touchedPrefs.associateWith { name ->
+            context.getSharedPreferences(name, Context.MODE_PRIVATE).all.toMap()
+        }
+
         return try {
-            val root = JSONObject(json)
-
-            // ── 恢复游戏标记 ──
-            if (root.has("game_marks")) {
-                val editor = context.getSharedPreferences(GameMarks.PREF_NAME, Context.MODE_PRIVATE).edit().clear()
-                val marks = root.getJSONObject("game_marks")
-                marks.keys().forEach { key -> editor.putString(key, marks.getString(key)) }
-                editor.apply()
+            backup.sections.forEach { section ->
+                check(writePreferences(context, section.preferenceName, section.values, true))
             }
-
-            // ── 恢复标签库 ──
-            if (root.has("game_tags_lib")) {
-                val editor = context.getSharedPreferences(GameTags.LIB_PREF, Context.MODE_PRIVATE).edit().clear()
-                val lib = root.getJSONObject("game_tags_lib")
-                lib.keys().forEach { key -> editor.putString(key, lib.getString(key)) }
-                editor.apply()
+            if (backup.userPrefs.isNotEmpty()) {
+                check(writePreferences(context, UserPrefs.PREF_NAME, backup.userPrefs, false))
             }
-
-            // ── 恢复游戏标签映射 ──
-            if (root.has("game_tags_map")) {
-                val editor = context.getSharedPreferences(GameTags.MAP_PREF, Context.MODE_PRIVATE).edit().clear()
-                val map = root.getJSONObject("game_tags_map")
-                map.keys().forEach { key -> editor.putString(key, map.getString(key)) }
-                editor.apply()
+            if (backup.themePrefs.isNotEmpty()) {
+                check(writePreferences(context, ThemeUtils.PREF_NAME, backup.themePrefs, false))
             }
-
-            // ── 恢复用户资料（仅外观 URL） ──
-            if (root.has("steam_user_data")) {
-                val data = root.getJSONObject("steam_user_data")
-                val editor = context.getSharedPreferences(UserPrefs.PREF_NAME, Context.MODE_PRIVATE).edit()
-                if (data.has("custom_bg_url")) editor.putString("custom_bg_url", data.getString("custom_bg_url"))
-                if (data.has("custom_frame_url")) editor.putString("custom_frame_url", data.getString("custom_frame_url"))
-                if (data.has("custom_avatar_url")) editor.putString("custom_avatar_url", data.getString("custom_avatar_url"))
-                if (data.has("show_profile_card")) editor.putBoolean("show_profile_card", data.getBoolean("show_profile_card"))
-                editor.apply()
-            }
-
-            // ── 恢复游戏备注 ──
-            if (root.has("game_notes")) {
-                val editor = context.getSharedPreferences(GameNotes.PREF_NAME, Context.MODE_PRIVATE).edit().clear()
-                val notes = root.getJSONObject("game_notes")
-                notes.keys().forEach { key -> editor.putString(key, notes.getString(key)) }
-                editor.apply()
-            }
-
-            // ── 恢复自定义游戏名 ──
-            if (root.has("game_names")) {
-                val editor = context.getSharedPreferences(GameNames.PREF_NAME, Context.MODE_PRIVATE).edit().clear()
-                val names = root.getJSONObject("game_names")
-                names.keys().forEach { key -> editor.putString(key, names.getString(key)) }
-                editor.apply()
-            }
-
-            // ── 恢复活动统计 ──
-            if (root.has("activity_stats")) {
-                val editor = context.getSharedPreferences(ActivityStats.PREF_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .clear()
-                val stats = root.getJSONObject("activity_stats")
-                stats.keys().forEach { key -> editor.putString(key, stats.getString(key)) }
-                editor.apply()
-                ActivityStats.notifyChanged()
-            }
-
-            // ── 恢复 Bangumi 标签输入顺序 ──
-            if (root.has("bangumi_tag_order")) {
-                val editor = context.getSharedPreferences(BangumiTagOrder.PREF_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .clear()
-                val orders = root.getJSONObject("bangumi_tag_order")
-                orders.keys().forEach { key -> editor.putString(key, orders.getString(key)) }
-                editor.apply()
-            }
-
-            // ── 恢复偏好设置 ──
-            if (root.has("app_theme_prefs")) {
-                val p = root.getJSONObject("app_theme_prefs")
-                val editor = context.getSharedPreferences(ThemeUtils.PREF_NAME, Context.MODE_PRIVATE).edit()
-                if (p.has("theme_mode")) editor.putInt("theme_mode", p.getInt("theme_mode"))
-                if (p.has("language")) editor.putInt("language", p.getInt("language"))
-                if (p.has("show_playtime_badge_background")) {
-                    editor.putBoolean(
-                        "show_playtime_badge_background",
-                        p.getBoolean("show_playtime_badge_background")
-                    )
-                }
-                if (p.has("use_playtime_badge_text_color")) {
-                    editor.putBoolean(
-                        "use_playtime_badge_text_color",
-                        p.getBoolean("use_playtime_badge_text_color")
-                    )
-                }
-                if (p.has("enable_grouping")) editor.putBoolean("enable_grouping", p.getBoolean("enable_grouping"))
-                if (p.has("sort_mode")) editor.putInt("sort_mode", p.getInt("sort_mode"))
-                if (p.has("show_specials")) editor.putBoolean("show_specials", p.getBoolean("show_specials"))
-                if (p.has("show_bangumi")) editor.putBoolean("show_bangumi", p.getBoolean("show_bangumi"))
-                if (p.has("bangumi_display_style")) {
-                    editor.putInt("bangumi_display_style", p.getInt("bangumi_display_style").coerceIn(0, 1))
-                }
-                // 兼容旧格式：跳过 group_recent 字段（已废弃）
-                editor.apply()
-                if (p.has("bangumi_rating_mode")) {
-                    UserPrefs.setBangumiRatingMode(
-                        context,
-                        p.getInt("bangumi_rating_mode").coerceIn(0, 2)
-                    )
-                }
-            }
-
+            if (backup.hasActivityStats) ActivityStats.notifyChanged()
             ThemeUtils.isChanged = true
             true
         } catch (_: Exception) {
+            originals.forEach { (name, values) ->
+                writePreferences(context, name, values, true)
+            }
             false
         }
+    }
+
+    private fun parseBackup(json: String): ParsedBackup {
+        val root = JSONObject(json)
+        require(root.optInt("version", -1) == VERSION)
+
+        val sections = STRING_SECTIONS.mapNotNull { (jsonKey, preferenceName) ->
+            if (!root.has(jsonKey)) return@mapNotNull null
+            PreferenceSection(preferenceName, readStringObject(root.getJSONObject(jsonKey)))
+        }
+        val userPrefs = mutableMapOf<String, Any>()
+        if (root.has("steam_user_data")) {
+            val data = root.getJSONObject("steam_user_data")
+            USER_STRING_KEYS.forEach { key ->
+                if (data.has(key)) userPrefs[key] = requireString(data, key)
+            }
+            if (data.has("show_profile_card")) {
+                userPrefs["show_profile_card"] = requireBoolean(data, "show_profile_card")
+            }
+        }
+
+        val themePrefs = mutableMapOf<String, Any>()
+        if (root.has("app_theme_prefs")) {
+            val data = root.getJSONObject("app_theme_prefs")
+            THEME_INT_KEYS.forEach { key ->
+                if (data.has(key)) themePrefs[key] = requireInt(data, key)
+            }
+            THEME_BOOLEAN_KEYS.forEach { key ->
+                if (data.has(key)) themePrefs[key] = requireBoolean(data, key)
+            }
+            if (data.has("bangumi_display_style")) {
+                themePrefs["bangumi_display_style"] =
+                    requireInt(data, "bangumi_display_style").coerceIn(0, 1)
+            }
+            if (data.has("bangumi_rating_mode")) {
+                userPrefs["bangumi_rating_mode"] =
+                    requireInt(data, "bangumi_rating_mode").coerceIn(0, 2)
+            }
+        }
+
+        require(
+            sections.isNotEmpty() ||
+                root.has("steam_user_data") ||
+                root.has("app_theme_prefs")
+        )
+        return ParsedBackup(
+            sections = sections,
+            userPrefs = userPrefs,
+            themePrefs = themePrefs,
+            hasActivityStats = root.has("activity_stats")
+        )
+    }
+
+    private fun readStringObject(source: JSONObject): Map<String, Any> = buildMap {
+        val keys = source.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            put(key, requireString(source, key))
+        }
+    }
+
+    private fun requireString(source: JSONObject, key: String): String =
+        (source.get(key) as? String) ?: throw IllegalArgumentException(key)
+
+    private fun requireBoolean(source: JSONObject, key: String): Boolean =
+        (source.get(key) as? Boolean) ?: throw IllegalArgumentException(key)
+
+    private fun requireInt(source: JSONObject, key: String): Int {
+        val number = source.get(key) as? Number ?: throw IllegalArgumentException(key)
+        val value = number.toLong()
+        require(value in Int.MIN_VALUE..Int.MAX_VALUE && number.toDouble() == value.toDouble())
+        return value.toInt()
+    }
+
+    private fun writePreferences(
+        context: Context,
+        preferenceName: String,
+        values: Map<String, *>,
+        clearFirst: Boolean
+    ): Boolean {
+        val editor = context.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).edit()
+        if (clearFirst) editor.clear()
+        values.forEach { (key, value) -> editor.putValue(key, value) }
+        return editor.commit()
+    }
+
+    private fun SharedPreferences.Editor.putValue(
+        key: String,
+        value: Any?
+    ): SharedPreferences.Editor = when (value) {
+        is String -> putString(key, value)
+        is Int -> putInt(key, value)
+        is Long -> putLong(key, value)
+        is Float -> putFloat(key, value)
+        is Boolean -> putBoolean(key, value)
+        is Set<*> -> putStringSet(key, value.filterIsInstance<String>().toSet())
+        else -> throw IllegalArgumentException(key)
     }
 
     private fun preferencesToJson(context: Context, preferenceName: String): JSONObject =
@@ -192,4 +205,39 @@ object DataBackup {
             context.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).all
                 .forEach { (key, value) -> json.put(key, value) }
         }
+
+    private data class ParsedBackup(
+        val sections: List<PreferenceSection>,
+        val userPrefs: Map<String, Any>,
+        val themePrefs: Map<String, Any>,
+        val hasActivityStats: Boolean
+    )
+
+    private data class PreferenceSection(
+        val preferenceName: String,
+        val values: Map<String, Any>
+    )
+
+    private val STRING_SECTIONS = linkedMapOf(
+        "game_marks" to GameMarks.PREF_NAME,
+        "game_tags_lib" to GameTags.LIB_PREF,
+        "game_tags_map" to GameTags.MAP_PREF,
+        "game_notes" to GameNotes.PREF_NAME,
+        "game_names" to GameNames.PREF_NAME,
+        "activity_stats" to ActivityStats.PREF_NAME,
+        "bangumi_tag_order" to BangumiTagOrder.PREF_NAME
+    )
+    private val USER_STRING_KEYS = listOf(
+        "custom_bg_url",
+        "custom_frame_url",
+        "custom_avatar_url"
+    )
+    private val THEME_INT_KEYS = listOf("theme_mode", "language", "sort_mode")
+    private val THEME_BOOLEAN_KEYS = listOf(
+        "show_playtime_badge_background",
+        "use_playtime_badge_text_color",
+        "enable_grouping",
+        "show_specials",
+        "show_bangumi"
+    )
 }

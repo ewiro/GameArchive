@@ -195,7 +195,7 @@ private fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             if (token.isNotBlank()) {
                 val currentUser = withContext(Dispatchers.IO) {
                     runCatching {
-                        GameArchiveApp.createAuthenticatedBgmService(token).getCurrentUser()
+                        BangumiAuthSession.execute(context) { it.getCurrentUser() }
                     }.getOrNull()
                 }
                 if (currentUser != null) {

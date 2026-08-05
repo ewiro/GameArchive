@@ -73,9 +73,14 @@ class BangumiAuthActivity : ComponentActivity() {
                     code = code,
                     redirectUri = redirectUri
                 )
-                UserPrefs.setBangumiAccessToken(this@BangumiAuthActivity, token.access_token)
-                UserPrefs.setBangumiRefreshToken(this@BangumiAuthActivity, token.refresh_token)
-                UserPrefs.setBangumiUserId(this@BangumiAuthActivity, token.user_id)
+                check(
+                    UserPrefs.saveBangumiAuthorization(
+                        context = this@BangumiAuthActivity,
+                        accessToken = token.access_token,
+                        refreshToken = token.refresh_token.orEmpty(),
+                        userId = token.user_id
+                    )
+                )
                 try {
                     val currentUser = GameArchiveApp.createAuthenticatedBgmService(token.access_token)
                         .getCurrentUser()

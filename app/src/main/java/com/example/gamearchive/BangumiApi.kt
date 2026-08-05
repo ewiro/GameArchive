@@ -14,7 +14,7 @@ import retrofit2.http.Query
 // --- OAuth 令牌 ---
 @Keep data class BangumiOAuthToken(
     val access_token: String, val expires_in: Int, val token_type: String,
-    val scope: String?, val refresh_token: String, val user_id: Int
+    val scope: String?, val refresh_token: String?, val user_id: Int
 )
 @Keep data class BangumiOAuthError(
     val error: String?, val error_description: String?

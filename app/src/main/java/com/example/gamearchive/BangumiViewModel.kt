@@ -223,14 +223,14 @@ class BangumiViewModel : ViewModel() {
                     .map { it.subject_id }
                     .distinct()
                 if (accessToken.isNotBlank() && authenticatedEpisodeIds.isNotEmpty()) {
-                    val authenticatedService =
-                        GameArchiveApp.createAuthenticatedBgmService(accessToken)
                     kotlinx.coroutines.coroutineScope {
                         authenticatedEpisodeIds.chunked(8).forEach { batch ->
                             batch.map { id ->
                                 async {
                                     try {
-                                        id to authenticatedService.getEpisodeCollections(id)
+                                        id to BangumiAuthSession.execute(context) {
+                                            it.getEpisodeCollections(id)
+                                        }
                                     } catch (_: Exception) {
                                         null
                                     }
