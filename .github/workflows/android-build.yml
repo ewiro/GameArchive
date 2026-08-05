@@ -1,4 +1,4 @@
-name: Android release
+name: Android CI
 
 on:
   push:
@@ -10,8 +10,40 @@ permissions:
   contents: read
 
 jobs:
+  detect_release:
+    name: Detect official release
+    runs-on: ubuntu-24.04
+    outputs:
+      is_release: ${{ steps.detect.outputs.is_release }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Detect version tag
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          release_tag=""
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            release_tag="$(git tag --points-at "$GITHUB_SHA" --list 'v*' | head -n 1)"
+          fi
+
+          if [[ -n "$release_tag" ]]; then
+            echo "Official release ${release_tag} will build this commit; skipping CI APK"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-publish:
-    name: Build and publish release APK
+    name: Build and publish CI APK
+    needs: detect_release
+    if: needs.detect_release.outputs.is_release != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -50,7 +82,7 @@ jobs:
       - name: Compile release APK
         run: bash ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Prepare Telegram release
+      - name: Prepare Telegram CI build
         env:
           PUSH_BEFORE: ${{ github.event.before }}
         run: |

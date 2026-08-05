@@ -1,0 +1,191 @@
+name: Android release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing version tag to publish, for example v2.2
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    name: Build and publish official release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
+      - name: Verify release source
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        run: |
+          if [[ "$RELEASE_TAG" != v* ]] || ! git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null 2>&1; then
+            echo "::error::Release tag ${RELEASE_TAG} does not exist"
+            exit 1
+          fi
+
+          tag_sha="$(git rev-list -n 1 "$RELEASE_TAG")"
+          checked_out_sha="$(git rev-parse HEAD)"
+          if [[ "$checked_out_sha" != "$tag_sha" ]]; then
+            echo "::error::Checked out ${checked_out_sha}, expected release tag ${RELEASE_TAG} at ${tag_sha}"
+            exit 1
+          fi
+
+          declared_version="$(jq -r '.version // empty' version.json)"
+          declared_version_code="$(jq -r '.versionCode // empty' version.json)"
+          if [[ -z "$declared_version" || -z "$declared_version_code" || "$RELEASE_TAG" != "v${declared_version#v}" ]]; then
+            echo "::error::Tag ${RELEASE_TAG} does not match version.json"
+            exit 1
+          fi
+
+          base_name="GameArchive-v${declared_version#v}"
+          printf 'BASE_NAME=%s\nRELEASE_TAG=%s\n' "$base_name" "$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "Verified ${RELEASE_TAG} at ${tag_sha}"
+
+      - name: Set up Java 17
+        if: github.event_name == 'push'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        if: github.event_name == 'push'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Restore release configuration
+        if: github.event_name == 'push'
+        env:
+          APP_CONFIG_BASE64: ${{ secrets.APP_CONFIG_BASE64 }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PROPERTIES_BASE64: ${{ secrets.RELEASE_KEYSTORE_PROPERTIES_BASE64 }}
+        run: |
+          for secret_name in APP_CONFIG_BASE64 RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PROPERTIES_BASE64; do
+            if [[ -z "${!secret_name}" ]]; then
+              echo "::error::Missing required secret: ${secret_name}"
+              exit 1
+            fi
+          done
+
+          printf '%s' "$APP_CONFIG_BASE64" | base64 --decode > app/src/main/java/com/example/gamearchive/AppConfig.kt
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > release.keystore
+          printf '%s' "$RELEASE_KEYSTORE_PROPERTIES_BASE64" | base64 --decode > keystore.properties
+
+      - name: Compile release APK
+        if: github.event_name == 'push'
+        run: bash ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Collect built release APKs
+        if: github.event_name == 'push'
+        run: |
+          metadata_path="app/build/outputs/apk/release/output-metadata.json"
+          version_name="$(jq -r '.elements[0].versionName // empty' "$metadata_path")"
+          version_code="$(jq -r '.elements[0].versionCode // empty' "$metadata_path")"
+          declared_version="$(jq -r '.version // empty' version.json)"
+          declared_version_code="$(jq -r '.versionCode // empty' version.json)"
+
+          if [[ -z "$version_name" || -z "$version_code" ]]; then
+            echo "::error::Unable to read version from release metadata"
+            exit 1
+          fi
+          if [[ "$RELEASE_TAG" != "v${version_name#v}" ]]; then
+            echo "::error::Tag ${RELEASE_TAG} does not match app version v${version_name#v}"
+            exit 1
+          fi
+          if [[ "$declared_version" != "$version_name" || "$declared_version_code" != "$version_code" ]]; then
+            echo "::error::version.json does not match the APK version"
+            exit 1
+          fi
+
+          mkdir -p official-release
+          cp app/build/outputs/apk/release/app-arm64-v8a-release.apk "official-release/${BASE_NAME}-arm64-v8a.apk"
+          cp app/build/outputs/apk/release/app-armeabi-v7a-release.apk "official-release/${BASE_NAME}-armeabi-v7a.apk"
+
+      - name: Download existing GitHub release APKs
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p official-release
+          gh release download "$RELEASE_TAG" \
+            --pattern "${BASE_NAME}-arm64-v8a.apk" \
+            --pattern "${BASE_NAME}-armeabi-v7a.apk" \
+            --dir official-release
+
+          test -f "official-release/${BASE_NAME}-arm64-v8a.apk"
+          test -f "official-release/${BASE_NAME}-armeabi-v7a.apk"
+
+      - name: Prepare release notes
+        run: |
+          release_sha="$(git rev-list -n 1 "$RELEASE_TAG")"
+          previous_tag="$(git tag --sort=-version:refname --list 'v*' | grep -Fxv "$RELEASE_TAG" | head -n 1 || true)"
+          if [[ -n "$previous_tag" ]] && git merge-base --is-ancestor "${previous_tag}^{commit}" "$release_sha"; then
+            changelog="$(git log --reverse --format='• %s' "${previous_tag}..${RELEASE_TAG}")"
+          else
+            previous_version_commit="$(git log --format='%H' "$RELEASE_TAG" -- version.json | sed -n '2p')"
+            if [[ -n "$previous_version_commit" ]]; then
+              changelog="$(git log --reverse --format='• %s' "${previous_version_commit}..${RELEASE_TAG}")"
+            else
+              changelog="$(git log --reverse --format='• %s' "$RELEASE_TAG")"
+            fi
+          fi
+
+          caption="${RELEASE_TAG}更新：
+          ${changelog}"
+          printf '%s' "${caption:0:1000}" > official-release/caption.txt
+          printf '%s\n' "$caption" > official-release/release-notes.md
+
+      - name: Create GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          arm64_apk="official-release/${BASE_NAME}-arm64-v8a.apk"
+          armeabi_apk="official-release/${BASE_NAME}-armeabi-v7a.apk"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$arm64_apk" "$armeabi_apk" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$arm64_apk" "$armeabi_apk" \
+              --title "$RELEASE_TAG" \
+              --notes-file official-release/release-notes.md
+          fi
+
+      - name: Publish to Telegram channel
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "::error::Missing Telegram secrets"
+            exit 1
+          fi
+
+          api_url="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup"
+          caption="$(<official-release/caption.txt)"
+          media="$(jq -nc --arg caption "$caption" '[
+            {type: "document", media: "attach://arm64"},
+            {type: "document", media: "attach://armeabi", caption: $caption}
+          ]')"
+          response="$(curl --silent --show-error \
+            --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+            --form-string "media=${media}" \
+            --form "arm64=@official-release/${BASE_NAME}-arm64-v8a.apk" \
+            --form "armeabi=@official-release/${BASE_NAME}-armeabi-v7a.apk" \
+            "$api_url")"
+          if [[ "$(jq -r '.ok // false' <<< "$response")" != "true" ]]; then
+            echo "::error::Telegram publish failed: $(jq -r '.description // "Unknown error"' <<< "$response")"
+            exit 1
+          fi
