@@ -92,6 +92,22 @@ interface BangumiService {
         @Path("subject_id") subjectId: Int
     ): List<BangumiRelatedCharacter>
 
+    @GET("bangumi/v0/subjects/{subject_id}/subjects")
+    suspend fun getSubjectRelations(
+        @Path("subject_id") subjectId: Int
+    ): List<BangumiRelatedSubject>
+
+    @GET("bangumi/subject/{subject_id}")
+    suspend fun getLegacySubject(
+        @Path("subject_id") subjectId: Int,
+        @Query("responseGroup") responseGroup: String = "large"
+    ): BangumiLegacySubject
+
+    @GET("bangumi/v0/characters/{character_id}")
+    suspend fun getCharacter(
+        @Path("character_id") characterId: Int
+    ): BangumiCharacterDetail
+
     @GET("bangumi/v0/persons/{person_id}")
     suspend fun getPerson(
         @Path("person_id") personId: Int
@@ -150,6 +166,7 @@ interface BangumiService {
 @Keep data class BangumiPerson(
     val id: Int? = null,
     val name: String? = null,
+    val name_cn: String? = null,
     val relation: String? = null,
     val type: Int? = null,
     val career: List<String>? = null,
@@ -176,8 +193,40 @@ interface BangumiService {
 @Keep data class BangumiRelatedCharacter(
     val id: Int? = null,
     val name: String? = null,
+    val name_cn: String? = null,
+    val summary: String? = null,
+    val type: Int? = null,
+    val images: BangumiImages? = null,
     val relation: String? = null,
     val actors: List<BangumiPerson>? = null
+)
+
+@Keep data class BangumiRelatedSubject(
+    val id: Int,
+    val name: String,
+    val name_cn: String? = null,
+    val relation: String? = null,
+    val type: Int? = null,
+    val images: BangumiImages? = null
+)
+
+@Keep data class BangumiCharacterDetail(
+    val id: Int? = null,
+    val name: String? = null,
+    val name_cn: String? = null,
+    val type: Int? = null,
+    val summary: String? = null,
+    val images: BangumiImages? = null,
+    val infobox: List<BangumiInfoboxItem>? = null
+)
+
+@Keep data class BangumiLegacySubject(
+    val crt: List<BangumiLegacyCharacter>? = null
+)
+
+@Keep data class BangumiLegacyCharacter(
+    val id: Int? = null,
+    val name_cn: String? = null
 )
 
 // --- OAuth 接口（通过公共代理转发到 bgm.tv）---
@@ -259,6 +308,15 @@ interface BangumiOAuthService {
 interface BangumiCollectionService {
     @GET("bangumi/v0/me")
     suspend fun getCurrentUser(): BangumiUser
+
+    @GET("bangumi/v0/users/{username}/collections")
+    suspend fun getUserCollections(
+        @Path("username") username: String,
+        @Query("subject_type") subjectType: Int = 2,
+        @Query("type") collectionType: Int? = null,
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0
+    ): BangumiPagedCollection
 
     @GET("bangumi/v0/users/{username}/collections/{subject_id}")
     suspend fun getMyCollection(

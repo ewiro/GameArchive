@@ -61,6 +61,28 @@ internal fun isDirectorInfoboxKey(key: String): Boolean {
     )
 }
 
+internal fun bangumiChineseName(infobox: List<BangumiInfoboxItem>?): String {
+    val rows = infobox.orEmpty()
+    val nameKeys = setOf(
+        "简体中文名", "簡體中文名", "中文名", "中文译名", "中译名"
+    )
+    rows.firstOrNull { it.key.trim() in nameKeys }?.let { item ->
+        flattenBangumiInfoboxValue(item.value).firstOrNull()?.text
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+    }
+    val aliasKeys = setOf("别名", "別名", "alias", "aliases")
+    return rows.asSequence()
+        .filter { it.key.trim().lowercase(Locale.ROOT) in aliasKeys }
+        .flatMap { flattenBangumiInfoboxValue(it.value).asSequence() }
+        .firstOrNull { value ->
+            val label = value.label?.trim()?.lowercase(Locale.ROOT).orEmpty()
+            label.contains("中文") || label in setOf("cn", "zh", "chinese")
+        }
+        ?.text
+        .orEmpty()
+}
+
 internal fun openExternalWebLink(context: Context, rawUrl: String) {
     val uri = normalizeHttpUri(rawUrl)
     if (uri == null) {

@@ -75,13 +75,23 @@ class BangumiPersonDetailActivity : ComponentActivity() {
 
         val personId = intent.getIntExtra(EXTRA_PERSON_ID, 0)
         val personName = intent.getStringExtra(EXTRA_PERSON_NAME).orEmpty()
+        val characterId = intent.getIntExtra(EXTRA_CHARACTER_ID, 0)
+        val characterName = intent.getStringExtra(EXTRA_CHARACTER_NAME).orEmpty()
         setContent {
             MiuixThemeForApp {
-                BangumiPersonDetailScreen(
-                    personId = personId,
-                    initialName = personName,
-                    onBack = { finish() }
-                )
+                if (characterId > 0) {
+                    BangumiCharacterDetailScreen(
+                        characterId = characterId,
+                        initialName = characterName,
+                        onBack = { finish() }
+                    )
+                } else {
+                    BangumiPersonDetailScreen(
+                        personId = personId,
+                        initialName = personName,
+                        onBack = { finish() }
+                    )
+                }
             }
         }
     }
@@ -89,12 +99,23 @@ class BangumiPersonDetailActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_PERSON_ID = "PERSON_ID"
         private const val EXTRA_PERSON_NAME = "PERSON_NAME"
+        private const val EXTRA_CHARACTER_ID = "CHARACTER_ID"
+        private const val EXTRA_CHARACTER_NAME = "CHARACTER_NAME"
 
         fun createIntent(context: Context, personId: Int, personName: String): Intent =
             Intent(context, BangumiPersonDetailActivity::class.java).apply {
                 putExtra(EXTRA_PERSON_ID, personId)
                 putExtra(EXTRA_PERSON_NAME, personName)
             }
+
+        fun createCharacterIntent(
+            context: Context,
+            characterId: Int,
+            characterName: String
+        ): Intent = Intent(context, BangumiPersonDetailActivity::class.java).apply {
+            putExtra(EXTRA_CHARACTER_ID, characterId)
+            putExtra(EXTRA_CHARACTER_NAME, characterName)
+        }
     }
 }
 
@@ -131,7 +152,7 @@ private fun BangumiPersonDetailScreen(
     }
 
     val pageTitle = personChineseName(detail).ifBlank {
-        detail?.name.orEmpty().ifBlank { initialName }
+        initialName.ifBlank { detail?.name.orEmpty() }
     }
 
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -188,6 +209,7 @@ private fun BangumiPersonDetailScreen(
                 } else {
                     BangumiPersonContent(
                         detail = detail!!,
+                        initialName = initialName,
                         works = works,
                         worksFailed = worksFailed
                     )
@@ -200,12 +222,13 @@ private fun BangumiPersonDetailScreen(
 @Composable
 private fun BangumiPersonContent(
     detail: BangumiPersonDetail,
+    initialName: String,
     works: List<BangumiPersonWork>,
     worksFailed: Boolean
 ) {
     val context = LocalContext.current
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-    val chineseName = personChineseName(detail)
+    val chineseName = personChineseName(detail).ifBlank { initialName }
     val originalName = detail.name.orEmpty()
     val imageUrl = detail.images?.large
         ?: detail.images?.common
@@ -368,7 +391,7 @@ private fun BangumiPersonContent(
 }
 
 @Composable
-private fun SectionTitle(title: String, modifier: Modifier = Modifier) {
+internal fun SectionTitle(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
         fontSize = DesignTokens.TextSubtitle.sp,
@@ -379,7 +402,7 @@ private fun SectionTitle(title: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun BangumiPersonInfoboxRow(
+internal fun BangumiPersonInfoboxRow(
     key: String,
     values: List<BangumiInfoboxValue>,
     modifier: Modifier = Modifier
@@ -493,9 +516,7 @@ private fun BangumiPersonWorkItem(
 }
 
 private fun personChineseName(detail: BangumiPersonDetail?): String {
-    val nameKeys = setOf("简体中文名", "簡體中文名", "中文名")
-    val item = detail?.infobox.orEmpty().firstOrNull { it.key.trim() in nameKeys }
-    return flattenBangumiInfoboxValue(item?.value).firstOrNull()?.text.orEmpty()
+    return bangumiChineseName(detail?.infobox)
 }
 
 private fun mergePersonWorks(subjects: List<BangumiPersonSubject>): List<BangumiPersonWork> {

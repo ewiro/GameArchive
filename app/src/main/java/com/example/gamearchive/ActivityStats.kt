@@ -251,7 +251,11 @@ object ActivityStats {
         val baselines = parseObject(prefs.getString(KEY_ANIME_BASELINES, null))
         val days = parseObject(prefs.getString(KEY_DAILY_ACTIVITY, null))
         val delta = currentEpisodes - previousEpisodes
-        if (delta > 0 && (previousApiType == 3 || currentApiType == 3)) {
+        val newlyMarkedDone = previousApiType != 2 && currentApiType == 2
+        if (
+            delta > 0 &&
+            (previousApiType == 3 || currentApiType == 3 || newlyMarkedDone)
+        ) {
             addActivity(
                 days = days,
                 kind = ActivityKind.ANIME,

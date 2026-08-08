@@ -211,6 +211,13 @@
     <string name="bangumi_doing">Watching</string>
     <string name="bangumi_on_hold">On Hold</string>
     <string name="bangumi_dropped">Dropped</string>
+    <string name="bangumi_grade_legendary">Legendary</string>
+    <string name="bangumi_grade_masterpiece">Masterpiece</string>
+    <string name="bangumi_grade_highly_recommended">Highly Recommended</string>
+    <string name="bangumi_grade_recommended">Recommended</string>
+    <string name="bangumi_grade_decent">Decent</string>
+    <string name="bangumi_grade_poor">Poor</string>
+    <string name="bangumi_grade_bad">Bad</string>
     <string name="bangumi_no_username">Enter Bangumi username in Settings</string>
     <string name="bangumi_empty">No anime collection found</string>
     <string name="bangumi_profile_total">%d anime in collection</string>
@@ -237,6 +244,7 @@
     <string name="bangumi_my_rating">Rating</string>
     <string name="bangumi_rating_value">%d stars</string>
     <string name="bangumi_tags_hint">Tags, separated by commas</string>
+    <string name="bangumi_my_tags">My tags</string>
     <string name="bangumi_comment_hint">Comment...</string>
     <string name="bangumi_save_collection">Sync to Bangumi</string>
     <string name="bangumi_saving">Syncing…</string>
@@ -256,8 +264,12 @@
     <string name="tag_create">Create</string>
     <string name="bangumi_tags_title">Tags</string>
     <string name="bangumi_summary_title">Summary</string>
-    <string name="bangumi_staff_title">Staff</string>
+    <string name="bangumi_characters_cast_title">Characters &amp; Cast</string>
+    <string name="bangumi_sequel_label">Sequel:</string>
+    <string name="bangumi_sequel_cover_description">Sequel: %1$s</string>
     <string name="bangumi_details_title">Details</string>
+    <string name="bangumi_copy_animation_company">Copy animation company</string>
+    <string name="bangumi_animation_company_copied">Animation company copied</string>
     <string name="media_play">Play</string>
     <string name="bangumi_oauth_config_missing">Configure Bangumi OAuth credentials in AppConfig.kt first</string>
     <string name="bangumi_oauth_canceled">Authorization canceled</string>
@@ -270,6 +282,7 @@
     <string name="game_collection_tag_title">Tag: %1$s</string>
     <string name="game_collection_fallback_name">Steam #%1$d</string>
     <string name="bangumi_person">Person</string>
+    <string name="bangumi_character">Character</string>
     <string name="bangumi_company">Company</string>
     <string name="bangumi_person_works">Participating Anime</string>
     <string name="bangumi_career_producer">Production Staff</string>

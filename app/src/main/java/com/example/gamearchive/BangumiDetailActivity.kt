@@ -1,5 +1,9 @@
 package com.example.gamearchive
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -14,9 +18,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +31,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -40,6 +48,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +68,7 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -98,6 +108,10 @@ private data class BangumiDetailRow(
     val values: List<BangumiDetailValue>
 )
 
+private data class BangumiCharacterCardInfo(
+    val chineseName: String = ""
+)
+
 @Composable
 private fun BangumiDetailScreen(
     subjectId: Int,
@@ -108,10 +122,17 @@ private fun BangumiDetailScreen(
 ) {
     val context = LocalContext.current
     val statusBarDp = statusBarHeightDp()
+    val sequelCoverGap = DesignTokens.SpaceXs + with(LocalDensity.current) {
+        DesignTokens.TextBody1.sp.toDp()
+    }
 
     var detail by remember { mutableStateOf<BangumiSubjectDetail?>(null) }
     var subjectPersons by remember { mutableStateOf<List<BangumiPerson>>(emptyList()) }
     var subjectCharacters by remember { mutableStateOf<List<BangumiRelatedCharacter>>(emptyList()) }
+    var sequelSubjects by remember { mutableStateOf<List<BangumiRelatedSubject>>(emptyList()) }
+    val characterChineseNames = remember { mutableStateMapOf<Int, String>() }
+    val characterCardInfo = remember { mutableStateMapOf<Int, BangumiCharacterCardInfo>() }
+    val actorChineseNames = remember { mutableStateMapOf<Int, String>() }
     var myCollection by remember { mutableStateOf<BangumiMyCollection?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isCollectionLoaded by remember { mutableStateOf(false) }
@@ -119,6 +140,11 @@ private fun BangumiDetailScreen(
     var draftType by remember { mutableIntStateOf(0) }
     var draftRate by remember { mutableIntStateOf(0) }
     var draftTags by remember { mutableStateOf("") }
+    var isTagInputFocused by remember { mutableStateOf(false) }
+    var tagInputRect by remember { mutableStateOf(Rect.Zero) }
+    var myTagSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isMyTagsLoading by remember { mutableStateOf(false) }
+    var hasRequestedMyTags by remember { mutableStateOf(false) }
     var draftComment by remember { mutableStateOf("") }
     var mainEpisodeCount by remember { mutableStateOf<Int?>(null) }
     var mainEpisodes by remember { mutableStateOf<List<BangumiUserEpisodeCollection>>(emptyList()) }
@@ -148,6 +174,16 @@ private fun BangumiDetailScreen(
                     GameArchiveApp.bgmService.getSubjectCharacters(subjectId)
                 }.getOrDefault(emptyList())
             }
+            val relatedSubjectsDeferred = async {
+                runCatching {
+                    GameArchiveApp.bgmService.getSubjectRelations(subjectId)
+                }.getOrDefault(emptyList())
+            }
+            val legacySubjectDeferred = async {
+                runCatching {
+                    GameArchiveApp.bgmService.getLegacySubject(subjectId)
+                }.getOrNull()
+            }
             val episodesDeferred = async {
                 runCatching {
                     val firstPage = GameArchiveApp.bgmService
@@ -172,14 +208,35 @@ private fun BangumiDetailScreen(
                     }
                 }.getOrNull()
             }
-            (detailDeferred.await() to personsDeferred.await()) to
-                (charactersDeferred.await() to episodesDeferred.await())
+            (detailDeferred.await() to personsDeferred.await()) to (
+                Triple(
+                    charactersDeferred.await(),
+                    episodesDeferred.await(),
+                    legacySubjectDeferred.await()
+                ) to relatedSubjectsDeferred.await()
+            )
         }
         val (loadedDetail, loadedPersons) = loadedSubject
-        val (loadedCharacters, loadedEpisodePage) = loadedRelatedData
+        val (loadedCoreRelatedData, loadedSubjectRelations) = loadedRelatedData
+        val (loadedCharacters, loadedEpisodePage, loadedLegacySubject) = loadedCoreRelatedData
         detail = loadedDetail
         subjectPersons = loadedPersons
         subjectCharacters = loadedCharacters
+        sequelSubjects = loadedSubjectRelations.filter { relatedSubject ->
+            relatedSubject.type == 2 &&
+                relatedSubject.relation?.trim() in setOf("续集", "續集")
+        }
+        characterChineseNames.clear()
+        characterChineseNames.putAll(loadedLegacySubject?.crt.orEmpty()
+            .mapNotNull { character ->
+                val id = character.id ?: return@mapNotNull null
+                val name = character.name_cn?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: return@mapNotNull null
+                id to name
+            }
+            .toMap())
+        characterCardInfo.clear()
+        actorChineseNames.clear()
         mainEpisodeCount = loadedEpisodePage?.total?.takeIf { it > 0 }
         mainEpisodes = loadedEpisodePage?.data.orEmpty()
             .sortedWith(compareBy(
@@ -260,7 +317,72 @@ private fun BangumiDetailScreen(
         isLoading = false
     }
 
+    LaunchedEffect(draftType, mainEpisodes.size, isCollectionLoaded) {
+        if (isCollectionLoaded && draftType == 2 && mainEpisodes.isNotEmpty()) {
+            draftEpisodeProgress = mainEpisodes.size
+        }
+    }
+
     val coroutineScope = rememberCoroutineScope()
+
+    fun loadMyTagSuggestions() {
+        if (hasRequestedMyTags || isMyTagsLoading) return
+        val token = UserPrefs.getBangumiAccessToken(context)
+        if (token.isEmpty()) return
+        hasRequestedMyTags = true
+        isMyTagsLoading = true
+        coroutineScope.launch {
+            var username = UserPrefs.getBangumiUsername(context)
+            val cachedTagGroups = withContext(Dispatchers.IO) {
+                val collectionTags = if (username.isBlank()) {
+                    emptyList()
+                } else {
+                    BangumiPageCache.load(context, username)
+                        ?.collections
+                        .orEmpty()
+                        .values
+                        .flatten()
+                        .map { it.tags.orEmpty() }
+                }
+                val locallyOrderedTags = if (username.isBlank()) {
+                    emptyList()
+                } else {
+                    BangumiTagOrder.snapshot(context, username).values.toList()
+                }
+                collectionTags + locallyOrderedTags
+            }
+            myTagSuggestions = rankBangumiTags(cachedTagGroups)
+
+            val remoteTagGroups = runCatching {
+                BangumiAuthSession.execute(context) { service ->
+                    if (username.isBlank()) {
+                        username = service.getCurrentUser().username
+                        UserPrefs.setBangumiUsername(context, username)
+                    }
+                    val result = mutableListOf<List<String>>()
+                    var offset = 0
+                    while (true) {
+                        val page = service.getUserCollections(
+                            username = username,
+                            subjectType = 2,
+                            collectionType = null,
+                            limit = 50,
+                            offset = offset
+                        )
+                        val collections = page.data.orEmpty()
+                        result += collections.map { it.tags.orEmpty() }
+                        if (collections.isEmpty() || offset + collections.size >= page.total) {
+                            break
+                        }
+                        offset += collections.size
+                    }
+                    result
+                }
+            }.getOrDefault(emptyList())
+            myTagSuggestions = rankBangumiTags(remoteTagGroups + cachedTagGroups)
+            isMyTagsLoading = false
+        }
+    }
 
     fun saveCollection() {
         val token = UserPrefs.getBangumiAccessToken(context)
@@ -327,13 +449,43 @@ private fun BangumiDetailScreen(
                         BangumiTagOrder.save(context, username, subjectId, tags)
                     }
 
-                    val boundedEpisodeProgress = draftEpisodeProgress.coerceIn(0, mainEpisodes.size)
-                    val boundedSavedProgress = savedEpisodeProgress.coerceIn(0, mainEpisodes.size)
+                    val episodesForSave = if (targetApiType == 2 && mainEpisodes.isEmpty()) {
+                        runCatching {
+                            service.getEpisodeCollections(subjectId).data.orEmpty()
+                                .sortedWith(compareBy(
+                                    { it.episode.ep ?: Double.MAX_VALUE },
+                                    { it.episode.sort ?: Double.MAX_VALUE }
+                                ))
+                        }.getOrDefault(emptyList())
+                    } else {
+                        mainEpisodes
+                    }
+                    val targetEpisodeProgress = if (targetApiType == 2) {
+                        episodesForSave.size
+                    } else {
+                        draftEpisodeProgress
+                    }
+                    val boundedEpisodeProgress = targetEpisodeProgress.coerceIn(
+                        0,
+                        episodesForSave.size
+                    )
+                    val boundedSavedProgress = savedEpisodeProgress.coerceIn(
+                        0,
+                        episodesForSave.size
+                    )
                     val changedEpisodes = when {
+                        targetApiType == 2 ->
+                            episodesForSave.filter { it.type != 2 } to 2
                         boundedEpisodeProgress > boundedSavedProgress ->
-                            mainEpisodes.subList(boundedSavedProgress, boundedEpisodeProgress) to 2
+                            episodesForSave.subList(
+                                boundedSavedProgress,
+                                boundedEpisodeProgress
+                            ) to 2
                         boundedEpisodeProgress < boundedSavedProgress ->
-                            mainEpisodes.subList(boundedEpisodeProgress, boundedSavedProgress) to 0
+                            episodesForSave.subList(
+                                boundedEpisodeProgress,
+                                boundedSavedProgress
+                            ) to 0
                         else -> emptyList<BangumiUserEpisodeCollection>() to 0
                     }
                     if (changedEpisodes.first.isNotEmpty()) {
@@ -348,19 +500,38 @@ private fun BangumiDetailScreen(
                     }
                     val changedEpisodeIds = changedEpisodes.first
                         .mapTo(hashSetOf()) { it.episode.id }
-                    val currentWatchedEpisodeIds = mainEpisodes.mapNotNull { episode ->
+                    val updatedEpisodes = episodesForSave.map { episode ->
                         val type = if (episode.episode.id in changedEpisodeIds) {
                             changedEpisodes.second
                         } else {
                             episode.type
                         }
-                        episode.episode.id.takeIf { type == 2 }
+                        episode.copy(type = type)
+                    }
+                    val currentWatchedEpisodeIds = updatedEpisodes.mapNotNull { episode ->
+                        episode.episode.id.takeIf { episode.type == 2 }
                     }
 
                     val refreshedCollection = service.getMyCollection(username, subjectId)
+                    val recordedEpisodeProgress = if (targetApiType == 2) {
+                        resolvedCompletedEpisodeCount(
+                            loadedEpisodeCount = episodesForSave.size,
+                            episodePageTotal = mainEpisodeCount,
+                            subjectEpisodeCount = detail?.eps,
+                            collectionEpisodeCount = refreshedCollection.ep_status
+                        )
+                    } else {
+                        boundedEpisodeProgress
+                    }
                     val orderedTags = BangumiTagOrder.restore(refreshedCollection.tags, tags)
                     myCollection = refreshedCollection.copy(tags = orderedTags)
                     draftTags = orderedTags.orEmpty().joinToString(", ")
+                    val knownSuggestionKeys = myTagSuggestions
+                        .map { it.lowercase(Locale.ROOT) }
+                        .toSet()
+                    myTagSuggestions = myTagSuggestions + orderedTags.orEmpty().filter {
+                        it.lowercase(Locale.ROOT) !in knownSuggestionKeys
+                    }
                     withContext(Dispatchers.IO) {
                         ActivityStats.recordBangumiSave(
                             context = context,
@@ -373,13 +544,14 @@ private fun BangumiDetailScreen(
                             previousApiType = previousApiType,
                             currentApiType = targetApiType,
                             previousEpisodes = previousRegularProgress,
-                            currentEpisodes = boundedEpisodeProgress,
+                            currentEpisodes = recordedEpisodeProgress,
                             currentEpisodeIds = currentWatchedEpisodeIds
                         )
                     }
                     activityHistoryRevision++
-                    savedRegularEpisodeProgress = boundedEpisodeProgress
-                    savedEpisodeProgress = boundedEpisodeProgress
+                    mainEpisodes = updatedEpisodes
+                    savedRegularEpisodeProgress = recordedEpisodeProgress
+                    savedEpisodeProgress = recordedEpisodeProgress
                     draftEpisodeProgress = savedEpisodeProgress
                     BangumiViewModel.collectionChanged = true
                     Toast.makeText(
@@ -540,7 +712,7 @@ private fun BangumiDetailScreen(
                     }
                     val voiceActors = remember(subjectCharacters) {
                         subjectCharacters
-                            .flatMap { character ->
+                            .mapNotNull { character ->
                                 character.actors.orEmpty()
                                     .filter { actor ->
                                         !actor.name.isNullOrBlank() &&
@@ -548,9 +720,9 @@ private fun BangumiDetailScreen(
                                                 it.equals("seiyu", ignoreCase = true)
                                             }
                                     }
-                                    .map { actor -> character to actor }
+                                    .firstOrNull()
+                                    ?.let { actor -> character to actor }
                             }
-                            .distinctBy { (character, actor) -> character.id to actor.id }
                     }
                     Column(
                         modifier = Modifier.fillMaxSize()
@@ -581,7 +753,7 @@ private fun BangumiDetailScreen(
                             }
                             Spacer(Modifier.width(16.dp))
                             // 信息
-                            Column(modifier = Modifier.weight(1f).height(168.dp)) {
+                            Column(modifier = Modifier.weight(1f).heightIn(min = 168.dp)) {
                                 Text(
                                     text = d.name ?: subjectName,
                                     fontSize = DesignTokens.TextTitle.sp,
@@ -599,8 +771,6 @@ private fun BangumiDetailScreen(
                                     )
                                 }
                                 Spacer(Modifier.height(8.dp))
-
-                                // 评分
                                 if (showRating && score != null && score > 0) {
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
@@ -616,21 +786,132 @@ private fun BangumiDetailScreen(
                                             color = dim
                                         )
                                     }
-                                    Spacer(Modifier.height(4.dp))
+                                    Spacer(Modifier.height(DesignTokens.SpaceXs))
                                 }
-
-                                Spacer(Modifier.weight(1f))
-
-                                // 日期 + 话数（置底，优先使用章节列表数量）
-                                if (chapterCount != null) {
-                                    Text(
-                                        text = context.getString(
-                                            R.string.bangumi_episode_total,
-                                            chapterCount
-                                        ),
-                                        fontSize = DesignTokens.TextBody1.sp,
-                                        color = dim
-                                    )
+                                if (sequelSubjects.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(88.dp),
+                                        verticalAlignment = Alignment.Bottom
+                                    ) {
+                                        Column(modifier = Modifier.fillMaxHeight()) {
+                                            Text(
+                                                text = context.getString(
+                                                    R.string.bangumi_sequel_label
+                                                ),
+                                                fontSize = DesignTokens.TextBody1.sp,
+                                                color = dim
+                                            )
+                                            Spacer(Modifier.weight(1f))
+                                            if (chapterCount != null) {
+                                                Text(
+                                                    text = context.getString(
+                                                        R.string.bangumi_episode_total,
+                                                        chapterCount
+                                                    ),
+                                                    fontSize = DesignTokens.TextBody1.sp,
+                                                    color = dim,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.width(sequelCoverGap))
+                                        LazyRow(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight(),
+                                            horizontalArrangement = Arrangement.spacedBy(
+                                                DesignTokens.SpaceXs
+                                            )
+                                        ) {
+                                            items(
+                                                items = sequelSubjects,
+                                                key = BangumiRelatedSubject::id
+                                            ) { sequel ->
+                                                val sequelName = sequel.name_cn
+                                                    ?.takeIf(String::isNotBlank)
+                                                    ?: sequel.name
+                                                val sequelImage = sequel.images?.small
+                                                    ?: sequel.images?.grid
+                                                    ?: sequel.images?.common
+                                                    ?: sequel.images?.large
+                                                    .orEmpty()
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(width = 64.dp, height = 88.dp)
+                                                        .clip(
+                                                            RoundedCornerShape(
+                                                                DesignTokens.CornerMedium
+                                                            )
+                                                        )
+                                                        .motionClickable {
+                                                            context.startActivity(
+                                                                Intent(
+                                                                    context,
+                                                                    BangumiDetailActivity::class.java
+                                                                ).apply {
+                                                                    putExtra(
+                                                                        "SUBJECT_ID",
+                                                                        sequel.id
+                                                                    )
+                                                                    putExtra(
+                                                                        "SUBJECT_NAME",
+                                                                        sequel.name
+                                                                    )
+                                                                    putExtra(
+                                                                        "SUBJECT_NAME_CN",
+                                                                        sequel.name_cn.orEmpty()
+                                                                    )
+                                                                    putExtra(
+                                                                        "SUBJECT_IMAGE",
+                                                                        sequelImage
+                                                                    )
+                                                                }
+                                                            )
+                                                        },
+                                                    contentAlignment = Alignment.TopCenter
+                                                ) {
+                                                    if (sequelImage.isNotEmpty()) {
+                                                        AsyncImage(
+                                                            model = ImageRequest.Builder(context)
+                                                                .data(sequelImage)
+                                                                .crossfade(true)
+                                                                .build(),
+                                                            contentDescription = context.getString(
+                                                                R.string.bangumi_sequel_cover_description,
+                                                                sequelName
+                                                            ),
+                                                            modifier = Modifier
+                                                                .size(
+                                                                    width = 60.dp,
+                                                                    height = 88.dp
+                                                                )
+                                                                .clip(
+                                                                    RoundedCornerShape(
+                                                                        DesignTokens.CornerMedium
+                                                                    )
+                                                                ),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Spacer(Modifier.weight(1f))
+                                    if (chapterCount != null) {
+                                        Text(
+                                            text = context.getString(
+                                                R.string.bangumi_episode_total,
+                                                chapterCount
+                                            ),
+                                            fontSize = DesignTokens.TextBody1.sp,
+                                            color = dim,
+                                            maxLines = 1
+                                        )
+                                    }
                                 }
                                 if (!d.date.isNullOrEmpty()) {
                                     val isMovie = d.name?.contains("剧场版") == true ||
@@ -868,7 +1149,22 @@ private fun BangumiDetailScreen(
                                     TextField(
                                         value = draftTags,
                                         onValueChange = { draftTags = it },
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .onGloballyPositioned { coords ->
+                                                tagInputRect = coords.positionInWindow().let {
+                                                    Rect(
+                                                        it.x,
+                                                        it.y,
+                                                        it.x + coords.size.width,
+                                                        it.y + coords.size.height
+                                                    )
+                                                }
+                                            }
+                                            .onFocusChanged {
+                                                isTagInputFocused = it.isFocused
+                                                if (it.isFocused) loadMyTagSuggestions()
+                                            },
                                         label = context.getString(R.string.bangumi_tags_hint),
                                         useLabelAsPlaceholder = true,
                                         singleLine = true
@@ -1033,85 +1329,192 @@ private fun BangumiDetailScreen(
                         }
 
                         if (voiceActors.isNotEmpty()) {
-                            Spacer(Modifier.height(20.dp))
+                            Spacer(Modifier.height(DesignTokens.SpaceXxl))
                             Text(
-                                text = context.getString(R.string.bangumi_staff_title),
+                                text = context.getString(R.string.bangumi_characters_cast_title),
                                 fontSize = DesignTokens.TextSubtitle.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MiuixTheme.colorScheme.onSurface
                             )
-                            Spacer(Modifier.height(8.dp))
-                            val staffScrollState = rememberScrollState()
+                            Spacer(Modifier.height(DesignTokens.SpaceMd))
+                            val castListState = rememberLazyListState()
                             Box(modifier = Modifier.fillMaxWidth()) {
-                            Row(
+                            LazyRow(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(staffScrollState),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    .fillMaxWidth(),
+                                state = castListState,
+                                horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceLg)
                             ) {
-                                voiceActors.forEach { (character, actor) ->
-                                    Column(
-                                        modifier = Modifier
-                                            .width(108.dp)
-                                            .then(
-                                                actor.id?.let { personId ->
-                                                    Modifier.motionClickable {
-                                                        context.startActivity(
-                                                            BangumiPersonDetailActivity.createIntent(
-                                                                context,
-                                                                personId,
-                                                                actor.name.orEmpty()
+                                items(
+                                    items = voiceActors,
+                                    key = { (character, actor) ->
+                                        "${character.id ?: character.name}_${actor.id ?: actor.name}"
+                                    }
+                                ) { (character, actor) ->
+                                    LaunchedEffect(character.id, actor.id) {
+                                        coroutineScope {
+                                            val characterInfoDeferred = character.id
+                                                ?.takeIf { !characterCardInfo.containsKey(it) }
+                                                ?.let { characterId ->
+                                                    async {
+                                                        val info = runCatching {
+                                                            GameArchiveApp.bgmService
+                                                                .getCharacter(characterId)
+                                                        }.getOrNull()?.let { characterDetail ->
+                                                            BangumiCharacterCardInfo(
+                                                                chineseName = characterDetail.name_cn
+                                                                    ?.takeIf { it.isNotBlank() }
+                                                                    ?: bangumiChineseName(
+                                                                        characterDetail.infobox
+                                                                    )
                                                             )
-                                                        )
+                                                        } ?: BangumiCharacterCardInfo()
+                                                        characterId to info
                                                     }
-                                                } ?: Modifier
-                                            )
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(width = 108.dp, height = 136.dp)
-                                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                                .background(MiuixTheme.colorScheme.secondaryContainer)
-                                        ) {
-                                            val actorImage = actor.images?.large
-                                                ?: actor.images?.common
-                                                ?: actor.images?.medium
-                                                ?: actor.images?.small
-                                            if (!actorImage.isNullOrEmpty()) {
-                                                AsyncImage(
-                                                    model = ImageRequest.Builder(context)
-                                                        .data(actorImage)
-                                                        .crossfade(true)
-                                                        .build(),
-                                                    contentDescription = actor.name,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
+                                                }
+                                            val actorNameDeferred = actor.id
+                                                ?.takeIf { !actorChineseNames.containsKey(it) }
+                                                ?.let { personId ->
+                                                    async {
+                                                        val loadedName = runCatching {
+                                                            GameArchiveApp.bgmService.getPerson(personId)
+                                                        }.getOrNull()?.let { personDetail ->
+                                                            bangumiChineseName(personDetail.infobox)
+                                                        }.orEmpty()
+                                                        personId to loadedName
+                                                    }
+                                                }
+                                            characterInfoDeferred?.await()?.let { (id, info) ->
+                                                characterCardInfo[id] = info
+                                            }
+                                            actorNameDeferred?.await()?.let { (id, name) ->
+                                                actorChineseNames[id] = name
+                                            }
+                                        }
+                                    }
+                                    val cardInfo = character.id?.let(characterCardInfo::get)
+                                    val characterName = character.id?.let {
+                                        cardInfo?.chineseName?.takeIf(String::isNotBlank)
+                                            ?: characterChineseNames[it]?.takeIf(String::isNotBlank)
+                                    }
+                                        ?: character.name_cn?.takeIf { it.isNotBlank() }
+                                        ?: character.name.orEmpty()
+                                    val characterCardName = characterName
+                                        .substringBefore('•')
+                                        .substringBefore('·')
+                                        .trim()
+                                        .ifEmpty { characterName }
+                                    val actorName = actor.id?.let {
+                                        actorChineseNames[it]?.takeIf(String::isNotBlank)
+                                    }
+                                        ?: actor.name_cn?.takeIf { it.isNotBlank() }
+                                        ?: actor.name.orEmpty()
+                                    val onCharacterClick: (() -> Unit)? =
+                                        character.id?.let { characterId ->
+                                            {
+                                                context.startActivity(
+                                                    BangumiPersonDetailActivity.createCharacterIntent(
+                                                        context,
+                                                        characterId,
+                                                        characterName
+                                                    )
                                                 )
                                             }
                                         }
-                                        Spacer(Modifier.height(6.dp))
-                                        Text(
-                                            text = actor.name.orEmpty(),
-                                            fontSize = DesignTokens.TextBody1.sp,
-                                            color = MiuixTheme.colorScheme.onSurface,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        if (!character.name.isNullOrBlank()) {
-                                            Text(
-                                                text = character.name,
-                                                fontSize = DesignTokens.TextBody2.sp,
-                                                color = dim,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                    val actorClickModifier = actor.id?.let { personId ->
+                                        Modifier.motionClickable {
+                                            context.startActivity(
+                                                BangumiPersonDetailActivity.createIntent(
+                                                    context,
+                                                    personId,
+                                                    actorName
+                                                )
                                             )
                                         }
+                                    } ?: Modifier
+                                    val characterNameGap = with(LocalDensity.current) {
+                                        2.sp.toDp()
+                                    }
+                                    val actorNameGap = with(LocalDensity.current) {
+                                        3.sp.toDp()
+                                    }
+                                    Column(
+                                        modifier = Modifier
+                                            .width(112.dp)
+                                            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                            .background(MiuixTheme.colorScheme.secondaryContainer)
+                                            .padding(DesignTokens.SpaceMd),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(width = 96.dp, height = 128.dp)
+                                                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                                .background(MiuixTheme.colorScheme.secondaryContainer)
+                                                .then(
+                                                    onCharacterClick?.let {
+                                                        Modifier.motionClickable(onClick = it)
+                                                    } ?: Modifier
+                                                )
+                                        ) {
+                                            val characterImage = character.images?.large
+                                                ?: character.images?.medium
+                                                ?: character.images?.small
+                                                ?: character.images?.grid
+                                            if (!characterImage.isNullOrEmpty()) {
+                                                AsyncImage(
+                                                    model = ImageRequest.Builder(context)
+                                                        .data(characterImage)
+                                                        .crossfade(true)
+                                                        .build(),
+                                                    contentDescription = characterName,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop,
+                                                    alignment = Alignment.TopCenter
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.height(characterNameGap))
+                                        Text(
+                                            text = characterCardName,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .then(
+                                                    onCharacterClick?.let {
+                                                        Modifier.motionClickable(onClick = it)
+                                                    } ?: Modifier
+                                                )
+                                                .padding(horizontal = DesignTokens.SpaceXs),
+                                            fontSize = DesignTokens.TextBody2.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MiuixTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(Modifier.height(actorNameGap))
+                                        Text(
+                                            text = actorName,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .then(actorClickModifier)
+                                                .padding(horizontal = DesignTokens.SpaceXs),
+                                            fontSize = DesignTokens.TextBody2.sp,
+                                            color = if (actor.id != null) {
+                                                DesignTokens.AccentBlue
+                                            } else {
+                                                dim
+                                            },
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
                             }
                             HorizontalScrollEdgeFades(
-                                canScrollBackward = staffScrollState.canScrollBackward,
-                                canScrollForward = staffScrollState.canScrollForward,
+                                canScrollBackward = castListState.canScrollBackward,
+                                canScrollForward = castListState.canScrollForward,
                                 width = 18.dp
                             )
                             }
@@ -1141,12 +1544,33 @@ private fun BangumiDetailScreen(
                                         row.values.forEach { value ->
                                             val isWebsite = isWebsiteInfoboxKey(row.key)
                                             val isAnimationCompany =
-                                                isAnimationProductionKey(row.key) &&
-                                                    value.person?.id != null
+                                                isAnimationProductionKey(row.key)
                                             val displayValue = value.label?.let {
                                                 "$it: ${value.text}"
                                             } ?: value.text
                                             val clickModifier = when {
+                                                isAnimationCompany -> Modifier.combinedClickable(
+                                                    onClickLabel = value.person?.id?.let {
+                                                        value.text
+                                                    },
+                                                    onLongClickLabel = context.getString(
+                                                        R.string.bangumi_copy_animation_company
+                                                    ),
+                                                    onLongClick = {
+                                                        copyAnimationCompany(context, value.text)
+                                                    },
+                                                    onClick = {
+                                                        value.person?.id?.let { personId ->
+                                                            context.startActivity(
+                                                                BangumiPersonDetailActivity.createIntent(
+                                                                    context,
+                                                                    personId,
+                                                                    value.text
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                )
                                                 value.person?.id != null -> Modifier.motionClickable {
                                                     context.startActivity(
                                                         BangumiPersonDetailActivity.createIntent(
@@ -1184,6 +1608,137 @@ private fun BangumiDetailScreen(
                         Text(context.getString(R.string.general_load_failed), color = dim)
                     }
                 }
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isTagInputFocused &&
+                tagInputRect.width > 0f &&
+                (isMyTagsLoading || myTagSuggestions.isNotEmpty()),
+            enter = dropdownPopupEnter(),
+            exit = dropdownPopupExit()
+        ) {
+            val density = LocalDensity.current
+            val screenHeightDp = with(density) {
+                LocalWindowInfo.current.containerSize.height.toDp()
+            }
+            val inputLeftDp = with(density) { tagInputRect.left.toDp() }
+            val inputTopDp = with(density) { tagInputRect.top.toDp() }
+            val inputBottomDp = with(density) { tagInputRect.bottom.toDp() }
+            val inputWidthDp = with(density) { tagInputRect.width.toDp() }
+            val availableBelow = screenHeightDp - inputBottomDp
+            val showAboveInput = availableBelow < 180.dp
+            val popupMaxHeight = minOf(
+                220.dp,
+                if (showAboveInput) {
+                    inputTopDp - DesignTokens.SpaceSm
+                } else {
+                    availableBelow - DesignTokens.SpaceSm
+                }
+            ).coerceAtLeast(80.dp)
+            val selectedTagKeys = remember(draftTags) {
+                draftTags
+                    .split(Regex("[,，\\s]+"))
+                    .map { it.trim().lowercase(Locale.ROOT) }
+                    .filter { it.isNotEmpty() }
+                    .toSet()
+            }
+
+            Box(Modifier.fillMaxSize()) {
+                val positionModifier = if (showAboveInput) {
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(
+                            start = inputLeftDp,
+                            bottom = screenHeightDp - inputTopDp + DesignTokens.SpaceXs
+                        )
+                } else {
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(
+                            start = inputLeftDp,
+                            top = inputBottomDp + DesignTokens.SpaceXs
+                        )
+                }
+                Card(
+                    modifier = positionModifier
+                        .width(inputWidthDp)
+                        .heightIn(max = popupMaxHeight)
+                        .noRippleClickable { },
+                    cornerRadius = DesignTokens.CornerLarge
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(DesignTokens.SpaceLg)
+                    ) {
+                        Text(
+                            text = context.getString(R.string.bangumi_my_tags),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(DesignTokens.SpaceMd))
+                        if (isMyTagsLoading && myTagSuggestions.isEmpty()) {
+                            LoadingSkeletonBlock(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(DesignTokens.ButtonHeight)
+                            )
+                        } else {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    DesignTokens.SpaceSm
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(
+                                    DesignTokens.SpaceSm
+                                )
+                            ) {
+                                myTagSuggestions.forEach { tag ->
+                                    val selected = tag.lowercase(Locale.ROOT) in selectedTagKeys
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(
+                                                RoundedCornerShape(DesignTokens.CornerMedium)
+                                            )
+                                            .background(
+                                                MiuixTheme.colorScheme.secondaryContainer
+                                            )
+                                            .motionClickable {
+                                                if (!selected) {
+                                                    val currentTags = draftTags
+                                                        .split(Regex("[,，\\s]+"))
+                                                        .map(String::trim)
+                                                        .filter(String::isNotEmpty)
+                                                    draftTags = (currentTags + tag)
+                                                        .distinctBy {
+                                                            it.lowercase(Locale.ROOT)
+                                                        }
+                                                        .joinToString(", ")
+                                                }
+                                            }
+                                            .padding(
+                                                horizontal = DesignTokens.SpaceLg,
+                                                vertical = DesignTokens.SpaceSm
+                                            )
+                                    ) {
+                                        Text(
+                                            text = tag,
+                                            fontSize = DesignTokens.TextBody2.sp,
+                                            color = if (selected) {
+                                                DesignTokens.AccentBlue
+                                            } else {
+                                                MiuixTheme.colorScheme.onSurface
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1239,6 +1794,9 @@ private fun BangumiDetailScreen(
                                             .fillMaxWidth()
                                             .motionClickable {
                                                 draftType = apiType
+                                                if (apiType == 2 && mainEpisodes.isNotEmpty()) {
+                                                    draftEpisodeProgress = mainEpisodes.size
+                                                }
                                                 isStatusDropdownVisible = false
                                             }
                                             .padding(
@@ -1403,6 +1961,55 @@ private fun BangumiDetailScreen(
         }
     }
 }
+
+private fun copyAnimationCompany(context: Context, companyName: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(
+        ClipData.newPlainText(context.getString(R.string.bangumi_company), companyName)
+    )
+    Toast.makeText(
+        context,
+        R.string.bangumi_animation_company_copied,
+        Toast.LENGTH_SHORT
+    ).show()
+}
+
+private fun rankBangumiTags(tagGroups: Iterable<List<String>>): List<String> {
+    val labels = linkedMapOf<String, String>()
+    val counts = mutableMapOf<String, Int>()
+    val firstSeen = mutableMapOf<String, Int>()
+    var nextOrder = 0
+    tagGroups.forEach { tags ->
+        tags.asSequence()
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .forEach { tag ->
+                val key = tag.lowercase(Locale.ROOT)
+                labels.putIfAbsent(key, tag)
+                counts[key] = counts.getOrDefault(key, 0) + 1
+                firstSeen.putIfAbsent(key, nextOrder++)
+            }
+    }
+    return labels.keys
+        .sortedWith(
+            compareByDescending<String> { counts.getOrDefault(it, 0) }
+                .thenBy { firstSeen.getOrDefault(it, Int.MAX_VALUE) }
+        )
+        .mapNotNull(labels::get)
+}
+
+internal fun resolvedCompletedEpisodeCount(
+    loadedEpisodeCount: Int,
+    episodePageTotal: Int?,
+    subjectEpisodeCount: Int?,
+    collectionEpisodeCount: Int?
+): Int = sequenceOf(
+    loadedEpisodeCount,
+    episodePageTotal,
+    subjectEpisodeCount,
+    collectionEpisodeCount
+).filterNotNull().firstOrNull { it > 0 } ?: 0
 
 @Composable
 private fun ProgressSectionHeader(

@@ -23,12 +23,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,10 +44,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
@@ -102,7 +110,22 @@ private fun BangumiSearchScreen(
     var isLoading by remember { mutableStateOf(false) }
     var hasSearched by remember { mutableStateOf(false) }
     var searchFailed by remember { mutableStateOf(false) }
+    var collectionTypes by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
+    var resumeRevision by remember { mutableIntStateOf(0) }
     val showRating = UserPrefs.getBangumiRatingMode(context) == 0
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) resumeRevision++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(resumeRevision) {
+        collectionTypes = loadSearchCollectionTypes(context)
+    }
 
     LaunchedEffect(query) {
         val keyword = query.trim()
@@ -187,10 +210,19 @@ private fun BangumiSearchScreen(
                                     bottom = DesignTokens.SpaceMassive
                                 )
                             ) {
-                                items(results, key = { it.id!! }) { subject ->
+                                itemsIndexed(
+                                    items = results,
+                                    key = { _, subject -> subject.id!! }
+                                ) { index, subject ->
+                                    if (index > 0) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 18.dp)
+                                        )
+                                    }
                                     BangumiSearchResult(
                                         subject = subject,
                                         showRating = showRating,
+                                        collectionType = subject.id?.let(collectionTypes::get),
                                         modifier = Modifier.animateItem()
                                     ) {
                                         onOpenSubject(subject)
@@ -228,6 +260,7 @@ private fun SearchMessage(text: String) {
 private fun BangumiSearchResult(
     subject: BangumiSubjectDetail,
     showRating: Boolean,
+    collectionType: Int?,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -334,21 +367,127 @@ private fun BangumiSearchResult(
                 )
             }
         }
-        if (score != null && score > 0) {
+        val collectionStatus = collectionType
+            ?.let(BangumiViewModel.typeNames::get)
+            ?.let(context::getString)
+        if ((score != null && score > 0) || collectionStatus != null) {
             Spacer(Modifier.width(DesignTokens.SpaceMd))
-            Text(
-                text = String.format("%.1f", score),
-                fontSize = DesignTokens.TextTitle.sp,
-                fontWeight = FontWeight.Bold,
-                color = when {
-                    score >= 8.0 -> DesignTokens.ErrorRed
-                    score >= 7.0 -> DesignTokens.PriceOrange
-                    score >= 5.0 -> DesignTokens.AccentBlue
-                    else -> DesignTokens.ReviewMixed
+            Column(
+                modifier = Modifier
+                    .height(coverHeight)
+                    .padding(vertical = DesignTokens.SpaceXxs),
+                horizontalAlignment = Alignment.End
+            ) {
+                if (score != null && score > 0) {
+                    Text(
+                        text = String.format("%.1f", score),
+                        fontSize = DesignTokens.TextTitle.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            score >= 8.0 -> DesignTokens.ErrorRed
+                            score >= 7.0 -> DesignTokens.PriceOrange
+                            score >= 5.0 -> DesignTokens.AccentBlue
+                            else -> DesignTokens.ReviewMixed
+                        }
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = context.getString(bangumiSearchGradeRes(score)),
+                        fontSize = 10.sp,
+                        color = dim
+                    )
                 }
-            )
+                Spacer(Modifier.weight(1f))
+                if (collectionStatus != null) {
+                    Text(
+                        text = collectionStatus,
+                        fontSize = DesignTokens.TextBody2.sp,
+                        color = dim
+                    )
+                }
+            }
         }
     }
+}
+
+private fun bangumiSearchGradeRes(score: Double): Int = when {
+    score >= 9.0 -> R.string.bangumi_grade_legendary
+    score >= 8.0 -> R.string.bangumi_grade_masterpiece
+    score >= 7.0 -> R.string.bangumi_grade_highly_recommended
+    score >= 6.0 -> R.string.bangumi_grade_recommended
+    score >= 5.0 -> R.string.bangumi_grade_decent
+    score >= 4.0 -> R.string.bangumi_grade_poor
+    else -> R.string.bangumi_grade_bad
+}
+
+private suspend fun loadSearchCollectionTypes(context: Context): Map<Int, Int> {
+    var username = UserPrefs.getBangumiUsername(context)
+    val cachedTypes = withContext(Dispatchers.IO) {
+        if (username.isBlank()) {
+            emptyMap()
+        } else {
+            BangumiPageCache.load(context, username)
+                ?.collections
+                .orEmpty()
+                .values
+                .flatten()
+                .associate { it.subject_id to it.type }
+        }
+    }
+    val token = UserPrefs.getBangumiAccessToken(context)
+    val remoteTypes = runCatching {
+        if (token.isNotEmpty()) {
+            BangumiAuthSession.execute(context) { service ->
+                if (username.isBlank()) {
+                    username = service.getCurrentUser().username
+                    UserPrefs.setBangumiUsername(context, username)
+                }
+                fetchSearchCollectionTypes { offset ->
+                    service.getUserCollections(
+                        username = username,
+                        subjectType = 2,
+                        collectionType = null,
+                        limit = 50,
+                        offset = offset
+                    )
+                }
+            }
+        } else if (username.isNotBlank()) {
+            fetchSearchCollectionTypes { offset ->
+                GameArchiveApp.bgmService.getUserCollections(
+                    username = username,
+                    subjectType = 2,
+                    collectionType = null,
+                    limit = 50,
+                    offset = offset
+                )
+            }
+        } else {
+            emptyMap()
+        }
+    }.getOrNull()
+    return remoteTypes ?: cachedTypes
+}
+
+private suspend fun fetchSearchCollectionTypes(
+    loadPage: suspend (offset: Int) -> BangumiPagedCollection
+): Map<Int, Int> {
+    val result = linkedMapOf<Int, Int>()
+    var offset = 0
+    while (true) {
+        val page = loadPage(offset)
+        val collections = page.data.orEmpty()
+        collections.forEach { collection ->
+            result[collection.subject_id] = when (collection.type) {
+                2 -> 3
+                3 -> 2
+                else -> collection.type
+            }
+        }
+        if (collections.isEmpty() || offset + collections.size >= page.total) break
+        offset += collections.size
+    }
+    return result
 }
 
 private fun extractSearchScore(rating: Any?): Double? {
