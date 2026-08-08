@@ -34,6 +34,15 @@ import retrofit2.http.Query
     val name: String? // 中文名
 )
 
+@Keep data class StoreBrowseResponse(val response: StoreBrowseData?)
+@Keep data class StoreBrowseData(val store_items: List<StoreBrowseItem> = emptyList())
+@Keep data class StoreBrowseItem(val appid: Int, val assets: StoreBrowseAssets?)
+@Keep data class StoreBrowseAssets(
+    val asset_url_format: String?,
+    val library_capsule: String?,
+    val library_capsule_2x: String?
+)
+
 @Keep data class PriceOverview(
     val currency: String?, val initial: Int?, val final: Int?,
     val discount_percent: Int?, val final_formatted: String?, val initial_formatted: String?
@@ -171,6 +180,9 @@ interface SteamApiService {
 
     @GET("api/appdetails/")
     suspend fun getGameDetails(@Query("appids") id: Int, @Query("l") l: String = "schinese", @Query("cc") cc: String = "cn"): Map<String, StoreAppDetails>
+
+    @GET("IStoreBrowseService/GetItems/v1/")
+    suspend fun getStoreItems(@Query("input_json") inputJson: String): StoreBrowseResponse
 
     // reviews 接口
     @GET("appreviews/{appid}")

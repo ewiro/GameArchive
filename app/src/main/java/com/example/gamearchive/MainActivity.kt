@@ -78,6 +78,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
@@ -1053,12 +1055,54 @@ private fun MarkFilterChip(label: String, selected: Boolean, color: Color?, onCl
 // ── 封面 URL 构建（含 BF6 + 缓存回退 + 90天过期） ──
 private const val BF6_APPID = 2807960
 private const val HEADER_CACHE_TTL_MS = 90L * 24 * 3600 * 1000  // 90 天
+private const val PORTRAIT_CACHE_PREF = "steam_portrait_cache"
 
 private fun buildHeaderUrl(context: Context, appId: Int): Any {
     if (appId == BF6_APPID) return R.drawable.bf6_header
     val cache = context.getSharedPreferences("steam_header_cache", Context.MODE_PRIVATE)
     val cached = readCacheWithExpiry(cache, "header_$appId", HEADER_CACHE_TTL_MS)
     return cached ?: "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
+}
+
+private fun readCachedPortraitUrl(context: Context, appId: Int): String? {
+    val cache = context.getSharedPreferences(PORTRAIT_CACHE_PREF, Context.MODE_PRIVATE)
+    return readCacheWithExpiry(cache, "portrait_$appId", HEADER_CACHE_TTL_MS)
+}
+
+private fun cachePortraitUrl(context: Context, appId: Int, url: String) {
+    context.getSharedPreferences(PORTRAIT_CACHE_PREF, Context.MODE_PRIVATE)
+        .edit()
+        .putString("portrait_$appId", "$url|${System.currentTimeMillis()}")
+        .apply()
+}
+
+private suspend fun resolveSteamPortraitUrl(appId: Int): String? {
+    val request = JSONObject()
+        .put("ids", JSONArray().put(JSONObject().put("appid", appId)))
+        .put(
+            "context",
+            JSONObject()
+                .put("language", LocaleHelper.currentApiLanguage)
+                .put("country_code", "CN")
+                .put("steam_realm", 1)
+        )
+        .put("data_request", JSONObject().put("include_assets", true))
+        .toString()
+    val assets = GameArchiveApp.apiService.getStoreItems(request)
+        .response
+        ?.store_items
+        ?.firstOrNull { it.appid == appId }
+        ?.assets
+        ?: return null
+    val file = assets.library_capsule_2x
+        ?.takeIf(String::isNotBlank)
+        ?: assets.library_capsule?.takeIf(String::isNotBlank)
+        ?: return null
+    val path = assets.asset_url_format
+        ?.takeIf { it.contains("\${FILENAME}") }
+        ?.replace("\${FILENAME}", file)
+        ?: return null
+    return "https://shared.cloudflare.steamstatic.com/store_item_assets/$path"
 }
 
 // 通用缓存读取（含过期检查）。格式 "value|timestamp"，过期返回 null
@@ -1816,6 +1860,10 @@ private fun ActivityPage(
     var availableYears by remember { mutableStateOf(setOf(currentYear)) }
     var baselineOnly by remember { mutableStateOf(false) }
     var snapshotLoading by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
+    val resolvedGamePortraits = remember { mutableStateMapOf<Int, String>() }
+    val resolvingGamePortraits = remember { mutableStateMapOf<Int, Boolean>() }
+    val failedGamePortraits = remember { mutableStateMapOf<Int, Boolean>() }
 
     LaunchedEffect(revision, selectedYear, includeAnime) {
         snapshotLoading = true
@@ -2094,6 +2142,30 @@ private fun ActivityPage(
                             ActivityCover(
                                 entry = entry,
                                 modifier = Modifier.weight(1f),
+                                resolvedPortraitUrl = resolvedGamePortraits[entry.id],
+                                useFallback = failedGamePortraits[entry.id] == true,
+                                onPortraitError = {
+                                    if (resolvedGamePortraits.containsKey(entry.id)) {
+                                        failedGamePortraits[entry.id] = true
+                                    } else if (resolvingGamePortraits[entry.id] != true) {
+                                        resolvingGamePortraits[entry.id] = true
+                                        coroutineScope.launch {
+                                            val portraitUrl = withContext(Dispatchers.IO) {
+                                                runCatching {
+                                                    resolveSteamPortraitUrl(entry.id)
+                                                }.getOrNull()
+                                            }
+                                            resolvingGamePortraits.remove(entry.id)
+                                            if (portraitUrl != null) {
+                                                cachePortraitUrl(context, entry.id, portraitUrl)
+                                                resolvedGamePortraits[entry.id] = portraitUrl
+                                                failedGamePortraits.remove(entry.id)
+                                            } else {
+                                                failedGamePortraits[entry.id] = true
+                                            }
+                                        }
+                                    }
+                                },
                                 onClick = {
                                     when (entry.kind) {
                                         ActivityKind.GAME ->
@@ -2197,10 +2269,35 @@ private fun ActivityHeatmap(
 }
 
 @Composable
-private fun ActivityCover(entry: ActivityEntry, modifier: Modifier, onClick: () -> Unit) {
+private fun ActivityCover(
+    entry: ActivityEntry,
+    modifier: Modifier,
+    resolvedPortraitUrl: String?,
+    useFallback: Boolean,
+    onPortraitError: () -> Unit,
+    onClick: () -> Unit
+) {
     val context = LocalContext.current
-    var imageModel by remember(entry.kind, entry.id, entry.imageUrl) {
-        mutableStateOf<Any>(entry.imageUrl)
+    val cachedPortraitUrl = remember(entry.kind, entry.id) {
+        if (entry.kind == ActivityKind.GAME) {
+            readCachedPortraitUrl(context, entry.id)
+        } else {
+            null
+        }
+    }
+    val imageModel = remember(
+        entry.kind,
+        entry.id,
+        entry.imageUrl,
+        resolvedPortraitUrl,
+        cachedPortraitUrl,
+        useFallback
+    ) {
+        if (entry.kind == ActivityKind.GAME && useFallback) {
+            buildHeaderUrl(context, entry.id)
+        } else {
+            resolvedPortraitUrl ?: cachedPortraitUrl ?: entry.imageUrl
+        }
     }
     val description = context.getString(
         if (entry.kind == ActivityKind.GAME) {
@@ -2223,8 +2320,8 @@ private fun ActivityCover(entry: ActivityEntry, modifier: Modifier, onClick: () 
                 .crossfade(true)
                 .listener(
                     onError = { _, _ ->
-                        if (entry.kind == ActivityKind.GAME && imageModel == entry.imageUrl) {
-                            imageModel = buildHeaderUrl(context, entry.id)
+                        if (entry.kind == ActivityKind.GAME && !useFallback) {
+                            onPortraitError()
                         }
                     }
                 )
