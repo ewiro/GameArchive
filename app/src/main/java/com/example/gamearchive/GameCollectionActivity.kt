@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -58,15 +59,6 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 private const val COLLECTION_PAGE_SIZE = 100
-private val COLLECTION_TITLE_REGEX = Regex("<span class=\"title\">(.*?)</span>")
-private val COLLECTION_APP_ID_REGEX = Regex("data-ds-appid=\"([0-9,]+)\"")
-private val COLLECTION_IMAGE_REGEX = Regex("src=\"(https://[^\"]+?\\.jpg[^\"]*)\"")
-private val COLLECTION_PRICE_REGEX = Regex("discount_final_price[^\"]*\">([^<]+)</div>")
-private val COLLECTION_ORIGINAL_PRICE_REGEX =
-    Regex("discount_original_price\">([^<]+)</div>")
-private val COLLECTION_DISCOUNT_REGEX = Regex("-([0-9]+)%")
-private val COLLECTION_TOOLTIP_REGEX = Regex("data-tooltip-html=\"([^\"]+)\"")
-private val COLLECTION_SCORE_REGEX = Regex("([0-9]{1,3})%")
 
 private data class GameCollectionEntry(
     val appId: Int,
@@ -120,10 +112,10 @@ private fun GameCollectionScreen(mode: String, value: String, onBack: () -> Unit
     val usePlaytimeBadgeTextColor = ThemeUtils.isPlaytimeBadgeTextColorEnabled(context)
     val title = when (mode) {
         GameCollectionActivity.MODE_DEVELOPER ->
-            context.getString(R.string.game_collection_developer_title, value)
+            stringResource(R.string.game_collection_developer_title, value)
         GameCollectionActivity.MODE_TAG ->
-            context.getString(R.string.game_collection_tag_title, value)
-        else -> context.getString(R.string.game_collection_title)
+            stringResource(R.string.game_collection_tag_title, value)
+        else -> stringResource(R.string.game_collection_title)
     }
     var entries by remember(mode, value) { mutableStateOf<List<GameCollectionEntry>>(emptyList()) }
     var isLoading by remember(mode, value) { mutableStateOf(true) }
@@ -133,7 +125,7 @@ private fun GameCollectionScreen(mode: String, value: String, onBack: () -> Unit
     LaunchedEffect(mode, value, loadRevision) {
         isLoading = true
         loadFailed = false
-        val result = runCatching {
+        val result = runCatchingCancellable {
             when (mode) {
                 GameCollectionActivity.MODE_DEVELOPER ->
                     loadDeveloperGames(context.applicationContext, value)
@@ -157,7 +149,7 @@ private fun GameCollectionScreen(mode: String, value: String, onBack: () -> Unit
                 IconButton(onClick = onBack) {
                     Image(
                         imageVector = MiuixIcons.Demibold.Back,
-                        contentDescription = context.getString(R.string.general_back),
+                        contentDescription = stringResource(R.string.general_back),
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                     )
@@ -185,14 +177,14 @@ private fun GameCollectionScreen(mode: String, value: String, onBack: () -> Unit
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = context.getString(R.string.general_load_failed),
+                                text = stringResource(R.string.general_load_failed),
                                 color = MiuixTheme.colorScheme.onSurface.copy(
                                     alpha = DesignTokens.OpacityBody
                                 )
                             )
                             Spacer(Modifier.height(DesignTokens.SpaceMd))
                             TextButton(
-                                text = context.getString(R.string.general_retry),
+                                text = stringResource(R.string.general_retry),
                                 onClick = { loadRevision++ }
                             )
                         }
@@ -200,7 +192,7 @@ private fun GameCollectionScreen(mode: String, value: String, onBack: () -> Unit
                 } else if (entries.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = context.getString(R.string.general_no_data),
+                            text = stringResource(R.string.general_no_data),
                             color = MiuixTheme.colorScheme.onSurface.copy(
                                 alpha = DesignTokens.OpacityBody
                             )
@@ -271,7 +263,7 @@ private suspend fun loadDeveloperGames(
                 "&count=$COLLECTION_PAGE_SIZE&dynamic_data=&developer=$encodedDeveloper" +
                 "&infinite=1&l=${LocaleHelper.currentApiLanguage}&cc=cn&category1=998"
             val request = Request.Builder().url(url).build()
-            val json = GameArchiveApp.okHttpClient.newCall(request).execute().use { response ->
+            val json = GameArchiveApp.okHttpClient.newCall(request).awaitResponse().use { response ->
                 if (!response.isSuccessful) error("HTTP ${response.code}")
                 JSONObject(response.body?.string().orEmpty())
             }
@@ -306,7 +298,7 @@ private suspend fun loadTaggedGames(context: Context, tag: String): List<GameCol
                 appIds.map { appId ->
                     async {
                         requestLimit.withPermit {
-                            val data = runCatching {
+                            val data = runCatchingCancellable {
                                 GameArchiveApp.apiService.getGamePrices(
                                     ids = appId.toString(),
                                     f = "basic,price_overview",
@@ -326,7 +318,7 @@ private suspend fun loadTaggedGames(context: Context, tag: String): List<GameCol
             appIds.filterNot { ownedGames.containsKey(it) }.map { appId ->
                 async {
                     requestLimit.withPermit {
-                        val score = runCatching {
+                        val score = runCatchingCancellable {
                             val summary = GameArchiveApp.apiService.getGameReviews(
                                 id = appId,
                                 l = LocaleHelper.currentApiLanguage,
@@ -390,7 +382,7 @@ private suspend fun loadOwnedGamesForCollection(context: Context): Map<Int, Game
         if (accounts.isEmpty()) return@supervisorScope emptyMap()
         val results = accounts.map { (steamId, apiKey) ->
             async {
-                runCatching {
+                runCatchingCancellable {
                     GameArchiveApp.apiService.getOwnedGames(apiKey, steamId).response.games
                 }
             }
@@ -410,37 +402,17 @@ private suspend fun loadOwnedGamesForCollection(context: Context): Map<Int, Game
 private fun Int?.orZero(): Int = this ?: 0
 
 private fun parseDeveloperSearchHtml(html: String): List<GameCollectionEntry> {
-    val entries = mutableListOf<GameCollectionEntry>()
-    html.split("<a href=").forEach { row ->
-        val appId = COLLECTION_APP_ID_REGEX.find(row)
-            ?.groupValues?.getOrNull(1)
-            ?.substringBefore(',')
-            ?.toIntOrNull()
-            ?: return@forEach
-        val rawName = COLLECTION_TITLE_REGEX.find(row)?.groupValues?.getOrNull(1).orEmpty()
-        val name = decodeHtml(rawName)
-        if (name.isBlank()) return@forEach
-        val imageUrl = COLLECTION_IMAGE_REGEX.find(row)
-            ?.groupValues?.getOrNull(1)
-            ?.replace("&amp;", "&")
-            .orEmpty()
+    return parseSteamSearchRows(html).map { row ->
+        val appId = row.appId
+        val name = decodeHtml(row.title)
+        val imageUrl = row.imageUrl
+            .replace("&amp;", "&")
             .ifBlank { "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg" }
-        val price = decodeHtml(
-            COLLECTION_PRICE_REGEX.find(row)?.groupValues?.getOrNull(1).orEmpty()
-        )
-        val originalPrice = decodeHtml(
-            COLLECTION_ORIGINAL_PRICE_REGEX.find(row)
-                ?.groupValues?.getOrNull(1).orEmpty()
-        ).ifBlank { null }
-        val discount = COLLECTION_DISCOUNT_REGEX.find(row)
-            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
-        val reviewScore = COLLECTION_TOOLTIP_REGEX.find(row)
-            ?.groupValues?.getOrNull(1)
-            ?.let { COLLECTION_SCORE_REGEX.find(it)?.groupValues?.getOrNull(1)?.toIntOrNull() }
-            ?: -1
+        val price = decodeHtml(row.finalPrice)
+        val originalPrice = decodeHtml(row.originalPrice).ifBlank { null }
         val standardImage =
             "https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/header.jpg"
-        entries += GameCollectionEntry(
+        GameCollectionEntry(
             appId = appId,
             name = name,
             displayName = name,
@@ -452,13 +424,13 @@ private fun parseDeveloperSearchHtml(html: String): List<GameCollectionEntry> {
                 imgUrl = standardImage,
                 finalPriceStr = price,
                 originalPriceStr = originalPrice,
-                discount = discount,
+                discount = row.discount,
                 backupImgUrl = imageUrl,
-                reviewScore = reviewScore
+                priceVal = row.priceValue,
+                reviewScore = row.reviewScore
             )
         )
     }
-    return entries
 }
 
 private fun decodeHtml(value: String): String =

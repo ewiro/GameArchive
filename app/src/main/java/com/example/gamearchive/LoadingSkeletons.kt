@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +33,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -231,6 +234,197 @@ internal fun ActivityPageLoadingSkeleton(topInset: Dp) {
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun BangumiSkeletonCard() {
+    val base = loadingSkeletonBaseColor()
+    val shimmer = rememberLoadingSkeletonBrush()
+    val coverWidth = 80.dp
+    val coverHeight = 112.dp
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            Modifier.size(coverWidth, coverHeight)
+                .clip(RoundedCornerShape(6.dp)).background(base)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f).height(coverHeight).padding(vertical = 2.dp)) {
+            Box(
+                Modifier.fillMaxWidth(0.7f).height(14.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+            Spacer(Modifier.weight(1f))
+            Box(
+                Modifier.width(56.dp).height(10.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(
+            Modifier.height(coverHeight).padding(vertical = 2.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Box(
+                Modifier.width(32.dp).height(18.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+            Spacer(Modifier.height(4.dp))
+            Box(
+                Modifier.width(24.dp).height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+            Spacer(Modifier.weight(1f))
+            Box(
+                Modifier.width(48.dp).height(10.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ListSkeletonCard() {
+    val base = loadingSkeletonBaseColor()
+    val shimmer = rememberLoadingSkeletonBrush()
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            Modifier.width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight)
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium)).background(base)
+        )
+        Column(Modifier.padding(start = 12.dp).height(DesignTokens.CoverHeight)) {
+            Box(
+                Modifier.fillMaxWidth(0.7f).height(14.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                Modifier.fillMaxWidth(0.5f).height(12.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+            Spacer(Modifier.weight(1f))
+            Box(
+                Modifier.fillMaxWidth(0.35f).height(12.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(shimmer)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FixedSkeletonBlock(
+    width: Dp,
+    height: Dp,
+    modifier: Modifier = Modifier,
+    cornerRadius: Dp = 4.dp
+) {
+    LoadingSkeletonBlock(modifier.width(width).height(height), cornerRadius)
+}
+
+@Composable
+private fun LibraryTopSkeleton(showProfile: Boolean) {
+    val base = loadingSkeletonBaseColor()
+    Column(Modifier.fillMaxWidth()) {
+        if (showProfile) {
+            Box(
+                Modifier.fillMaxWidth().height(196.dp)
+                    .padding(horizontal = 18.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(DesignTokens.CornerXLarge)).background(base)
+            ) {
+                Column(Modifier.fillMaxSize().padding(20.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            Modifier.size(DesignTokens.AvatarOuter).clip(CircleShape)
+                                .background(rememberLoadingSkeletonBrush())
+                        )
+                        Spacer(Modifier.width(24.dp))
+                        Column(Modifier.weight(1f)) {
+                            FixedSkeletonBlock(120.dp, 16.dp)
+                            Spacer(Modifier.height(8.dp))
+                            FixedSkeletonBlock(60.dp, 14.dp, cornerRadius = 10.dp)
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        repeat(3) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                FixedSkeletonBlock(40.dp, 18.dp)
+                                Spacer(Modifier.height(4.dp))
+                                FixedSkeletonBlock(28.dp, 10.dp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Box(
+            Modifier.fillMaxWidth().height(48.dp)
+                .padding(horizontal = 18.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium)).background(base)
+        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            repeat(8) { FixedSkeletonBlock(60.dp, 32.dp, cornerRadius = 20.dp) }
+        }
+        repeat(2) {
+            FixedSkeletonBlock(
+                width = 100.dp,
+                height = 16.dp,
+                modifier = Modifier.padding(
+                    start = 24.dp,
+                    end = 16.dp,
+                    top = 20.dp,
+                    bottom = 8.dp
+                )
+            )
+            repeat(2) { ListSkeletonCard() }
+        }
+    }
+}
+
+@Composable
+internal fun LibraryLoadingSkeleton(topInset: Dp, showProfile: Boolean) {
+    val screenHeight = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.height.toDp()
+    }
+    val cardHeight = DesignTokens.CoverHeight + 12.dp
+    val headerHeight = if (showProfile) 310.dp else 110.dp
+    val count = maxOf(4, ((screenHeight - headerHeight) / cardHeight).toInt())
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = topInset, bottom = 72.dp)
+    ) {
+        item("top") { LibraryTopSkeleton(showProfile) }
+        items(count) { ListSkeletonCard() }
+    }
+}
+
+@Composable
+internal fun SpecialsSkeleton(topInset: Dp) {
+    val screenHeight = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.height.toDp()
+    }
+    val cardHeight = DesignTokens.CoverHeight + 12.dp
+    val count = maxOf(6, ((screenHeight + topInset) / cardHeight).toInt())
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = topInset, bottom = 72.dp)
+    ) {
+        items(count) { ListSkeletonCard() }
     }
 }
 

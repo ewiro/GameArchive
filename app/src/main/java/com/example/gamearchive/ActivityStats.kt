@@ -1,8 +1,10 @@
 package com.example.gamearchive
 
 import android.content.Context
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.core.content.edit
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -75,8 +77,8 @@ object ActivityStats {
     private const val KEY_GAME_OBSERVATIONS = "game_observations"
     private const val KEY_ANIME_OBSERVATIONS = "anime_observations"
 
-    private val _revision = MutableLiveData(0L)
-    val revision: LiveData<Long> = _revision
+    private val _revision = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = _revision.asStateFlow()
     private val revisionCounter = AtomicLong(0L)
 
     @Synchronized
@@ -119,16 +121,16 @@ object ActivityStats {
             baselines.put(key, current)
         }
 
-        prefs.edit()
-            .putString(KEY_GAME_BASELINES, baselines.toString())
-            .putString(KEY_DAILY_ACTIVITY, days.toString())
-            .putString(
-                KEY_GAME_OBSERVATIONS,
-                (prefs.getString(KEY_GAME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0)
-                    .plus(1)
-                    .toString()
-            )
-            .apply()
+        prefs.edit {
+                putString(KEY_GAME_BASELINES, baselines.toString())
+                .putString(KEY_DAILY_ACTIVITY, days.toString())
+                .putString(
+                    KEY_GAME_OBSERVATIONS,
+                    (prefs.getString(KEY_GAME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0)
+                        .plus(1)
+                        .toString()
+                )
+            }
         notifyChanged()
     }
 
@@ -152,7 +154,7 @@ object ActivityStats {
             val key = item.subject_id.toString()
             val previous = baselines.optJSONObject(key)
             val previousEpisodeIds = previous?.let(::previousEpisodeIds)
-            val currentApiType = uiCollectionTypeToApi(item.type)
+            val currentApiType = bangumiCollectionTypeToApi(item.type)
             if (previous != null) {
                 val previousEpisodes = previous.optInt("episodes")
                 val previousApiType = previous.optInt("type")
@@ -220,16 +222,16 @@ object ActivityStats {
             )
         }
 
-        prefs.edit()
-            .putString(KEY_ANIME_BASELINES, baselines.toString())
-            .putString(KEY_DAILY_ACTIVITY, days.toString())
-            .putString(
-                KEY_ANIME_OBSERVATIONS,
-                (prefs.getString(KEY_ANIME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0)
-                    .plus(1)
-                    .toString()
-            )
-            .apply()
+        prefs.edit {
+                putString(KEY_ANIME_BASELINES, baselines.toString())
+                .putString(KEY_DAILY_ACTIVITY, days.toString())
+                .putString(
+                    KEY_ANIME_OBSERVATIONS,
+                    (prefs.getString(KEY_ANIME_OBSERVATIONS, "0")?.toIntOrNull() ?: 0)
+                        .plus(1)
+                        .toString()
+                )
+            }
         notifyChanged()
     }
 
@@ -276,10 +278,10 @@ object ActivityStats {
                 episodeIds = currentEpisodeIds
             )
         )
-        prefs.edit()
-            .putString(KEY_ANIME_BASELINES, baselines.toString())
-            .putString(KEY_DAILY_ACTIVITY, days.toString())
-            .apply()
+        prefs.edit {
+                putString(KEY_ANIME_BASELINES, baselines.toString())
+                .putString(KEY_DAILY_ACTIVITY, days.toString())
+            }
         notifyChanged()
     }
 
@@ -353,7 +355,7 @@ object ActivityStats {
         } else {
             days.put(date, day)
         }
-        prefs.edit().putString(KEY_DAILY_ACTIVITY, days.toString()).apply()
+        prefs.edit {putString(KEY_DAILY_ACTIVITY, days.toString())}
         notifyChanged()
         return true
     }
@@ -400,7 +402,7 @@ object ActivityStats {
         }
 
         if (importedCount > 0) {
-            prefs.edit().putString(KEY_DAILY_ACTIVITY, days.toString()).apply()
+            prefs.edit {putString(KEY_DAILY_ACTIVITY, days.toString())}
             notifyChanged()
         }
         return importedCount
@@ -453,7 +455,7 @@ object ActivityStats {
         }
 
         if (removedCount > 0) {
-            prefs.edit().putString(KEY_DAILY_ACTIVITY, days.toString()).apply()
+            prefs.edit {putString(KEY_DAILY_ACTIVITY, days.toString())}
             notifyChanged()
         }
         return removedCount
@@ -534,7 +536,7 @@ object ActivityStats {
     }
 
     fun notifyChanged() {
-        _revision.postValue(revisionCounter.incrementAndGet())
+        _revision.value = revisionCounter.incrementAndGet()
     }
 
     private fun loadDays(context: Context): JSONObject {
@@ -857,12 +859,6 @@ object ActivityStats {
         }
         val parsed = runCatching { formatter.parse(date) }.getOrNull() ?: return null
         return parsed.time.takeIf { formatter.format(parsed) == date }
-    }
-
-    private fun uiCollectionTypeToApi(type: Int): Int = when (type) {
-        2 -> 3
-        3 -> 2
-        else -> type
     }
 
     private fun steamPortraitUrl(appId: Int): String =

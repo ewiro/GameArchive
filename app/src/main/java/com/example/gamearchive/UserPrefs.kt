@@ -2,6 +2,7 @@ package com.example.gamearchive
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -32,7 +33,7 @@ object UserPrefs {
 
     // 保存自定义背景图片链接
     fun saveCustomBgUrl(context: Context, url: String) {
-        getPrefs(context).edit().putString(KEY_CUSTOM_BG, url.trim()).apply()
+        getPrefs(context).edit {putString(KEY_CUSTOM_BG, url.trim())}
     }
 
     // 读取自定义背景图片链接
@@ -42,7 +43,7 @@ object UserPrefs {
 
     // 保存自定义头像挂件链接
     fun saveCustomFrameUrl(context: Context, url: String) {
-        getPrefs(context).edit().putString(KEY_CUSTOM_FRAME, url.trim()).apply()
+        getPrefs(context).edit {putString(KEY_CUSTOM_FRAME, url.trim())}
     }
 
     // 读取自定义头像挂件链接
@@ -52,7 +53,7 @@ object UserPrefs {
 
     // 保存自定义头像链接
     fun saveCustomAvatarUrl(context: Context, url: String) {
-        getPrefs(context).edit().putString(KEY_CUSTOM_AVATAR, url.trim()).apply()
+        getPrefs(context).edit {putString(KEY_CUSTOM_AVATAR, url.trim())}
     }
 
     // 读取自定义头像链接
@@ -62,7 +63,7 @@ object UserPrefs {
 
     // 保存是否显示资料卡片
     fun saveShowProfile(context: Context, enable: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_SHOW_PROFILE, enable).apply()
+        getPrefs(context).edit {putBoolean(KEY_SHOW_PROFILE, enable)}
     }
 
     // 读取是否显示 (默认 false，即默认隐藏，按你的要求)
@@ -74,10 +75,10 @@ object UserPrefs {
 
     // 保存登录凭证 (API Key 和 Steam ID)
     fun saveCredentials(context: Context, apiKey: String, steamId: String) {
-        getCredentialPrefs(context).edit()
-            .putString(KEY_API_KEY, apiKey.trim())
-            .putString(KEY_STEAM_ID, steamId.trim())
-            .apply()
+        getCredentialPrefs(context).edit {
+                putString(KEY_API_KEY, apiKey.trim())
+                .putString(KEY_STEAM_ID, steamId.trim())
+            }
     }
 
     // 获取保存的 API Key
@@ -98,7 +99,7 @@ object UserPrefs {
     // 退出登录，清空所有保存的数据
     fun logout(context: Context) {
         getPrefs(context).edit().clear().apply()
-        getCredentialPrefs(context).edit().clear().apply()
+        getCredentialPrefs(context).edit {clear()}
         GameArchiveApp.clearAuthenticatedBgmService()
     }
 
@@ -159,9 +160,9 @@ object UserPrefs {
             obj.put("apiKey", acc.second)
             arr.put(obj)
         }
-        getCredentialPrefs(context).edit()
-            .putString(KEY_ADDITIONAL_ACCOUNTS, arr.toString())
-            .apply()
+        getCredentialPrefs(context).edit {
+                putString(KEY_ADDITIONAL_ACCOUNTS, arr.toString())
+            }
     }
 
     fun getStoredSteamNickname(context: Context, steamId: String): String {
@@ -185,9 +186,9 @@ object UserPrefs {
             )
         }.getOrDefault(JSONObject())
         names.put(steamId, nickname.trim())
-        getCredentialPrefs(context).edit()
-            .putString(KEY_STEAM_NICKNAMES, names.toString())
-            .apply()
+        getCredentialPrefs(context).edit {
+                putString(KEY_STEAM_NICKNAMES, names.toString())
+            }
     }
 
     private fun removeSteamNickname(context: Context, steamId: String) {
@@ -197,9 +198,9 @@ object UserPrefs {
             )
         }.getOrDefault(JSONObject())
         names.remove(steamId)
-        getCredentialPrefs(context).edit()
-            .putString(KEY_STEAM_NICKNAMES, names.toString())
-            .apply()
+        getCredentialPrefs(context).edit {
+                putString(KEY_STEAM_NICKNAMES, names.toString())
+            }
     }
 
     // ── Bangumi 用户名 ──
@@ -211,9 +212,9 @@ object UserPrefs {
     }
 
     fun setBangumiUsername(context: Context, username: String) {
-        getCredentialPrefs(context).edit()
-            .putString(KEY_BANGUMI_USERNAME, username.trim())
-            .apply()
+        getCredentialPrefs(context).edit {
+                putString(KEY_BANGUMI_USERNAME, username.trim())
+            }
     }
 
     fun getBangumiNickname(context: Context): String {
@@ -221,9 +222,9 @@ object UserPrefs {
     }
 
     fun setBangumiNickname(context: Context, nickname: String) {
-        getCredentialPrefs(context).edit()
-            .putString(KEY_BANGUMI_NICKNAME, nickname.trim())
-            .apply()
+        getCredentialPrefs(context).edit {
+                putString(KEY_BANGUMI_NICKNAME, nickname.trim())
+            }
     }
 
     // ── Bangumi 评分展示模式：0=展示评分, 1=仅我的评分, 2=不展示 ──
@@ -234,7 +235,7 @@ object UserPrefs {
     }
 
     fun setBangumiRatingMode(context: Context, mode: Int) {
-        getPrefs(context).edit().putInt(KEY_BANGUMI_RATING_MODE, mode).apply()
+        getPrefs(context).edit {putInt(KEY_BANGUMI_RATING_MODE, mode)}
     }
 
     // ── Bangumi OAuth Token ──
@@ -246,19 +247,19 @@ object UserPrefs {
         return getCredentialPrefs(context).getString(KEY_BANGUMI_ACCESS_TOKEN, "") ?: ""
     }
     fun setBangumiAccessToken(context: Context, token: String) {
-        getCredentialPrefs(context).edit().putString(KEY_BANGUMI_ACCESS_TOKEN, token).apply()
+        getCredentialPrefs(context).edit {putString(KEY_BANGUMI_ACCESS_TOKEN, token)}
     }
     fun getBangumiRefreshToken(context: Context): String {
         return getCredentialPrefs(context).getString(KEY_BANGUMI_REFRESH_TOKEN, "") ?: ""
     }
     fun setBangumiRefreshToken(context: Context, token: String) {
-        getCredentialPrefs(context).edit().putString(KEY_BANGUMI_REFRESH_TOKEN, token).apply()
+        getCredentialPrefs(context).edit {putString(KEY_BANGUMI_REFRESH_TOKEN, token)}
     }
     fun getBangumiUserId(context: Context): Int {
         return getCredentialPrefs(context).getInt(KEY_BANGUMI_USER_ID, 0)
     }
     fun setBangumiUserId(context: Context, id: Int) {
-        getCredentialPrefs(context).edit().putInt(KEY_BANGUMI_USER_ID, id).apply()
+        getCredentialPrefs(context).edit {putInt(KEY_BANGUMI_USER_ID, id)}
     }
     fun saveBangumiAuthorization(
         context: Context,
@@ -274,13 +275,13 @@ object UserPrefs {
         return getBangumiAccessToken(context).isNotEmpty()
     }
     fun clearBangumiToken(context: Context) {
-        getCredentialPrefs(context).edit()
-            .remove(KEY_BANGUMI_ACCESS_TOKEN)
-            .remove(KEY_BANGUMI_REFRESH_TOKEN)
-            .remove(KEY_BANGUMI_USER_ID)
-            .remove(KEY_BANGUMI_USERNAME)
-            .remove(KEY_BANGUMI_NICKNAME)
-            .apply()
+        getCredentialPrefs(context).edit {
+                remove(KEY_BANGUMI_ACCESS_TOKEN)
+                .remove(KEY_BANGUMI_REFRESH_TOKEN)
+                .remove(KEY_BANGUMI_USER_ID)
+                .remove(KEY_BANGUMI_USERNAME)
+                .remove(KEY_BANGUMI_NICKNAME)
+            }
         GameArchiveApp.clearAuthenticatedBgmService()
     }
 
@@ -309,11 +310,12 @@ object UserPrefs {
                 )
             }
         }
+        // Keep both writes synchronous: credentials must exist before legacy values are removed.
         if (!credentialEditor.commit()) return
 
-        val legacyEditor = legacyPrefs.edit()
-        legacyValues.keys.forEach(legacyEditor::remove)
-        legacyEditor.commit()
+        legacyPrefs.edit(commit = true) {
+            legacyValues.keys.forEach(this::remove)
+        }
     }
 
     private val CREDENTIAL_KEYS = setOf(

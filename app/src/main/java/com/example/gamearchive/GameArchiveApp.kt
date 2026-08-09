@@ -1,13 +1,21 @@
 package com.example.gamearchive
 
 import android.app.Application
-import coil.ImageLoader
-import coil.ImageLoaderFactory
+import android.content.Context
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
+import coil3.memory.MemoryCache
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.crossfade
 import okhttp3.OkHttpClient
+import okio.Path.Companion.toOkioPath
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-class GameArchiveApp : Application(), ImageLoaderFactory {
+class GameArchiveApp : Application(), SingletonImageLoader.Factory {
 
     companion object {
         @Volatile
@@ -92,26 +100,27 @@ class GameArchiveApp : Application(), ImageLoaderFactory {
         UserPrefs.migrateCredentials(this)
     }
 
-    override fun newImageLoader(): ImageLoader {
-        return ImageLoader.Builder(this)
+    override fun newImageLoader(context: Context): ImageLoader {
+        return ImageLoader.Builder(context)
             .crossfade(true)
             .memoryCache {
-                coil.memory.MemoryCache.Builder(this)
-                    .maxSizePercent(0.25)
+                MemoryCache.Builder()
+                    .maxSizePercent(context, 0.25)
                     .build()
             }
             .diskCache {
-                coil.disk.DiskCache.Builder()
-                    .directory(cacheDir.resolve("coil_images"))
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("coil_images").toOkioPath())
                     .maxSizeBytes(50 * 1024 * 1024)  // 50 MB
                     .build()
             }
             .components {
+                add(OkHttpNetworkFetcherFactory(callFactory = { okHttpClient }))
                 // GIF 动图支持：API 28+ 用 ImageDecoder，低版本用 Coil 内置 GifDecoder
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
-                    add(coil.decode.ImageDecoderDecoder.Factory())
+                    add(AnimatedImageDecoder.Factory())
                 } else {
-                    add(coil.decode.GifDecoder.Factory())
+                    add(GifDecoder.Factory())
                 }
             }
             .build()

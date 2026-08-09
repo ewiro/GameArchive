@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.core.content.edit
 import android.content.Context
 
 /** 游戏标记系统 — 7 种游玩状态，纯本地存储，用稳定字符串 Key 防资源 ID 漂移 */
@@ -33,7 +34,7 @@ object GameMarks {
     private val resIdToKey = keyToResId.entries.associate { (k, v) -> v to k }
 
     /** 资源 ID → 颜色（深色高饱和版） */
-    val statusColorMap = mapOf(
+    private val statusColorMap = mapOf(
         R.string.mark_unplayed       to 0xFF757575.toInt(),  // gray
         R.string.mark_playing        to 0xFFA3CF06.toInt(),  // in-game green
         R.string.mark_completed      to 0xFF2E7D32.toInt(),  // green
@@ -56,6 +57,9 @@ object GameMarks {
         R.string.mark_abandoned
     )
 
+    fun colorFor(markResId: Int): Int =
+        statusColorMap[markResId] ?: statusColorMap.getValue(R.string.mark_unplayed)
+
     /** 读取标记（返回资源 ID，无标记返回 -1） */
     fun getMark(context: Context, appId: Int): Int {
         val key = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -76,13 +80,13 @@ object GameMarks {
 
     /** 设置标记（传入资源 ID 或 -1 清除） */
     fun setMark(context: Context, appId: Int, markResId: Int) {
-        val editor = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
-        if (markResId == -1) {
-            editor.remove("mark_$appId")
-        } else {
-            val key = resIdToKey[markResId] ?: return
-            editor.putString("mark_$appId", key)
+        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit {
+            if (markResId == -1) {
+                remove("mark_$appId")
+            } else {
+                val key = resIdToKey[markResId] ?: return
+                putString("mark_$appId", key)
+            }
         }
-        editor.apply()
     }
 }

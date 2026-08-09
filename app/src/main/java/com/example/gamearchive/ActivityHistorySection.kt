@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -48,7 +49,7 @@ fun ActivityHistorySection(
             )
         ) {
             Text(
-                text = context.getString(
+                text = stringResource(
                     if (kind == ActivityKind.GAME) {
                         R.string.activity_game_history
                     } else {
@@ -73,7 +74,7 @@ fun ActivityHistorySection(
             ) {
                 if (records.isEmpty()) {
                     Text(
-                        text = context.getString(R.string.general_no_data),
+                        text = stringResource(R.string.general_no_data),
                         fontSize = DesignTokens.TextBody1.sp,
                         color = dim
                     )
@@ -82,13 +83,13 @@ fun ActivityHistorySection(
                         if (index > 0) Spacer(Modifier.size(DesignTokens.SpaceMd))
                         Text(
                             text = if (kind == ActivityKind.GAME) {
-                                context.getString(
+                                stringResource(
                                     R.string.activity_game_record,
                                     record.date,
                                     formatHours(record.amount)
                                 )
                             } else {
-                                context.getString(
+                                stringResource(
                                     R.string.activity_anime_record,
                                     record.date,
                                     formatEpisodeAmount(record.amount)

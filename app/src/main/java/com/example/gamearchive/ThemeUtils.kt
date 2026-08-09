@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.core.content.edit
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
@@ -70,24 +71,24 @@ object ThemeUtils {
 
     // 保存主题模式
     fun saveThemeMode(context: Context, mode: Int) {
-        getPrefs(context).edit().putInt(KEY_THEME_MODE, mode).apply()
+        getPrefs(context).edit {putInt(KEY_THEME_MODE, mode)}
         isChanged = true
     }
     fun getThemeMode(context: Context) = getPrefs(context).getInt(KEY_THEME_MODE, 2)
 
     fun savePlaytimeBadgeBackground(context: Context, enable: Boolean) {
-        getPrefs(context).edit()
-            .putBoolean(KEY_SHOW_PLAYTIME_BADGE_BACKGROUND, enable)
-            .apply()
+        getPrefs(context).edit {
+                putBoolean(KEY_SHOW_PLAYTIME_BADGE_BACKGROUND, enable)
+            }
         isChanged = true
     }
     fun isPlaytimeBadgeBackgroundEnabled(context: Context) =
         getPrefs(context).getBoolean(KEY_SHOW_PLAYTIME_BADGE_BACKGROUND, true)
 
     fun savePlaytimeBadgeTextColor(context: Context, enable: Boolean) {
-        getPrefs(context).edit()
-            .putBoolean(KEY_USE_PLAYTIME_BADGE_TEXT_COLOR, enable)
-            .apply()
+        getPrefs(context).edit {
+                putBoolean(KEY_USE_PLAYTIME_BADGE_TEXT_COLOR, enable)
+            }
         isChanged = true
     }
     fun isPlaytimeBadgeTextColorEnabled(context: Context) =
@@ -95,42 +96,42 @@ object ThemeUtils {
 
     // 保存分组开关 (用于库存列表)
     fun saveGrouping(context: Context, enable: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_ENABLE_GROUPING, enable).apply()
+        getPrefs(context).edit {putBoolean(KEY_ENABLE_GROUPING, enable)}
         isChanged = true
     }
     fun isGroupingEnabled(context: Context) = getPrefs(context).getBoolean(KEY_ENABLE_GROUPING, false)
 
     // 保存排序模式 (用于库存列表)
     fun saveSortMode(context: Context, mode: Int) {
-        getPrefs(context).edit().putInt(KEY_SORT_MODE, mode).apply()
+        getPrefs(context).edit {putInt(KEY_SORT_MODE, mode)}
         isChanged = true
     }
     fun getSortMode(context: Context) = getPrefs(context).getInt(KEY_SORT_MODE, 0)
 
     // 语言设置：0=跟随系统 1=中文 2=英文
     fun saveLanguage(context: Context, lang: Int) {
-        getPrefs(context).edit().putInt(KEY_LANGUAGE, lang).apply()
+        getPrefs(context).edit {putInt(KEY_LANGUAGE, lang)}
         isChanged = true
     }
     fun getLanguage(context: Context) = getPrefs(context).getInt(KEY_LANGUAGE, 0)
 
     // 是否展示特惠界面（默认开启）
     fun saveShowSpecials(context: Context, enable: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_SHOW_SPECIALS, enable).apply()
+        getPrefs(context).edit {putBoolean(KEY_SHOW_SPECIALS, enable)}
         isChanged = true
     }
     fun isSpecialsEnabled(context: Context) = getPrefs(context).getBoolean(KEY_SHOW_SPECIALS, true)
 
     // 是否展示动漫页（默认开启）
     fun saveShowBangumi(context: Context, enable: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_SHOW_BANGUMI, enable).apply()
+        getPrefs(context).edit {putBoolean(KEY_SHOW_BANGUMI, enable)}
         isChanged = true
     }
     fun isBangumiEnabled(context: Context) = getPrefs(context).getBoolean(KEY_SHOW_BANGUMI, true)
 
     // 是否展示记录页（默认开启）
     fun saveShowActivity(context: Context, enable: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_SHOW_ACTIVITY, enable).apply()
+        getPrefs(context).edit {putBoolean(KEY_SHOW_ACTIVITY, enable)}
         isChanged = true
     }
     fun isActivityEnabled(context: Context) = getPrefs(context).getBoolean(KEY_SHOW_ACTIVITY, true)
@@ -138,7 +139,7 @@ object ThemeUtils {
     // 0=list, 1=grid
     fun getBangumiDisplayStyle(context: Context) = getPrefs(context).getInt(KEY_BANGUMI_DISPLAY_STYLE, 0)
     fun setBangumiDisplayStyle(context: Context, style: Int) =
-        getPrefs(context).edit().putInt(KEY_BANGUMI_DISPLAY_STYLE, style).apply()
+        getPrefs(context).edit {putInt(KEY_BANGUMI_DISPLAY_STYLE, style)}
 
     /** 检测语言是否在上次应用后发生了变化（用于触发 Activity 重建） */
     fun hasLanguageChanged(context: Context): Boolean {
@@ -150,6 +151,6 @@ object ThemeUtils {
 
     /** 标记当前语言已应用（调用后 hasLanguageChanged 返回 false） */
     fun markLanguageApplied(context: Context) {
-        getPrefs(context).edit().putInt("last_applied_language", getLanguage(context)).apply()
+        getPrefs(context).edit {putInt("last_applied_language", getLanguage(context))}
     }
 }

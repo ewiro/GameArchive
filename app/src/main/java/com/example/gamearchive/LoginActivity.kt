@@ -1,5 +1,7 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -65,7 +67,7 @@ class LoginActivity : ComponentActivity() {
                     LoginScreen(
                         onLoginSuccess = { startMainActivity() },
                         onHelpClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/dev/apikey"))
+                            val intent = Intent(Intent.ACTION_VIEW, "https://steamcommunity.com/dev/apikey".toUri())
                             startActivity(intent)
                         }
                     )
@@ -100,12 +102,12 @@ private fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = context.getString(R.string.login_title),
+            text = stringResource(R.string.login_title),
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
         Text(
-            text = context.getString(R.string.login_subtitle),
+            text = stringResource(R.string.login_subtitle),
             modifier = Modifier.padding(bottom = 48.dp)
         )
 
@@ -114,7 +116,7 @@ private fun LoginScreen(
             value = steamId,
             onValueChange = { steamId = it },
             modifier = Modifier.fillMaxWidth(),
-            label = context.getString(R.string.login_steam_id_hint),
+            label = stringResource(R.string.login_steam_id_hint),
             useLabelAsPlaceholder = true,
             singleLine = true
         )
@@ -126,7 +128,7 @@ private fun LoginScreen(
             value = apiKey,
             onValueChange = { apiKey = it },
             modifier = Modifier.fillMaxWidth(),
-            label = context.getString(R.string.login_api_key_hint),
+            label = stringResource(R.string.login_api_key_hint),
             useLabelAsPlaceholder = true,
             singleLine = true
         )
@@ -152,7 +154,7 @@ private fun LoginScreen(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = context.getString(R.string.login_button),
+                text = stringResource(R.string.login_button),
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = DesignTokens.TextBody1.sp
@@ -162,7 +164,7 @@ private fun LoginScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         TextButton(
-            text = context.getString(R.string.login_help),
+            text = stringResource(R.string.login_help),
             onClick = onHelpClick
         )
 

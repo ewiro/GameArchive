@@ -19,32 +19,31 @@ android {
     defaultConfig {
         applicationId = "com.example.gamearchive"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 13
         versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
 
-        // 分包配置
-        splits {
-            abi {
-                isEnable = true  // 开启分包
-                reset()          // 重置默认列表（默认包含一堆不用的架构）
-
-                include("armeabi-v7a", "arm64-v8a")
-
-                // 是否生成一个包含所有架构的”通用包” (Universal APK)
-                isUniversalApk = false
-            }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = false
         }
     }
 
-
-
-    // 打包时忽略非致命的Lint错误，防止构建中断
     lint {
-        checkReleaseBuilds = false
-        abortOnError = false
+        checkReleaseBuilds = true
+        abortOnError = true
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 
     testOptions {
@@ -106,34 +105,25 @@ android {
 }
 
 dependencies {
-    // 基础界面组件
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation(libs.androidx.core)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
 
-    // 网络请求框架
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation(libs.coil)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
+    implementation(libs.coil.network.okhttp)
 
-    // 图片加载框架 (包含GIF支持)
-    implementation("io.coil-kt:coil:2.4.0")
-    implementation("io.coil-kt:coil-gif:2.4.0")
+    implementation(libs.miuix.ui)
+    implementation(libs.miuix.icons)
 
-    // 协程与生命周期扩展库
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
-    implementation("androidx.activity:activity-ktx:1.8.0")
-
-    // MVVM 架构：ViewModel + LiveData
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
-
-    // Compose Multiplatform + MIUI X UI 组件库
-    implementation("top.yukonga.miuix.kmp:miuix-ui:0.9.2")
-    implementation("top.yukonga.miuix.kmp:miuix-icons:0.9.3")
-    implementation("androidx.activity:activity-compose:1.9.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-    implementation("io.coil-kt:coil-compose:2.4.0")
-
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("androidx.test:core:1.6.1")
-    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation(libs.junit)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
 }

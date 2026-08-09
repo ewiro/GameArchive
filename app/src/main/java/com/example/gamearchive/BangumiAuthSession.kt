@@ -1,6 +1,7 @@
 package com.example.gamearchive
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import retrofit2.HttpException
@@ -63,6 +64,8 @@ object BangumiAuthSession {
                 refreshToken = refreshToken,
                 redirectUri = AppConfig.BANGUMI_REDIRECT_URI
             )
+        } catch (error: CancellationException) {
+            throw error
         } catch (_: Exception) {
             throw authorizationError
         }

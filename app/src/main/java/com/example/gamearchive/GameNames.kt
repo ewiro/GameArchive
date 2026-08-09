@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.core.content.edit
 import android.content.Context
 
 /** 游戏自定义命名 — 优先于 Steam 原始名称显示 */
@@ -26,11 +27,11 @@ object GameNames {
 
     fun setName(context: Context, appId: Int, name: String) {
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            .edit().putString("rename_$appId", name.trim()).apply()
+            .edit {putString("rename_$appId", name.trim())}
     }
 
     fun deleteName(context: Context, appId: Int) {
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            .edit().remove("rename_$appId").apply()
+            .edit {remove("rename_$appId")}
     }
 }

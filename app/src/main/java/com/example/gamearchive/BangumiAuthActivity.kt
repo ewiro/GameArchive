@@ -3,16 +3,22 @@ package com.example.gamearchive
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class BangumiAuthActivity : ComponentActivity() {
 
     companion object {
         private const val AUTH_URL = "https://bgm.tv/oauth/authorize"
+        private const val TAG = "BangumiAuth"
     }
+
+    private var tokenExchangeStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,50 +26,84 @@ class BangumiAuthActivity : ComponentActivity() {
         val clientId = AppConfig.BANGUMI_CLIENT_ID
         val clientSecret = AppConfig.BANGUMI_CLIENT_SECRET
         val redirectUri = AppConfig.BANGUMI_REDIRECT_URI
-
         if (clientId.isEmpty() || clientSecret.isEmpty()) {
             Toast.makeText(this, R.string.bangumi_oauth_config_missing, Toast.LENGTH_LONG).show()
             finish()
             return
         }
 
-        // 处理 OAuth 回调
         val data = intent.data
-        if (data != null && data.scheme == "gamearchive" && data.host == "oauth") {
-            val code = data.getQueryParameter("code")
-            if (code != null) {
-                exchangeCodeForToken(code, clientId, clientSecret, redirectUri)
-            } else {
-                Toast.makeText(this, R.string.bangumi_oauth_canceled, Toast.LENGTH_SHORT).show()
-                finish()
-            }
-        } else {
-            // 跳转到浏览器授权
-            val authUrl = "$AUTH_URL?client_id=$clientId&response_type=code&redirect_uri=${Uri.encode(redirectUri)}"
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authUrl)))
-            finish() // 此 Activity 已完成任务，等回调时重新创建
+        if (data != null) {
+            handleCallback(data, clientId, clientSecret, redirectUri)
+            return
         }
+
+        val state = runCatching { BangumiOAuthState.issue(this) }.getOrElse { error ->
+            Log.e(TAG, "Unable to persist OAuth state", error)
+            Toast.makeText(this, R.string.bangumi_oauth_state_invalid, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        val authUrl = AUTH_URL.toUri().buildUpon()
+            .appendQueryParameter("client_id", clientId)
+            .appendQueryParameter("response_type", "code")
+            .appendQueryParameter("redirect_uri", redirectUri)
+            .appendQueryParameter("state", state)
+            .build()
+        startActivity(Intent(Intent.ACTION_VIEW, authUrl))
+        finish()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.data?.let { data ->
-            if (data.scheme == "gamearchive" && data.host == "oauth") {
-                val code = data.getQueryParameter("code")
-                if (code != null) {
-                    exchangeCodeForToken(code, AppConfig.BANGUMI_CLIENT_ID, AppConfig.BANGUMI_CLIENT_SECRET, AppConfig.BANGUMI_REDIRECT_URI)
-                } else {
-                    Toast.makeText(this, R.string.bangumi_oauth_canceled, Toast.LENGTH_SHORT).show()
-                    finish()
-                }
-            }
+            handleCallback(
+                data,
+                AppConfig.BANGUMI_CLIENT_ID,
+                AppConfig.BANGUMI_CLIENT_SECRET,
+                AppConfig.BANGUMI_REDIRECT_URI
+            )
         }
     }
 
-    private fun exchangeCodeForToken(
-        code: String, clientId: String, clientSecret: String, redirectUri: String
+    private fun handleCallback(
+        data: Uri,
+        clientId: String,
+        clientSecret: String,
+        redirectUri: String
     ) {
+        if (!isExpectedCallback(data, redirectUri) ||
+            !BangumiOAuthState.consume(this, data.getQueryParameter("state"))
+        ) {
+            Toast.makeText(this, R.string.bangumi_oauth_state_invalid, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        val code = data.getQueryParameter("code")
+        if (code.isNullOrBlank()) {
+            Toast.makeText(this, R.string.bangumi_oauth_canceled, Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+        exchangeCodeForToken(code, clientId, clientSecret, redirectUri)
+    }
+
+    private fun isExpectedCallback(data: Uri, redirectUri: String): Boolean {
+        val expected = redirectUri.toUri()
+        return data.scheme == expected.scheme &&
+            data.authority == expected.authority &&
+            data.path == expected.path
+    }
+
+    private fun exchangeCodeForToken(
+        code: String,
+        clientId: String,
+        clientSecret: String,
+        redirectUri: String
+    ) {
+        if (tokenExchangeStarted) return
+        tokenExchangeStarted = true
         lifecycleScope.launch {
             try {
                 val token = GameArchiveApp.bgmOAuthService.getToken(
@@ -89,8 +129,10 @@ class BangumiAuthActivity : ComponentActivity() {
                         this@BangumiAuthActivity,
                         currentUser.nickname.ifBlank { currentUser.username }
                     )
-                } catch (_: Exception) {
-                    // Token 已成功取得；用户资料会在设置页再次补拉。
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.w(TAG, "Token saved but profile lookup failed", error)
                 }
                 ThemeUtils.isChanged = true
                 Toast.makeText(
@@ -98,10 +140,12 @@ class BangumiAuthActivity : ComponentActivity() {
                     getString(R.string.bangumi_oauth_success, token.user_id),
                     Toast.LENGTH_LONG
                 ).show()
-            } catch (e: Exception) {
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
                 Toast.makeText(
                     this@BangumiAuthActivity,
-                    getString(R.string.bangumi_oauth_failed, e.message.orEmpty()),
+                    getString(R.string.bangumi_oauth_failed, error.message.orEmpty()),
                     Toast.LENGTH_LONG
                 ).show()
             }

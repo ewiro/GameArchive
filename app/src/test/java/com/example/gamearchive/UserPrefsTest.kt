@@ -74,4 +74,27 @@ class UserPrefsTest {
         assertEquals("steam-secret", credentials.getString("api_key", null))
         assertEquals("access-secret", credentials.getString("bangumi_access_token", null))
     }
+
+    @Test
+    fun oauthStateIsSingleUse() {
+        val state = BangumiOAuthState.issue(context, nowMillis = 1_000L)
+
+        assertTrue(BangumiOAuthState.consume(context, state, nowMillis = 2_000L))
+        assertFalse(BangumiOAuthState.consume(context, state, nowMillis = 2_001L))
+    }
+
+    @Test
+    fun invalidOauthStateClearsPendingRequest() {
+        val state = BangumiOAuthState.issue(context, nowMillis = 1_000L)
+
+        assertFalse(BangumiOAuthState.consume(context, "wrong-state", nowMillis = 2_000L))
+        assertFalse(BangumiOAuthState.consume(context, state, nowMillis = 2_001L))
+    }
+
+    @Test
+    fun expiredOauthStateIsRejected() {
+        val state = BangumiOAuthState.issue(context, nowMillis = 1_000L)
+
+        assertFalse(BangumiOAuthState.consume(context, state, nowMillis = 601_001L))
+    }
 }

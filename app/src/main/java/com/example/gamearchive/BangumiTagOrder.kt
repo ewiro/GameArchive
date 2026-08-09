@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.core.content.edit
 import android.content.Context
 import org.json.JSONArray
 import java.text.Normalizer
@@ -15,9 +16,9 @@ object BangumiTagOrder {
     fun save(context: Context, username: String, subjectId: Int, tags: List<String>) {
         if (username.isBlank()) return
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(key(username, subjectId), JSONArray(tags).toString())
-            .apply()
+            .edit {
+                putString(key(username, subjectId), JSONArray(tags).toString())
+            }
     }
 
     fun get(context: Context, username: String, subjectId: Int): List<String>? {

@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.core.content.edit
 import android.content.Context
 import org.json.JSONArray
 
@@ -39,16 +40,16 @@ object GameTags {
         // 从所有游戏中移除该标签
         val mapPrefs = context.getSharedPreferences(MAP_PREF, Context.MODE_PRIVATE)
         val allKeys = mapPrefs.all.keys.filter { it.startsWith("tags_") }
-        val editor = mapPrefs.edit()
-        allKeys.forEach { key ->
-            val gameTags = getTagsForGameRaw(mapPrefs, key)
-            if (gameTags.contains(tag)) {
-                val updated = gameTags.filter { it != tag }
-                if (updated.isEmpty()) editor.remove(key)
-                else editor.putString(key, JSONArray(updated).toString())
+        mapPrefs.edit {
+            allKeys.forEach { key ->
+                val gameTags = getTagsForGameRaw(mapPrefs, key)
+                if (gameTags.contains(tag)) {
+                    val updated = gameTags.filter { it != tag }
+                    if (updated.isEmpty()) remove(key)
+                    else putString(key, JSONArray(updated).toString())
+                }
             }
         }
-        editor.apply()
     }
 
     /** 重命名标签 */
@@ -61,20 +62,20 @@ object GameTags {
         // 更新所有游戏中的标签名
         val mapPrefs = context.getSharedPreferences(MAP_PREF, Context.MODE_PRIVATE)
         val allKeys = mapPrefs.all.keys.filter { it.startsWith("tags_") }
-        val editor = mapPrefs.edit()
-        allKeys.forEach { key ->
-            val gameTags = getTagsForGameRaw(mapPrefs, key)
-            if (gameTags.contains(oldName)) {
-                val updated = gameTags.map { if (it == oldName) newName else it }
-                editor.putString(key, JSONArray(updated).toString())
+        mapPrefs.edit {
+            allKeys.forEach { key ->
+                val gameTags = getTagsForGameRaw(mapPrefs, key)
+                if (gameTags.contains(oldName)) {
+                    val updated = gameTags.map { if (it == oldName) newName else it }
+                    putString(key, JSONArray(updated).toString())
+                }
             }
         }
-        editor.apply()
     }
 
     private fun saveAllTags(context: Context, tags: List<String>) {
         context.getSharedPreferences(LIB_PREF, Context.MODE_PRIVATE)
-            .edit().putString("all_tags", JSONArray(tags).toString()).apply()
+            .edit {putString("all_tags", JSONArray(tags).toString())}
     }
 
     // ── 游戏-标签关联操作 ──
@@ -87,13 +88,13 @@ object GameTags {
 
     /** 为游戏设置标签（全量替换） */
     fun setTagsForGame(context: Context, appId: Int, tags: List<String>) {
-        val editor = context.getSharedPreferences(MAP_PREF, Context.MODE_PRIVATE).edit()
-        if (tags.isEmpty()) {
-            editor.remove("tags_$appId")
-        } else {
-            editor.putString("tags_$appId", JSONArray(tags).toString())
+        context.getSharedPreferences(MAP_PREF, Context.MODE_PRIVATE).edit {
+            if (tags.isEmpty()) {
+                remove("tags_$appId")
+            } else {
+                putString("tags_$appId", JSONArray(tags).toString())
+            }
         }
-        editor.apply()
     }
 
     /** 单次解析全部游戏标签，避免设置页按“标签数 × 游戏数”反复读取 JSON。 */

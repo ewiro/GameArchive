@@ -27,6 +27,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -61,9 +64,13 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -319,7 +326,10 @@ fun ExpandableSectionTrigger(
     expandedArrowColor: Color = DesignTokens.AccentBlue,
     content: @Composable RowScope.() -> Unit
 ) {
-    val context = LocalContext.current
+    val stateDescriptionText = stringResource(
+        if (expanded) R.string.accessibility_expanded
+        else R.string.accessibility_collapsed
+    )
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
@@ -373,10 +383,7 @@ fun ExpandableSectionTrigger(
                 onClick = onToggle
             )
             .semantics {
-                stateDescription = context.getString(
-                    if (expanded) R.string.accessibility_expanded
-                    else R.string.accessibility_collapsed
-                )
+                stateDescription = stateDescriptionText
             }
             .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically
@@ -735,13 +742,34 @@ fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
 @Composable
 fun MiuixThemeForApp(content: @Composable () -> Unit) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val colorSchemeMode = when (ThemeUtils.getThemeMode(context)) {
         0 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Light
         1 -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.Dark
         else -> top.yukonga.miuix.kmp.theme.ColorSchemeMode.System
     }
     top.yukonga.miuix.kmp.theme.MiuixTheme(
-        controller = top.yukonga.miuix.kmp.theme.ThemeController(colorSchemeMode = colorSchemeMode),
-        content = content
-    )
+        controller = top.yukonga.miuix.kmp.theme.ThemeController(colorSchemeMode = colorSchemeMode)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(focusManager) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(
+                            requireUnconsumed = false,
+                            pass = PointerEventPass.Final
+                        )
+                        if (!down.isConsumed) {
+                            val up = waitForUpOrCancellation(pass = PointerEventPass.Final)
+                            if (up != null && !up.isConsumed) {
+                                focusManager.clearFocus()
+                            }
+                        }
+                    }
+                }
+        ) {
+            content()
+        }
+    }
 }

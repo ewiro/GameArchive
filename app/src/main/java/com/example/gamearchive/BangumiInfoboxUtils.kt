@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.core.net.toUri
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -102,7 +103,7 @@ private fun normalizeHttpUri(rawUrl: String): Uri? {
     val trimmed = rawUrl.trim()
     if (trimmed.isEmpty()) return null
     val candidate = if (trimmed.contains("://")) trimmed else "https://$trimmed"
-    val uri = runCatching { Uri.parse(candidate) }.getOrNull() ?: return null
+    val uri = runCatching { candidate.toUri() }.getOrNull() ?: return null
     if (uri.scheme?.lowercase(Locale.ROOT) !in setOf("http", "https")) return null
     if (uri.host.isNullOrBlank()) return null
     return uri

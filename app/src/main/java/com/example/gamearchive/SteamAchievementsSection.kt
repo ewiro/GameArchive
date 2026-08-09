@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.util.Log
 import androidx.compose.animation.core.LinearEasing
@@ -45,8 +46,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -89,7 +91,9 @@ fun SteamAchievementsSection(
         if (!expanded || loading || loaded || appId == 0) return@LaunchedEffect
         loading = true
         achievements = withContext(Dispatchers.IO) {
-            runCatching { loadSteamAchievements(context.applicationContext, appId) }
+            runCatchingCancellable {
+                loadSteamAchievements(context.applicationContext, appId)
+            }
                 .onFailure {
                     Log.w("SteamAchievements", "Failed to load achievements for appId=$appId", it)
                 }
@@ -112,7 +116,7 @@ fun SteamAchievementsSection(
             )
         ) {
             Text(
-                text = context.getString(R.string.achievement_title),
+                text = stringResource(R.string.achievement_title),
                 fontSize = DesignTokens.TextBody1.sp,
                 fontWeight = FontWeight.Bold,
                 color = dim,
@@ -154,7 +158,7 @@ fun SteamAchievementsSection(
                 when {
                     loading -> SteamAchievementsLoadingSkeleton()
                     achievements.isEmpty() -> Text(
-                        text = context.getString(R.string.achievement_unavailable),
+                        text = stringResource(R.string.achievement_unavailable),
                         fontSize = DesignTokens.TextBody1.sp,
                         color = dim
                     )
@@ -162,7 +166,7 @@ fun SteamAchievementsSection(
                         val unlockedAchievements = achievements.filter { it.unlocked }
                         val lockedAchievements = achievements.filterNot { it.unlocked }
                         AchievementGroup(
-                            title = context.getString(
+                            title = stringResource(
                                 R.string.achievement_progress,
                                 unlockedAchievements.size,
                                 achievements.size
@@ -175,7 +179,7 @@ fun SteamAchievementsSection(
                         )
                         Spacer(Modifier.height(DesignTokens.SpaceLg))
                         AchievementGroup(
-                            title = context.getString(
+                            title = stringResource(
                                 R.string.achievement_locked_progress,
                                 lockedAchievements.size,
                                 achievements.size
@@ -255,7 +259,7 @@ private fun SteamAchievementRow(
     val isRare = achievement.unlocked &&
         achievement.globalUnlockPercent?.let { it < RARE_ACHIEVEMENT_PERCENT } == true
     val title = if (achievement.hidden && !achievement.unlocked) {
-        context.getString(R.string.achievement_hidden)
+        stringResource(R.string.achievement_hidden)
     } else {
         achievement.displayName
     }
@@ -307,14 +311,14 @@ private fun SteamAchievementRow(
             Spacer(Modifier.height(DesignTokens.SpaceXxs))
             Text(
                 text = if (achievement.unlocked && achievement.unlockTime > 0L) {
-                    context.getString(
+                    stringResource(
                         R.string.achievement_unlocked_date,
                         formatAchievementDate(achievement.unlockTime)
                     )
                 } else if (achievement.unlocked) {
-                    context.getString(R.string.achievement_unlocked)
+                    stringResource(R.string.achievement_unlocked)
                 } else {
-                    context.getString(R.string.achievement_locked)
+                    stringResource(R.string.achievement_locked)
                 },
                 fontSize = DesignTokens.TextCaption.sp,
                 color = dim
@@ -419,7 +423,7 @@ private suspend fun loadSteamAchievements(
     val language = LocaleHelper.getApiLanguage(context)
     val api = GameArchiveApp.apiService
     val schemaRequest = async {
-        runCatching {
+        runCatchingCancellable {
             api.getAchievementSchema(
                 key = accounts.first().second,
                 appId = appId,
@@ -428,13 +432,13 @@ private suspend fun loadSteamAchievements(
         }.getOrNull()
     }
     val globalPercentagesRequest = async {
-        runCatching {
+        runCatchingCancellable {
             api.getGlobalAchievementPercentages(appId)
         }.getOrNull()
     }
     val playerRequests = accounts.map { (steamId, apiKey) ->
         async {
-            runCatching {
+            runCatchingCancellable {
                 api.getPlayerAchievements(
                     key = apiKey,
                     steamId = steamId,

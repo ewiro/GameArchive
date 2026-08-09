@@ -168,7 +168,6 @@
     <string name="note_hint">Leave a comment…</string>
 
     <!-- Data Management -->
-    <string name="settings_data">Data Management</string>
     <string name="settings_export">Export Configuration</string>
     <string name="settings_import">Import Configuration</string>
     <string name="settings_export_ok">Configuration exported</string>
@@ -205,7 +204,6 @@
     <string name="settings_bangumi_background_saved">Profile background updated</string>
     <string name="settings_bangumi_background_failed">Couldn\'t read this image</string>
     <string name="settings_bangumi_background_cleared">Profile background restored</string>
-    <string name="confirm">Confirm</string>
     <string name="bangumi_wish">Want to Watch</string>
     <string name="bangumi_done">Watched</string>
     <string name="bangumi_doing">Watching</string>
@@ -228,8 +226,6 @@
     <string name="bangumi_detail_load_failed">Failed to load anime details</string>
     <string name="bangumi_collection_load_failed">Failed to load your Bangumi collection</string>
     <string name="bangumi_my_collection">My Progress</string>
-    <string name="bangumi_progress_expand">Expand My Progress</string>
-    <string name="bangumi_progress_collapse">Collapse My Progress</string>
     <string name="bangumi_collection_status">Status</string>
     <string name="bangumi_episode_progress">Episodes</string>
     <string name="bangumi_episode_total">%d episodes total</string>
@@ -245,7 +241,7 @@
     <string name="bangumi_rating_value">%d stars</string>
     <string name="bangumi_tags_hint">Tags, separated by commas</string>
     <string name="bangumi_my_tags">My tags</string>
-    <string name="bangumi_comment_hint">Comment...</string>
+    <string name="bangumi_comment_hint">Comment…</string>
     <string name="bangumi_save_collection">Sync to Bangumi</string>
     <string name="bangumi_saving">Syncing…</string>
     <string name="bangumi_collection_saved">Synced to your Bangumi account</string>
@@ -275,6 +271,7 @@
     <string name="bangumi_oauth_canceled">Authorization canceled</string>
     <string name="bangumi_oauth_success">Authorized. User ID: %1$d</string>
     <string name="bangumi_oauth_failed">Authorization failed: %1$s</string>
+    <string name="bangumi_oauth_state_invalid">Authorization request is invalid or expired. Please try again.</string>
     <string name="general_retry">Retry</string>
     <string name="general_open_link_failed">Unable to open link</string>
     <string name="game_collection_title">Games</string>

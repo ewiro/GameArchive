@@ -135,7 +135,7 @@ object ObsidianImporter {
         UserPrefs.getAllAccounts(context)
             .map { (steamId, apiKey) ->
                 async {
-                    runCatching {
+                    runCatchingCancellable {
                         GameArchiveApp.apiService.getOwnedGames(apiKey, steamId).response.games
                     }.getOrDefault(emptyList())
                 }
@@ -157,7 +157,7 @@ object ObsidianImporter {
         val fetched = coroutineScope {
             (1..5).map { type ->
                 async {
-                    runCatching {
+                    runCatchingCancellable {
                         val result = mutableListOf<AnimeImportCandidate>()
                         var offset = 0
                         while (true) {
@@ -185,7 +185,7 @@ object ObsidianImporter {
     private suspend fun searchBangumiAnime(names: List<String>): AnimeImportCandidate? {
         val sourceNames = names.filter(String::isNotBlank).distinct()
         for (searchTerm in bangumiSearchTerms(sourceNames)) {
-            val results = runCatching {
+            val results = runCatchingCancellable {
                 GameArchiveApp.bgmService.searchSubjects(
                     payload = BangumiSubjectSearchRequest(
                         keyword = searchTerm,

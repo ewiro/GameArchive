@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Required license resource for the bundled digital-number font. -->
+    <issue id="UnusedResources">
+        <ignore path="src/main/res/raw/digital_numbers_ofl.txt" />
+    </issue>
+    <!-- Required offline fallback image; its pixels are intentionally density-independent. -->
+    <issue id="IconLocation">
+        <ignore path="src/main/res/drawable/bf6_header.jpg" />
+    </issue>
+</lint>

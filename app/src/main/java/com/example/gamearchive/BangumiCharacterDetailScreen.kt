@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -36,8 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -61,7 +63,9 @@ internal fun BangumiCharacterDetailScreen(
     LaunchedEffect(characterId, loadRevision) {
         isLoading = true
         loadFailed = false
-        val result = runCatching { GameArchiveApp.bgmService.getCharacter(characterId) }
+        val result = runCatchingCancellable {
+            GameArchiveApp.bgmService.getCharacter(characterId)
+        }
         detail = result.getOrNull()
         loadFailed = result.isFailure
         isLoading = false
@@ -82,7 +86,7 @@ internal fun BangumiCharacterDetailScreen(
                 IconButton(onClick = onBack) {
                     Image(
                         imageVector = MiuixIcons.Demibold.Back,
-                        contentDescription = context.getString(R.string.general_back),
+                        contentDescription = stringResource(R.string.general_back),
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                     )
@@ -110,20 +114,22 @@ internal fun BangumiCharacterDetailScreen(
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = context.getString(R.string.general_load_failed),
+                                text = stringResource(R.string.general_load_failed),
                                 color = MiuixTheme.colorScheme.onSurface.copy(
                                     alpha = DesignTokens.OpacityBody
                                 )
                             )
                             Spacer(Modifier.height(DesignTokens.SpaceMd))
                             TextButton(
-                                text = context.getString(R.string.general_retry),
+                                text = stringResource(R.string.general_retry),
                                 onClick = { loadRevision++ }
                             )
                         }
                     }
                 } else {
-                    BangumiCharacterContent(detail = detail!!, initialName = initialName)
+                    detail?.let {
+                        BangumiCharacterContent(detail = it, initialName = initialName)
+                    }
                 }
             }
         }
@@ -193,7 +199,7 @@ private fun BangumiCharacterContent(
                     }
                     Spacer(Modifier.height(DesignTokens.SpaceMd))
                     Text(
-                        text = context.getString(R.string.bangumi_character),
+                        text = stringResource(R.string.bangumi_character),
                         fontSize = DesignTokens.TextBody1.sp,
                         color = dim
                     )
@@ -204,7 +210,7 @@ private fun BangumiCharacterContent(
         if (infoboxRows.isNotEmpty()) {
             item("character_details_title") {
                 SectionTitle(
-                    title = context.getString(R.string.bangumi_details_title),
+                    title = stringResource(R.string.bangumi_details_title),
                     modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)
                 )
             }
@@ -221,7 +227,7 @@ private fun BangumiCharacterContent(
             item("character_summary") {
                 Column(modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)) {
                     Spacer(Modifier.height(DesignTokens.SpaceXxl))
-                    SectionTitle(context.getString(R.string.bangumi_summary_title))
+                    SectionTitle(stringResource(R.string.bangumi_summary_title))
                     Spacer(Modifier.height(DesignTokens.SpaceMd))
                     Text(
                         text = detail.summary,

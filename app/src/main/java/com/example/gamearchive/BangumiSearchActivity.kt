@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -47,8 +48,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -60,6 +62,7 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.util.Locale
 
 class BangumiSearchActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context?) {
@@ -139,7 +142,7 @@ private fun BangumiSearchScreen(
         delay(350)
         isLoading = true
         searchFailed = false
-        results = runCatching {
+        results = runCatchingCancellable {
             GameArchiveApp.bgmService.searchSubjects(
                 BangumiSubjectSearchRequest(
                     keyword = keyword,
@@ -171,13 +174,13 @@ private fun BangumiSearchScreen(
                     IconButton(onClick = onBack) {
                         Image(
                             imageVector = MiuixIcons.Demibold.Back,
-                            contentDescription = context.getString(R.string.general_back),
+                            contentDescription = stringResource(R.string.general_back),
                             modifier = Modifier.size(DesignTokens.IconXl),
                             colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
                     }
                     Text(
-                        text = context.getString(R.string.bangumi_search_title),
+                        text = stringResource(R.string.bangumi_search_title),
                         fontWeight = FontWeight.Bold,
                         fontSize = DesignTokens.TextHeadline.sp,
                         modifier = Modifier.padding(start = DesignTokens.SpaceXs)
@@ -189,7 +192,7 @@ private fun BangumiSearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = DesignTokens.SpaceXl, vertical = DesignTokens.SpaceMd),
-                    label = context.getString(R.string.bangumi_search),
+                    label = stringResource(R.string.bangumi_search),
                     useLabelAsPlaceholder = true,
                     singleLine = true
                 )
@@ -212,7 +215,7 @@ private fun BangumiSearchScreen(
                             ) {
                                 itemsIndexed(
                                     items = results,
-                                    key = { _, subject -> subject.id!! }
+                                    key = { index, subject -> subject.id ?: "missing_$index" }
                                 ) { index, subject ->
                                     if (index > 0) {
                                         HorizontalDivider(
@@ -231,10 +234,10 @@ private fun BangumiSearchScreen(
                             }
                             when {
                                 searchFailed -> SearchMessage(
-                                    text = context.getString(R.string.bangumi_search_failed)
+                                    text = stringResource(R.string.bangumi_search_failed)
                                 )
                                 hasSearched && results.isEmpty() -> SearchMessage(
-                                    text = context.getString(R.string.bangumi_search_no_results)
+                                    text = stringResource(R.string.bangumi_search_no_results)
                                 )
                             }
                         }
@@ -358,7 +361,7 @@ private fun BangumiSearchResult(
             val episodeCount = subject.eps?.takeIf { it > 0 }
             if (episodeCount != null) {
                 Text(
-                    text = context.getString(
+                    text = stringResource(
                         R.string.bangumi_card_episode_count,
                         episodeCount
                     ),
@@ -380,7 +383,7 @@ private fun BangumiSearchResult(
             ) {
                 if (score != null && score > 0) {
                     Text(
-                        text = String.format("%.1f", score),
+                        text = String.format(Locale.ROOT, "%.1f", score),
                         fontSize = DesignTokens.TextTitle.sp,
                         fontWeight = FontWeight.Bold,
                         color = when {
@@ -392,7 +395,7 @@ private fun BangumiSearchResult(
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = context.getString(bangumiSearchGradeRes(score)),
+                        text = stringResource(bangumiSearchGradeRes(score)),
                         fontSize = 10.sp,
                         color = dim
                     )
@@ -435,7 +438,7 @@ private suspend fun loadSearchCollectionTypes(context: Context): Map<Int, Int> {
         }
     }
     val token = UserPrefs.getBangumiAccessToken(context)
-    val remoteTypes = runCatching {
+    val remoteTypes = runCatchingCancellable {
         if (token.isNotEmpty()) {
             BangumiAuthSession.execute(context) { service ->
                 if (username.isBlank()) {
@@ -478,11 +481,7 @@ private suspend fun fetchSearchCollectionTypes(
         val page = loadPage(offset)
         val collections = page.data.orEmpty()
         collections.forEach { collection ->
-            result[collection.subject_id] = when (collection.type) {
-                2 -> 3
-                3 -> 2
-                else -> collection.type
-            }
+            result[collection.subject_id] = bangumiCollectionTypeToUi(collection.type)
         }
         if (collections.isEmpty() || offset + collections.size >= page.total) break
         offset += collections.size

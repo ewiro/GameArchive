@@ -1,5 +1,7 @@
 package com.example.gamearchive
 
+import androidx.core.content.edit
+import androidx.core.graphics.scale
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
@@ -13,6 +15,8 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -67,7 +71,7 @@ object SteamProfileDecorRepository {
             if (!forceRefresh && cacheIsFresh) return@withLock cached.decor
 
             val fetched = withContext(Dispatchers.IO) {
-                runCatching {
+                runCatchingCancellable {
                     parse(GameArchiveApp.apiService.getSteamMiniProfile(accountId))
                 }.getOrNull()
             }
@@ -139,7 +143,7 @@ object SteamProfileDecorRepository {
         }
     }
 
-    private fun downloadVideo(originalUrl: String, destination: File): Boolean {
+    private suspend fun downloadVideo(originalUrl: String, destination: File): Boolean {
         val proxyUrl = proxiedMediaUrl(originalUrl) ?: return false
         val request = Request.Builder()
             .url(proxyUrl)
@@ -149,8 +153,8 @@ object SteamProfileDecorRepository {
         val partial = File(destination.parentFile, "${destination.name}.part")
         partial.delete()
 
-        return runCatching {
-            GameArchiveApp.okHttpClient.newCall(request).execute().use { response ->
+        return runCatchingCancellable {
+            GameArchiveApp.okHttpClient.newCall(request).awaitResponse().use { response ->
                 if (!response.isSuccessful) return@use false
                 val body = response.body ?: return@use false
                 val declaredLength = body.contentLength()
@@ -169,6 +173,7 @@ object SteamProfileDecorRepository {
                     partial.outputStream().buffered().use { output ->
                         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
                         while (true) {
+                            currentCoroutineContext().ensureActive()
                             val read = input.read(buffer)
                             if (read < 0) break
                             copied += read
@@ -204,7 +209,7 @@ object SteamProfileDecorRepository {
                 val height = (
                     source.height.toLong() * POSTER_MAX_WIDTH / source.width
                     ).toInt().coerceAtLeast(1)
-                Bitmap.createScaledBitmap(source, POSTER_MAX_WIDTH, height, true)
+                source.scale(POSTER_MAX_WIDTH, height)
             } else {
                 source
             }
@@ -290,13 +295,13 @@ object SteamProfileDecorRepository {
         decor: SteamProfileDecor,
         fetchedAt: Long
     ) {
-        prefs.edit()
-            .putLong("${steamId}_fetched_at", fetchedAt)
-            .putString("${steamId}_avatar", decor.avatarUrl.orEmpty())
-            .putString("${steamId}_frame", decor.avatarFrameUrl.orEmpty())
-            .putString("${steamId}_mp4", decor.backgroundMp4Url.orEmpty())
-            .putString("${steamId}_webm", decor.backgroundWebmUrl.orEmpty())
-            .apply()
+        prefs.edit {
+                putLong("${steamId}_fetched_at", fetchedAt)
+                .putString("${steamId}_avatar", decor.avatarUrl.orEmpty())
+                .putString("${steamId}_frame", decor.avatarFrameUrl.orEmpty())
+                .putString("${steamId}_mp4", decor.backgroundMp4Url.orEmpty())
+                .putString("${steamId}_webm", decor.backgroundWebmUrl.orEmpty())
+            }
     }
 
     private fun JsonObject.stringValue(key: String): String? {

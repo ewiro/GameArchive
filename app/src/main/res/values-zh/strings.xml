@@ -168,7 +168,6 @@
     <string name="note_hint">评论一下…</string>
 
     <!-- Data Management -->
-    <string name="settings_data">数据管理</string>
     <string name="settings_export">导出配置</string>
     <string name="settings_import">导入配置</string>
     <string name="settings_export_ok">配置已导出</string>
@@ -205,7 +204,6 @@
     <string name="settings_bangumi_background_saved">资料背景已更新</string>
     <string name="settings_bangumi_background_failed">无法读取这张图片</string>
     <string name="settings_bangumi_background_cleared">已恢复默认资料背景</string>
-    <string name="confirm">确认</string>
     <string name="bangumi_wish">想看</string>
     <string name="bangumi_done">看过</string>
     <string name="bangumi_doing">在看</string>
@@ -228,8 +226,6 @@
     <string name="bangumi_detail_load_failed">动漫详情加载失败</string>
     <string name="bangumi_collection_load_failed">无法读取你的 Bangumi 收藏信息</string>
     <string name="bangumi_my_collection">我的进度</string>
-    <string name="bangumi_progress_expand">展开我的进度</string>
-    <string name="bangumi_progress_collapse">收起我的进度</string>
     <string name="bangumi_collection_status">状态</string>
     <string name="bangumi_episode_progress">章节</string>
     <string name="bangumi_episode_total">共 %d 话</string>
@@ -245,7 +241,7 @@
     <string name="bangumi_rating_value">%d 分</string>
     <string name="bangumi_tags_hint">填写标签，多个标签用逗号分隔</string>
     <string name="bangumi_my_tags">我的标签</string>
-    <string name="bangumi_comment_hint">吐槽一下...</string>
+    <string name="bangumi_comment_hint">吐槽一下…</string>
     <string name="bangumi_save_collection">同步到 Bangumi</string>
     <string name="bangumi_saving">正在同步…</string>
     <string name="bangumi_collection_saved">已同步到你的 Bangumi 账号</string>
@@ -275,6 +271,7 @@
     <string name="bangumi_oauth_canceled">授权已取消</string>
     <string name="bangumi_oauth_success">授权成功，用户 ID：%1$d</string>
     <string name="bangumi_oauth_failed">授权失败：%1$s</string>
+    <string name="bangumi_oauth_state_invalid">授权请求无效或已过期，请重新授权</string>
     <string name="general_retry">重试</string>
     <string name="general_open_link_failed">无法打开链接</string>
     <string name="game_collection_title">游戏</string>

@@ -8,7 +8,7 @@
     <application
         android:name=".GameArchiveApp"
         android:allowBackup="true"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -34,13 +34,13 @@
         <activity
             android:name=".MainActivity"
             android:windowSoftInputMode="adjustResize"
-            android:exported="true" />
+            android:exported="false" />
 
         <!-- 设置页 -->
         <activity
             android:name=".SettingsActivity"
             android:windowSoftInputMode="adjustResize"
-            android:label="Settings"
+            android:label="@string/settings_title"
             android:parentActivityName=".MainActivity"/>
 
         <!-- 详情页 -->
@@ -55,7 +55,8 @@
 
         <activity
             android:name=".MediaViewerActivity"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustResize"
+            android:exported="false" />
 
         <!-- Bangumi OAuth 回调 -->
         <activity

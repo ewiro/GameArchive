@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -42,8 +43,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -138,9 +140,11 @@ private fun BangumiPersonDetailScreen(
         detailFailed = false
         worksFailed = false
         val (detailResult, worksResult) = coroutineScope {
-            val loadedDetail = async { runCatching { GameArchiveApp.bgmService.getPerson(personId) } }
+            val loadedDetail = async {
+                runCatchingCancellable { GameArchiveApp.bgmService.getPerson(personId) }
+            }
             val loadedWorks = async {
-                runCatching { GameArchiveApp.bgmService.getPersonSubjects(personId) }
+                runCatchingCancellable { GameArchiveApp.bgmService.getPersonSubjects(personId) }
             }
             loadedDetail.await() to loadedWorks.await()
         }
@@ -166,7 +170,7 @@ private fun BangumiPersonDetailScreen(
                 IconButton(onClick = onBack) {
                     Image(
                         imageVector = MiuixIcons.Demibold.Back,
-                        contentDescription = context.getString(R.string.general_back),
+                        contentDescription = stringResource(R.string.general_back),
                         modifier = Modifier.size(DesignTokens.IconXl),
                         colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                     )
@@ -194,25 +198,27 @@ private fun BangumiPersonDetailScreen(
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = context.getString(R.string.general_load_failed),
+                                text = stringResource(R.string.general_load_failed),
                                 color = MiuixTheme.colorScheme.onSurface.copy(
                                     alpha = DesignTokens.OpacityBody
                                 )
                             )
                             Spacer(Modifier.height(DesignTokens.SpaceMd))
                             TextButton(
-                                text = context.getString(R.string.general_retry),
+                                text = stringResource(R.string.general_retry),
                                 onClick = { loadRevision++ }
                             )
                         }
                     }
                 } else {
-                    BangumiPersonContent(
-                        detail = detail!!,
-                        initialName = initialName,
-                        works = works,
-                        worksFailed = worksFailed
-                    )
+                    detail?.let {
+                        BangumiPersonContent(
+                            detail = it,
+                            initialName = initialName,
+                            works = works,
+                            worksFailed = worksFailed
+                        )
+                    }
                 }
             }
         }
@@ -303,7 +309,7 @@ private fun BangumiPersonContent(
                     }
                     Spacer(Modifier.height(DesignTokens.SpaceMd))
                     Text(
-                        text = context.getString(
+                        text = stringResource(
                             if (detail.type == 2) R.string.bangumi_company
                             else R.string.bangumi_person
                         ),
@@ -326,7 +332,7 @@ private fun BangumiPersonContent(
         if (infoboxRows.isNotEmpty()) {
             item("person_details_title") {
                 SectionTitle(
-                    title = context.getString(R.string.bangumi_details_title),
+                    title = stringResource(R.string.bangumi_details_title),
                     modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)
                 )
             }
@@ -343,7 +349,7 @@ private fun BangumiPersonContent(
             item("person_summary") {
                 Column(modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)) {
                     Spacer(Modifier.height(DesignTokens.SpaceXxl))
-                    SectionTitle(context.getString(R.string.bangumi_summary_title))
+                    SectionTitle(stringResource(R.string.bangumi_summary_title))
                     Spacer(Modifier.height(DesignTokens.SpaceMd))
                     Text(
                         text = detail.summary,
@@ -358,17 +364,17 @@ private fun BangumiPersonContent(
         item("person_works_title") {
             Column(modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)) {
                 Spacer(Modifier.height(DesignTokens.SpaceXxl))
-                SectionTitle(context.getString(R.string.bangumi_person_works))
+                SectionTitle(stringResource(R.string.bangumi_person_works))
                 Spacer(Modifier.height(DesignTokens.SpaceMd))
                 if (worksFailed) {
                     Text(
-                        text = context.getString(R.string.general_load_failed),
+                        text = stringResource(R.string.general_load_failed),
                         fontSize = DesignTokens.TextBody1.sp,
                         color = dim
                     )
                 } else if (works.isEmpty()) {
                     Text(
-                        text = context.getString(R.string.general_no_data),
+                        text = stringResource(R.string.general_no_data),
                         fontSize = DesignTokens.TextBody1.sp,
                         color = dim
                     )
@@ -449,12 +455,12 @@ private fun BangumiPersonWorkItem(
     var subjectDetail by remember(subject.id) { mutableStateOf<BangumiSubjectDetail?>(null) }
     var episodeTotal by remember(subject.id) { mutableStateOf(personEpisodeCount) }
     LaunchedEffect(subject.id) {
-        val loadedDetail = runCatching {
+        val loadedDetail = runCatchingCancellable {
             GameArchiveApp.bgmService.getSubject(subject.id)
         }.getOrNull()
         subjectDetail = loadedDetail
         val knownTotal = loadedDetail?.eps?.takeIf { it > 0 } ?: personEpisodeCount
-        episodeTotal = knownTotal ?: runCatching {
+        episodeTotal = knownTotal ?: runCatchingCancellable {
             GameArchiveApp.bgmService.getSubjectEpisodes(subject.id).total.takeIf { it > 0 }
         }.getOrNull()
     }
@@ -499,7 +505,9 @@ private fun BangumiPersonWorkItem(
         item = cardItem,
         type = 1,
         ratingMode = ratingMode,
-        ratings = detail?.rating?.let { mapOf(subject.id to it) }.orEmpty(),
+        ratings = normalizeBangumiScore(detail?.rating)
+            ?.let { mapOf(subject.id to it) }
+            .orEmpty(),
         episodeTotals = episodeTotal?.let { mapOf(subject.id to it) }.orEmpty(),
         watchedEpisodeCounts = emptyMap(),
         onClick = {

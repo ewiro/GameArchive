@@ -1,5 +1,6 @@
 package com.example.gamearchive
 
+import androidx.core.content.edit
 import android.content.Context
 import androidx.annotation.Keep
 import com.google.gson.Gson
@@ -30,8 +31,8 @@ object BangumiPageCache {
 
     fun save(context: Context, snapshot: BangumiPageSnapshot) {
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_SNAPSHOT, gson.toJson(snapshot))
-            .apply()
+            .edit {
+                putString(KEY_SNAPSHOT, gson.toJson(snapshot))
+            }
     }
 }

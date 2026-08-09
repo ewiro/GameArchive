@@ -1,5 +1,7 @@
 package com.example.gamearchive
 
+import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import android.content.Context
 import android.media.MediaPlayer
 import android.net.Uri
@@ -25,7 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
 
@@ -109,7 +111,7 @@ private fun MediaViewerScreen(
         ) {
             Image(
                 imageVector = MiuixIcons.Demibold.Close,
-                contentDescription = context.getString(R.string.general_close),
+                contentDescription = stringResource(R.string.general_close),
                 modifier = Modifier.size(DesignTokens.IconHuge),
                 colorFilter = ColorFilter.tint(Color.White)
             )
@@ -130,7 +132,7 @@ private fun MediaVideoPlayer(url: String) {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     )
-                    setVideoURI(Uri.parse(url))
+                    setVideoURI(url.toUri())
                     setOnPreparedListener { mp: MediaPlayer ->
                         isLoading = false
                         mp.start()

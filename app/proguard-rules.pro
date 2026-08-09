@@ -68,7 +68,7 @@
 -keep interface com.example.gamearchive.BangumiCollectionService { *; }
 
 # 6. 保护 Coil
--keep class coil.** { *; }
+-keep class coil3.** { *; }
 
 # 7. MIUI X 主题库 (KMP 库，不自带消费者混淆规则，R8 可能破坏主题/颜色系统)
 -keep class top.yukonga.miuix.kmp.** { *; }
