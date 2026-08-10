@@ -1,0 +1,42 @@
+# Gradle and build outputs
+.gradle/
+.kotlin/
+**/build/
+/captures/
+/.externalNativeBuild/
+/.cxx/
+/dist/
+/app/release/
+*.apk
+*.aab
+*.apks
+
+# Local Android configuration
+/local.properties
+/app/src/main/java/com/example/gamearchive/AppConfig.kt
+
+# IDE files
+/.idea/
+/.vs/
+*.iml
+
+# Signing files
+*.jks
+*.keystore
+keystore.properties
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+*~
+/*-check.png
+
+# Project-local documentation and tooling
+/docs/
+/CHANGELOG.md
+/WORKER_SETUP.md
+/install.sh
