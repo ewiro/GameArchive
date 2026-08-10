@@ -9,6 +9,7 @@ activity = "1.13.0"
 lifecycle = "2.11.0"
 retrofit = "3.0.0"
 coil = "3.5.0"
+apng = "1.12.0"
 androidx-test-core = "1.7.0"
 robolectric = "4.16.1"
 miuix-ui = "0.9.3"
@@ -29,6 +30,7 @@ coil = { group = "io.coil-kt.coil3", name = "coil", version.ref = "coil" }
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-gif = { group = "io.coil-kt.coil3", name = "coil-gif", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+apng = { group = "com.linecorp", name = "apng", version.ref = "apng" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidx-test-core" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui", version.ref = "miuix-ui" }

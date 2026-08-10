@@ -119,6 +119,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.apng)
 
     implementation(libs.miuix.ui)
     implementation(libs.miuix.icons)

@@ -43,6 +43,7 @@ data class SteamProfilePreparedMedia(
  */
 object SteamProfileDecorRepository {
     private const val PREF_NAME = "steam_profile_decor"
+    private const val METADATA_SCHEMA_VERSION = 2
     private const val STEAM_ID64_OFFSET = 76561197960265728L
     private const val METADATA_TTL_MS = 12L * 60L * 60L * 1000L
     private const val MAX_SINGLE_VIDEO_BYTES = 12L * 1024L * 1024L
@@ -243,7 +244,8 @@ object SteamProfileDecorRepository {
     private fun parse(payload: JsonObject): SteamProfileDecor {
         val background = payload.getAsJsonObject("profile_background")
         return SteamProfileDecor(
-            avatarUrl = payload.stringValue("avatar_url")
+            avatarUrl = (payload.stringValue("animated_avatar")
+                ?: payload.stringValue("avatar_url"))
                 ?.takeIf(::isAllowedSteamMediaUrl),
             avatarFrameUrl = payload.imageUrlValue("avatar_frame")
                 ?.takeIf(::isAllowedSteamMediaUrl),
@@ -272,6 +274,7 @@ object SteamProfileDecorRepository {
         prefs: android.content.SharedPreferences,
         steamId: String
     ): CachedDecor? {
+        if (prefs.getInt("${steamId}_schema_version", 0) != METADATA_SCHEMA_VERSION) return null
         val fetchedAt = prefs.getLong("${steamId}_fetched_at", 0L)
         if (fetchedAt <= 0L) return null
         return CachedDecor(
@@ -296,7 +299,8 @@ object SteamProfileDecorRepository {
         fetchedAt: Long
     ) {
         prefs.edit {
-                putLong("${steamId}_fetched_at", fetchedAt)
+                putInt("${steamId}_schema_version", METADATA_SCHEMA_VERSION)
+                .putLong("${steamId}_fetched_at", fetchedAt)
                 .putString("${steamId}_avatar", decor.avatarUrl.orEmpty())
                 .putString("${steamId}_frame", decor.avatarFrameUrl.orEmpty())
                 .putString("${steamId}_mp4", decor.backgroundMp4Url.orEmpty())

@@ -116,6 +116,7 @@ class GameArchiveApp : Application(), SingletonImageLoader.Factory {
             }
             .components {
                 add(OkHttpNetworkFetcherFactory(callFactory = { okHttpClient }))
+                add(ApngDecoder.Factory())
                 // GIF 动图支持：API 28+ 用 ImageDecoder，低版本用 Coil 内置 GifDecoder
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
                     add(AnimatedImageDecoder.Factory())
