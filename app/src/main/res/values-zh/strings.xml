@@ -34,6 +34,11 @@
     <string name="specials_sort_price_desc">现价 (高 → 低)</string>
     <string name="specials_sort_discount">折扣 (高 → 低)</string>
     <string name="specials_sort_rating">好评率 (高 → 低)</string>
+    <string name="wishlist_title">愿望单</string>
+    <string name="wishlist_empty">Steam 愿望单为空或未公开</string>
+    <string name="wishlist_sort_name">名称</string>
+    <string name="wishlist_sort_price">价格</string>
+    <string name="wishlist_sort_discount">折扣</string>
 
     <!-- Settings -->
     <string name="settings_title">设置</string>

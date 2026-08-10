@@ -36,11 +36,35 @@ import retrofit2.http.Query
 
 @Keep data class StoreBrowseResponse(val response: StoreBrowseData?)
 @Keep data class StoreBrowseData(val store_items: List<StoreBrowseItem> = emptyList())
-@Keep data class StoreBrowseItem(val appid: Int, val assets: StoreBrowseAssets?)
+@Keep data class StoreBrowseItem(
+    val appid: Int,
+    val name: String? = null,
+    val assets: StoreBrowseAssets? = null,
+    val reviews: StoreBrowseReviews? = null,
+    val best_purchase_option: StorePurchaseOption? = null
+)
 @Keep data class StoreBrowseAssets(
     val asset_url_format: String?,
+    val header: String? = null,
     val library_capsule: String?,
     val library_capsule_2x: String?
+)
+@Keep data class StoreBrowseReviews(val summary_filtered: StoreBrowseReviewSummary? = null)
+@Keep data class StoreBrowseReviewSummary(val percent_positive: Int = -1)
+@Keep data class StorePurchaseOption(
+    val final_price_in_cents: String? = null,
+    val original_price_in_cents: String? = null,
+    val formatted_final_price: String? = null,
+    val formatted_original_price: String? = null,
+    val discount_pct: Int = 0
+)
+
+@Keep data class WishlistResponse(val response: WishlistData? = null)
+@Keep data class WishlistData(val items: List<WishlistItem> = emptyList())
+@Keep data class WishlistItem(
+    val appid: Int,
+    val priority: Int = 0,
+    val date_added: Long = 0L
 )
 
 @Keep data class PriceOverview(
@@ -143,6 +167,9 @@ import retrofit2.http.Query
 
 // --- 接口定义 ---
 interface SteamApiService {
+    @GET("IWishlistService/GetWishlist/v1/")
+    suspend fun getWishlist(@Query("steamid") steamId: String): WishlistResponse
+
     @GET("IPlayerService/GetOwnedGames/v0001/")
     suspend fun getOwnedGames(@Query("key") k: String, @Query("steamid") s: String, @Query("format") f: String = "json", @Query("include_appinfo") i: Boolean = true): SteamResponse
 

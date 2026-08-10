@@ -296,6 +296,20 @@ internal fun MainScreen() {
                         )
                     }
                 } else {
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, WishlistActivity::class.java))
+                        (context as? android.app.Activity)?.overridePendingTransition(
+                            R.anim.slide_in_right,
+                            R.anim.slide_out_left
+                        )
+                    }) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Favorites,
+                            contentDescription = stringResource(R.string.wishlist_title),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                        )
+                    }
                     IconButton(onClick = { showSortDialog = true }) {
                         Image(
                             imageVector = MiuixIcons.Demibold.Filter,

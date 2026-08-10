@@ -34,6 +34,11 @@
     <string name="specials_sort_price_desc">Price (High → Low)</string>
     <string name="specials_sort_discount">Discount (High → Low)</string>
     <string name="specials_sort_rating">Rating (High → Low)</string>
+    <string name="wishlist_title">Wishlist</string>
+    <string name="wishlist_empty">Steam wishlist is empty or not public</string>
+    <string name="wishlist_sort_name">Name</string>
+    <string name="wishlist_sort_price">Price</string>
+    <string name="wishlist_sort_discount">Discount</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

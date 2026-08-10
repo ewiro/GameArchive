@@ -54,6 +54,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".WishlistActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MediaViewerActivity"
             android:windowSoftInputMode="adjustResize"
             android:exported="false" />
