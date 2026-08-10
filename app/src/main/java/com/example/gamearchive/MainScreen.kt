@@ -2186,7 +2186,11 @@ private fun BangumiPage(
                 bgmUsername.isNotBlank()
             ) {
                 BangumiViewModel.collectionChanged = false
-                viewModel.refresh(bgmUsername, bgmAccessToken, context)
+                viewModel.applyCachedCollectionChange(
+                    bgmUsername,
+                    bgmAccessToken,
+                    context
+                )
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

@@ -193,4 +193,112 @@ class BangumiViewModelTest {
         assertEquals(8.0, state.ratings[9] ?: 0.0, 0.0)
         assertNull(state.user)
     }
+
+    @Test
+    fun appliesSavedCollectionFromCacheWithoutRefreshingNetwork() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val username = "local-update-user"
+        val networkCalls = AtomicInteger()
+        val original = collection(subjectId = 12, uiType = 2, episodeProgress = 3)
+        BangumiPageCache.save(
+            context,
+            BangumiPageSnapshot(
+                username = username,
+                user = null,
+                collections = mapOf(2 to listOf(original)),
+                ratings = mapOf(12 to 7.0),
+                episodeTotals = mapOf(12 to 12),
+                watchedEpisodeCounts = mapOf(12 to 3)
+            )
+        )
+        val source = object : BangumiDataSource {
+            override suspend fun user(username: String): BangumiUser {
+                networkCalls.incrementAndGet()
+                error("network should not be called")
+            }
+
+            override suspend fun collections(
+                username: String,
+                type: Int,
+                offset: Int
+            ): BangumiPagedCollection {
+                networkCalls.incrementAndGet()
+                error("network should not be called")
+            }
+
+            override suspend fun subject(subjectId: Int): BangumiSubjectDetail {
+                networkCalls.incrementAndGet()
+                error("network should not be called")
+            }
+
+            override suspend fun episodeCollections(
+                context: Context,
+                subjectId: Int
+            ): BangumiPagedEpisodeCollection {
+                networkCalls.incrementAndGet()
+                error("network should not be called")
+            }
+
+            override suspend fun publicEpisodeTotal(subjectId: Int): Int {
+                networkCalls.incrementAndGet()
+                error("network should not be called")
+            }
+        }
+        val viewModel = BangumiViewModel(source)
+        viewModel.loadIfNeeded(username, "", context)
+        withTimeout(5_000) {
+            viewModel.uiState.first { it.collections?.get(2)?.singleOrNull() != null }
+        }
+
+        val updated = original.copy(type = 3, ep_status = 12, rate = 9)
+        BangumiPageCache.updateCollection(
+            context = context,
+            username = username,
+            collection = updated,
+            rating = 8.5,
+            episodeTotal = 12,
+            watchedEpisodeCount = 12
+        )
+        viewModel.applyCachedCollectionChange(username, "", context)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first {
+                it.collections?.get(3)?.singleOrNull()?.subject_id == 12
+            }
+        }
+
+        assertEquals(0, networkCalls.get())
+        assertEquals(emptyList<BangumiCollection>(), state.collections?.get(2).orEmpty())
+        assertEquals(9, state.collections?.get(3)?.single()?.rate)
+        assertEquals(8.5, state.ratings[12] ?: 0.0, 0.0)
+        assertEquals(12, state.watchedEpisodeCounts[12])
+    }
+
+    private fun collection(
+        subjectId: Int,
+        uiType: Int,
+        episodeProgress: Int
+    ) = BangumiCollection(
+        subject_id = subjectId,
+        subject_type = 2,
+        rate = 0,
+        type = uiType,
+        comment = null,
+        tags = emptyList(),
+        ep_status = episodeProgress,
+        vol_status = 0,
+        updated_at = null,
+        `private` = false,
+        subject = BangumiSubject(
+            id = subjectId,
+            name = "Anime $subjectId",
+            name_cn = null,
+            type = 2,
+            summary = null,
+            eps = 12,
+            total_episodes = 12,
+            rating = null,
+            images = null,
+            date = null
+        )
+    )
 }

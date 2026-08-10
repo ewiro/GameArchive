@@ -425,20 +425,21 @@ private fun bangumiSearchGradeRes(score: Double): Int = when {
 
 private suspend fun loadSearchCollectionTypes(context: Context): Map<Int, Int> {
     var username = UserPrefs.getBangumiUsername(context)
-    val cachedTypes = withContext(Dispatchers.IO) {
+    val cachedSnapshot = withContext(Dispatchers.IO) {
         if (username.isBlank()) {
-            emptyMap()
+            null
         } else {
             BangumiPageCache.load(context, username)
-                ?.collections
-                .orEmpty()
-                .values
-                .flatten()
-                .associate { it.subject_id to it.type }
         }
     }
+    if (cachedSnapshot != null) {
+        return cachedSnapshot.collections
+            .values
+            .flatten()
+            .associate { it.subject_id to it.type }
+    }
     val token = UserPrefs.getBangumiAccessToken(context)
-    val remoteTypes = runCatchingCancellable {
+    return runCatchingCancellable {
         if (token.isNotEmpty()) {
             BangumiAuthSession.execute(context) { service ->
                 if (username.isBlank()) {
@@ -468,8 +469,7 @@ private suspend fun loadSearchCollectionTypes(context: Context): Map<Int, Int> {
         } else {
             emptyMap()
         }
-    }.getOrNull()
-    return remoteTypes ?: cachedTypes
+    }.getOrDefault(emptyMap())
 }
 
 private suspend fun fetchSearchCollectionTypes(

@@ -155,6 +155,48 @@ class BangumiViewModel internal constructor(
         loadFromNetwork(username, accessToken, context, showRefreshIndicator = true)
     }
 
+    fun applyCachedCollectionChange(
+        username: String,
+        accessToken: String,
+        context: Context
+    ) {
+        if (username.isBlank()) return
+        viewModelScope.launch(Dispatchers.Default) {
+            val cachedState = runCatchingCancellable {
+                withContext(Dispatchers.IO) {
+                    BangumiPageCache.load(context, username) to
+                        BangumiTagOrder.snapshot(context, username)
+                }
+            }.getOrNull()
+            val cached = cachedState?.first
+            if (cached == null) {
+                loadFromNetwork(
+                    username,
+                    accessToken,
+                    context,
+                    showRefreshIndicator = false
+                )
+                return@launch
+            }
+            val tagOrders = cachedState.second
+            _uiState.update { state ->
+                state.copy(
+                    user = cached.user ?: state.user,
+                    collections = cached.collections.restoreTagOrders(tagOrders),
+                    ratings = cached.ratings.mapNotNull { (id, value) ->
+                        normalizeBangumiScore(value)?.let { score -> id to score }
+                    }.toMap(),
+                    episodeTotals = cached.episodeTotals,
+                    watchedEpisodeCounts = cached.watchedEpisodeCounts,
+                    isLoading = false,
+                    isRefreshing = false,
+                    error = null
+                )
+            }
+            hasLoaded = true
+        }
+    }
+
     private fun loadFromNetwork(
         username: String,
         accessToken: String,

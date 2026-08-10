@@ -44,7 +44,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -125,7 +127,7 @@ internal fun BangumiDetailScreen(
     var isSaving by remember { mutableStateOf(false) }
     var draftType by remember { mutableIntStateOf(0) }
     var draftRate by remember { mutableIntStateOf(0) }
-    var draftTags by remember { mutableStateOf("") }
+    var draftTags by remember { mutableStateOf(TextFieldValue()) }
     var isTagInputFocused by remember { mutableStateOf(false) }
     var tagInputRect by remember { mutableStateOf(Rect.Zero) }
     var myTagSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -222,7 +224,11 @@ internal fun BangumiDetailScreen(
                 myCollection = orderedCollection
                 draftType = orderedCollection.type ?: 1
                 draftRate = orderedCollection.rate ?: 0
-                draftTags = orderedCollection.tags.orEmpty().joinToString(", ")
+                val orderedTagText = orderedCollection.tags.orEmpty().joinToString(", ")
+                draftTags = TextFieldValue(
+                    text = orderedTagText,
+                    selection = TextRange(orderedTagText.length)
+                )
                 draftComment = orderedCollection.comment.orEmpty()
                 savedEpisodeProgress = orderedCollection.ep_status ?: 0
                 savedRegularEpisodeProgress = savedEpisodeProgress
@@ -328,7 +334,7 @@ internal fun BangumiDetailScreen(
     fun saveCollection() {
         val token = UserPrefs.getBangumiAccessToken(context)
         if (token.isEmpty() || isSaving || draftType == 0) return
-        val tags = draftTags
+        val tags = draftTags.text
             .split(Regex("[,，\\s]+"))
             .map { it.trim() }
             .filter { it.isNotEmpty() }
@@ -466,7 +472,11 @@ internal fun BangumiDetailScreen(
                     }
                     val orderedTags = BangumiTagOrder.restore(refreshedCollection.tags, tags)
                     myCollection = refreshedCollection.copy(tags = orderedTags)
-                    draftTags = orderedTags.orEmpty().joinToString(", ")
+                    val orderedTagText = orderedTags.orEmpty().joinToString(", ")
+                    draftTags = TextFieldValue(
+                        text = orderedTagText,
+                        selection = TextRange(orderedTagText.length)
+                    )
                     val knownSuggestionKeys = myTagSuggestions
                         .map { it.lowercase(Locale.ROOT) }
                         .toSet()
@@ -494,6 +504,48 @@ internal fun BangumiDetailScreen(
                     savedRegularEpisodeProgress = recordedEpisodeProgress
                     savedEpisodeProgress = recordedEpisodeProgress
                     draftEpisodeProgress = savedEpisodeProgress
+                    val refreshedSubject = refreshedCollection.subject ?: detail?.let {
+                        BangumiSubject(
+                            id = subjectId,
+                            name = it.name ?: subjectName,
+                            name_cn = it.name_cn ?: subjectNameCn,
+                            type = it.type ?: 2,
+                            summary = it.summary,
+                            eps = it.eps,
+                            total_episodes = it.total_episodes,
+                            rating = it.rating,
+                            images = it.images,
+                            date = it.date,
+                            tags = it.tags
+                        )
+                    }
+                    val cachedCollection = BangumiCollection(
+                        subject_id = refreshedCollection.subject_id ?: subjectId,
+                        subject_type = refreshedCollection.subject_type ?: 2,
+                        rate = refreshedCollection.rate ?: draftRate,
+                        type = bangumiCollectionTypeToUi(
+                            refreshedCollection.type ?: targetApiType
+                        ),
+                        comment = refreshedCollection.comment,
+                        tags = orderedTags,
+                        ep_status = recordedEpisodeProgress,
+                        vol_status = refreshedCollection.vol_status ?: 0,
+                        updated_at = refreshedCollection.updated_at,
+                        `private` = refreshedCollection.private ?: false,
+                        subject = refreshedSubject
+                    )
+                    withContext(Dispatchers.IO) {
+                        BangumiPageCache.updateCollection(
+                            context = context,
+                            username = username,
+                            collection = cachedCollection,
+                            rating = normalizeBangumiScore(refreshedSubject?.rating),
+                            episodeTotal = mainEpisodeCount
+                                ?: episodesForSave.size.takeIf { it > 0 }
+                                ?: detail?.eps,
+                            watchedEpisodeCount = recordedEpisodeProgress
+                        )
+                    }
                     BangumiViewModel.collectionChanged = true
                     Toast.makeText(
                         context,
@@ -1588,8 +1640,8 @@ internal fun BangumiDetailScreen(
                     availableBelow - DesignTokens.SpaceSm
                 }
             ).coerceAtLeast(80.dp)
-            val selectedTagKeys = remember(draftTags) {
-                draftTags
+            val selectedTagKeys = remember(draftTags.text) {
+                draftTags.text
                     .split(Regex("[,，\\s]+"))
                     .map { it.trim().lowercase(Locale.ROOT) }
                     .filter { it.isNotEmpty() }
@@ -1660,15 +1712,10 @@ internal fun BangumiDetailScreen(
                                             )
                                             .motionClickable {
                                                 if (!selected) {
-                                                    val currentTags = draftTags
-                                                        .split(Regex("[,，\\s]+"))
-                                                        .map(String::trim)
-                                                        .filter(String::isNotEmpty)
-                                                    draftTags = (currentTags + tag)
-                                                        .distinctBy {
-                                                            it.lowercase(Locale.ROOT)
-                                                        }
-                                                        .joinToString(", ")
+                                                    draftTags = insertTagAtSelection(
+                                                        value = draftTags,
+                                                        tag = tag
+                                                    )
                                                 }
                                             }
                                             .padding(
@@ -1948,6 +1995,39 @@ private fun rankBangumiTags(tagGroups: Iterable<List<String>>): List<String> {
                 .thenBy { firstSeen.getOrDefault(it, Int.MAX_VALUE) }
         )
         .mapNotNull(labels::get)
+}
+
+private fun insertTagAtSelection(
+    value: TextFieldValue,
+    tag: String
+): TextFieldValue {
+    val insertedTag = tag.trim()
+    if (insertedTag.isEmpty()) return value
+
+    val selectionStart = minOf(value.selection.start, value.selection.end)
+        .coerceIn(0, value.text.length)
+    val selectionEnd = maxOf(value.selection.start, value.selection.end)
+        .coerceIn(selectionStart, value.text.length)
+    val prefix = value.text.substring(0, selectionStart)
+    val suffix = value.text.substring(selectionEnd)
+    val beforeTag = when {
+        prefix.isEmpty() -> ""
+        prefix.last() == ',' || prefix.last() == '，' -> " "
+        prefix.last().isWhitespace() -> ""
+        else -> ", "
+    }
+    val afterTag = when {
+        suffix.isEmpty() -> ""
+        suffix.first() == ',' || suffix.first() == '，' -> ""
+        suffix.first().isWhitespace() -> ","
+        else -> ", "
+    }
+    val updatedText = prefix + beforeTag + insertedTag + afterTag + suffix
+    val updatedCursor = prefix.length + beforeTag.length + insertedTag.length
+    return TextFieldValue(
+        text = updatedText,
+        selection = TextRange(updatedCursor)
+    )
 }
 
 internal fun resolvedCompletedEpisodeCount(
