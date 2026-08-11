@@ -2001,15 +2001,18 @@ private fun ActivityHeatmap(
         val slotWidth = size.width / 25f
         val slotHeight = size.height / rows
         val cellSize = minOf(slotWidth, slotHeight) - gapPx
+        val levelSpan = 20.0 / 6.0
         dates.forEachIndexed { index, date ->
             val column = index % 25
             val row = rows - 1 - index / 25
             val score = stats[date]?.score ?: 0.0
             val cellColor = when {
                 score <= 0.0 -> emptyColor
-                score <= 2.0 -> DesignTokens.AccentBlue.copy(alpha = 0.32f)
-                score <= 4.0 -> DesignTokens.AccentBlue.copy(alpha = 0.52f)
-                score <= 6.0 -> DesignTokens.AccentBlue.copy(alpha = 0.74f)
+                score <= levelSpan -> DesignTokens.AccentBlue.copy(alpha = 0.25f)
+                score <= levelSpan * 2 -> DesignTokens.AccentBlue.copy(alpha = 0.40f)
+                score <= levelSpan * 3 -> DesignTokens.AccentBlue.copy(alpha = 0.55f)
+                score <= levelSpan * 4 -> DesignTokens.AccentBlue.copy(alpha = 0.70f)
+                score <= levelSpan * 5 -> DesignTokens.AccentBlue.copy(alpha = 0.85f)
                 else -> DesignTokens.AccentBlue
             }
             val topLeft = Offset(
