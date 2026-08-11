@@ -20,7 +20,7 @@ data class BangumiUiState(
     val ratings: Map<Int, Double> = emptyMap(),
     val episodeTotals: Map<Int, Int> = emptyMap(),
     val watchedEpisodeCounts: Map<Int, Int> = emptyMap(),
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val error: Pair<Int, String?>? = null
 )

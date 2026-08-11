@@ -25,7 +25,7 @@ data class LibraryUiState(
     val profileDecor: SteamProfileDecor? = null,
     val level: Int? = null,
     val prices: Map<Int, String> = emptyMap(),
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val error: Pair<Int, String?>? = null
 )
 
@@ -174,7 +174,12 @@ class LibraryViewModel internal constructor(
     /** 下拉刷新或首次加载 */
     fun refresh(apiKey: String, steamId: String, context: android.content.Context? = null) {
         if (apiKey.isEmpty() || steamId.isEmpty()) {
-            _uiState.update { it.copy(error = Pair(R.string.general_please_login, null)) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = Pair(R.string.general_please_login, null)
+                )
+            }
             return
         }
 

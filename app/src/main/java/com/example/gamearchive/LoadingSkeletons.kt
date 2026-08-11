@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -397,18 +398,33 @@ private fun LibraryTopSkeleton(showProfile: Boolean) {
 }
 
 @Composable
-internal fun LibraryLoadingSkeleton(topInset: Dp, showProfile: Boolean) {
+internal fun LibraryLoadingSkeleton(
+    topInset: Dp,
+    showProfile: Boolean,
+    immersiveProfileSpace: Dp,
+    listState: LazyListState
+) {
     val screenHeight = with(LocalDensity.current) {
         LocalWindowInfo.current.containerSize.height.toDp()
     }
     val cardHeight = DesignTokens.CoverHeight + 12.dp
-    val headerHeight = if (showProfile) 310.dp else 110.dp
+    val headerHeight = when {
+        immersiveProfileSpace > 0.dp -> immersiveProfileSpace + 110.dp
+        showProfile -> 310.dp
+        else -> 110.dp
+    }
     val count = maxOf(4, ((screenHeight - headerHeight) / cardHeight).toInt())
     LazyColumn(
-        Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
+        state = listState,
         contentPadding = PaddingValues(top = topInset, bottom = 72.dp)
     ) {
-        item("top") { LibraryTopSkeleton(showProfile) }
+        item("top") {
+            if (immersiveProfileSpace > 0.dp) {
+                Spacer(Modifier.height(immersiveProfileSpace))
+            }
+            LibraryTopSkeleton(showProfile && immersiveProfileSpace == 0.dp)
+        }
         items(count) { ListSkeletonCard() }
     }
 }

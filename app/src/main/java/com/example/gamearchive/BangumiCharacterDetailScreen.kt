@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -74,44 +76,27 @@ internal fun BangumiCharacterDetailScreen(
     val pageTitle = characterChineseName(detail).ifBlank {
         initialName.ifBlank { detail?.name.orEmpty() }
     }
+    val listState = rememberLazyListState()
+    val statusBarDp = statusBarHeightDp()
+    val topBarHeightDp = statusBarDp + 56.dp
 
     Surface(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = statusBarHeightDp() + 4.dp, end = 12.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Image(
-                        imageVector = MiuixIcons.Demibold.Back,
-                        contentDescription = stringResource(R.string.general_back),
-                        modifier = Modifier.size(DesignTokens.IconXl),
-                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
-                    )
-                }
-                Text(
-                    text = pageTitle,
-                    fontSize = DesignTokens.TextHeadline.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MiuixTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(start = DesignTokens.SpaceXs)
-                )
-            }
-
+        Box(modifier = Modifier.fillMaxSize()) {
             Crossfade(
                 targetState = isLoading,
                 animationSpec = tween(DesignTokens.AnimDuration),
                 label = "bangumi_character_loading",
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxSize()
             ) { loading ->
                 if (loading) {
-                    AnimeDetailLoadingSkeleton()
+                    Box(Modifier.fillMaxSize().padding(top = topBarHeightDp)) {
+                        AnimeDetailLoadingSkeleton()
+                    }
                 } else if (loadFailed || detail == null) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier.fillMaxSize().padding(top = topBarHeightDp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = stringResource(R.string.general_load_failed),
@@ -128,8 +113,44 @@ internal fun BangumiCharacterDetailScreen(
                     }
                 } else {
                     detail?.let {
-                        BangumiCharacterContent(detail = it, initialName = initialName)
+                        BangumiCharacterContent(
+                            detail = it,
+                            initialName = initialName,
+                            listState = listState,
+                            topBarHeightDp = topBarHeightDp
+                        )
                     }
+                }
+            }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .scrollLinkedTopBar(listState, topBarHeightDp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = statusBarDp + 4.dp, end = 12.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Back,
+                            contentDescription = stringResource(R.string.general_back),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                        )
+                    }
+                    Text(
+                        text = pageTitle,
+                        fontSize = DesignTokens.TextHeadline.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MiuixTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(start = DesignTokens.SpaceXs)
+                    )
                 }
             }
         }
@@ -139,7 +160,9 @@ internal fun BangumiCharacterDetailScreen(
 @Composable
 private fun BangumiCharacterContent(
     detail: BangumiCharacterDetail,
-    initialName: String
+    initialName: String,
+    listState: LazyListState,
+    topBarHeightDp: androidx.compose.ui.unit.Dp
 ) {
     val context = LocalContext.current
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
@@ -157,8 +180,12 @@ private fun BangumiCharacterContent(
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = DesignTokens.SpaceMassive)
+        contentPadding = PaddingValues(
+            top = topBarHeightDp,
+            bottom = DesignTokens.SpaceMassive
+        )
     ) {
         item("character_header") {
             Row(

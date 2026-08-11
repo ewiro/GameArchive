@@ -1,6 +1,7 @@
 package com.example.gamearchive
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.net.Uri
 import java.io.File
 
@@ -17,6 +18,16 @@ object BangumiProfileBackground {
         File(File(context.filesDir, DIRECTORY_NAME), FILE_NAME)
 
     fun exists(context: Context): Boolean = file(context).isFile
+
+    fun aspectRatio(file: File): Float? {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, options)
+        return if (options.outWidth > 0 && options.outHeight > 0) {
+            options.outWidth.toFloat() / options.outHeight.toFloat()
+        } else {
+            null
+        }
+    }
 
     fun save(context: Context, uri: Uri): Boolean {
         val directory = File(context.filesDir, DIRECTORY_NAME)

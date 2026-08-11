@@ -93,6 +93,7 @@ private fun WishlistScreen(
     val steamId = UserPrefs.getSteamId(context)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val statusBarDp = statusBarHeightDp()
+    val topBarHeightDp = statusBarDp + 56.dp
     val listState = rememberLazyListState()
     var sortMode by remember { mutableIntStateOf(0) }
     var showSortOptions by remember { mutableStateOf(false) }
@@ -120,55 +121,11 @@ private fun WishlistScreen(
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = statusBarDp + 4.dp, end = 12.dp, bottom = 4.dp)
-                        .height(48.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Back,
-                            contentDescription = stringResource(R.string.general_back),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.wishlist_title),
-                        fontSize = DesignTokens.TextHeadline.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MiuixTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f).padding(start = DesignTokens.SpaceXs)
-                    )
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-                            .motionClickable { showSortOptions = !showSortOptions }
-                            .padding(horizontal = DesignTokens.SpaceMd, vertical = DesignTokens.SpaceSm),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = sortLabels[sortMode],
-                            fontSize = DesignTokens.TextBody1.sp,
-                            color = MiuixTheme.colorScheme.onSurface
-                        )
-                        Spacer(Modifier.width(DesignTokens.SpaceSm))
-                        DropdownArrowEndAction(
-                            actionColor = if (showSortOptions) {
-                                DesignTokens.AccentBlue
-                            } else {
-                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-                            }
-                        )
-                    }
-                }
-
                 Box(modifier = Modifier.fillMaxSize()) {
                     when {
-                        uiState.isLoading && uiState.games == null -> SpecialsSkeleton(0.dp)
+                        uiState.isLoading && uiState.games == null -> {
+                            SpecialsSkeleton(topBarHeightDp)
+                        }
                         errorMessage != null && uiState.games == null -> {
                             Column(
                                 modifier = Modifier.align(Alignment.Center),
@@ -202,7 +159,7 @@ private fun WishlistScreen(
                                 state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
-                                    top = DesignTokens.SpaceSm,
+                                    top = topBarHeightDp + DesignTokens.SpaceSm,
                                     bottom = DesignTokens.SpaceXl
                                 )
                             ) {
@@ -215,6 +172,61 @@ private fun WishlistScreen(
                                 }
                             }
                         }
+                    }
+                }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .scrollLinkedTopBar(listState, topBarHeightDp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = statusBarDp + 4.dp, end = 12.dp, bottom = 4.dp)
+                        .height(48.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Back,
+                            contentDescription = stringResource(R.string.general_back),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.wishlist_title),
+                        fontSize = DesignTokens.TextHeadline.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MiuixTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f).padding(start = DesignTokens.SpaceXs)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                            .motionClickable { showSortOptions = !showSortOptions }
+                            .padding(
+                                horizontal = DesignTokens.SpaceMd,
+                                vertical = DesignTokens.SpaceSm
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = sortLabels[sortMode],
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.width(DesignTokens.SpaceSm))
+                        DropdownArrowEndAction(
+                            actionColor = if (showSortOptions) {
+                                DesignTokens.AccentBlue
+                            } else {
+                                MiuixTheme.colorScheme.onSurface.copy(
+                                    alpha = DesignTokens.OpacityBody
+                                )
+                            }
+                        )
                     }
                 }
             }

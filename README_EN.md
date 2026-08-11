@@ -37,12 +37,13 @@ The project is designed for players and anime viewers who want to keep control o
 
 ### Steam library
 
-- Loads player profiles, levels, and owned games, with merged libraries from multiple Steam accounts.
+- Loads player profiles, playtime, and library size, with merged libraries from multiple Steam accounts.
 - Search, sort, filter, and group games by name, playtime, local status, or tags.
 - Eight local statuses: Unplayed, Playing, Completed, Multiple Playthroughs, Long-term, Perfected, Shelved, and Abandoned.
 - Custom names, tags, notes, avatars, avatar frames, and profile backgrounds.
-- Automatically loads Steam profile decorations and animated backgrounds; manual overrides take priority.
+- Automatically loads Steam profile decorations, including animated avatars, frames, and backgrounds; manual overrides take priority.
 - Game details include media, store descriptions, player reviews, local comments, play history, and personal achievements.
+- Loads public Steam wishlists, with sorting by name, price, or discount and links to game details.
 
 ### Bangumi anime
 
@@ -50,7 +51,7 @@ The project is designed for players and anime viewers who want to keep control o
 - List and grid layouts with configurable rating display.
 - Fuzzy search for Bangumi anime subjects.
 - Edit collection status, main-episode progress, rating, tags, and comments, then sync changes to Bangumi.
-- Subject information, staff, summaries, and watch history.
+- Subject information, sequels, staff, characters and voice actors, summaries, and watch history, with related character, person, and company profiles.
 - Preserves local tag input order. Watch history entries can be edited and reflected in activity statistics.
 
 ### Activity history
@@ -183,7 +184,7 @@ Format and import rules:
 
 ## Technology
 
-- Kotlin 2.4.0 and JVM 17
+- Kotlin 2.4.10 and JVM 17
 - Compose Multiplatform 1.11.1
 - MIUI X (`miuix-ui` / `miuix-icons`)
 - Activity-based navigation and MVVM

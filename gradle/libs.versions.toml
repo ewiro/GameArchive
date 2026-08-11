@@ -35,6 +35,7 @@ androidx-test-core = { group = "androidx.test", name = "core", version.ref = "an
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui", version.ref = "miuix-ui" }
 miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons", version.ref = "miuix-icons" }
+miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur-android", version.ref = "miuix-ui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -110,6 +110,8 @@ internal fun BangumiDetailScreen(
     val episodeDecreaseDescription = stringResource(R.string.bangumi_episode_decrease)
     val episodeIncreaseDescription = stringResource(R.string.bangumi_episode_increase)
     val statusBarDp = statusBarHeightDp()
+    val topBarHeightDp = statusBarDp + 56.dp
+    val detailScrollState = rememberScrollState()
     val sequelCoverGap = DesignTokens.SpaceXs + with(LocalDensity.current) {
         DesignTokens.TextBody1.sp.toDp()
     }
@@ -591,40 +593,18 @@ internal fun BangumiDetailScreen(
 
     Box(Modifier.fillMaxSize()) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 // 顶栏
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(top = statusBarDp + 4.dp, end = 12.dp, bottom = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Back,
-                            contentDescription = stringResource(R.string.general_back),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
-                        )
-                    }
-                    Text(
-                        text = displayName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = DesignTokens.TextHeadline.sp,
-                        modifier = Modifier.weight(1f).padding(start = 4.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MiuixTheme.colorScheme.onSurface
-                    )
-                }
-
                 Crossfade(
                     targetState = isLoading,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxSize(),
                     animationSpec = tween(DesignTokens.AnimDuration),
                     label = "anime_detail_loading"
                 ) { loading ->
                 if (loading) {
-                    AnimeDetailLoadingSkeleton()
+                    Box(Modifier.fillMaxSize().padding(top = topBarHeightDp)) {
+                        AnimeDetailLoadingSkeleton()
+                    }
                 } else if (detail != null) {
                     val d = detail ?: return@Crossfade
                     val chapterCount = mainEpisodes.size.takeIf { it > 0 }
@@ -728,9 +708,14 @@ internal fun BangumiDetailScreen(
                     }
                     Column(
                         modifier = Modifier.fillMaxSize()
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(detailScrollState)
                             .imePadding()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = topBarHeightDp + 8.dp,
+                                bottom = 8.dp
+                            )
                     ) {
                         // 封面 + 基本信息
                         Row(modifier = Modifier.fillMaxWidth()) {
@@ -1607,10 +1592,48 @@ internal fun BangumiDetailScreen(
                         Spacer(Modifier.height(40.dp))
                     }
                 } else {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier.fillMaxSize().padding(top = topBarHeightDp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(stringResource(R.string.general_load_failed), color = dim)
                     }
                 }
+                }
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .scrollLinkedTopBar(detailScrollState, topBarHeightDp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                top = statusBarDp + 4.dp,
+                                end = 12.dp,
+                                bottom = 4.dp
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onBack) {
+                            Image(
+                                imageVector = MiuixIcons.Demibold.Back,
+                                contentDescription = stringResource(R.string.general_back),
+                                modifier = Modifier.size(DesignTokens.IconXl),
+                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                            )
+                        }
+                        Text(
+                            text = displayName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextHeadline.sp,
+                            modifier = Modifier.weight(1f).padding(start = 4.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }

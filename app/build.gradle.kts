@@ -123,6 +123,7 @@ dependencies {
 
     implementation(libs.miuix.ui)
     implementation(libs.miuix.icons)
+    implementation(libs.miuix.blur)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.test.core)

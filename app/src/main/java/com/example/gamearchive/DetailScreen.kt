@@ -27,8 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -46,7 +44,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -59,7 +56,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.Collator
@@ -340,30 +336,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onBack: ()
     val scrollState = rememberLazyListState()
 
     // 顶栏滑动显隐
-    var topBarVisible by remember { mutableStateOf(true) }
-    var lastScrollY by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(scrollState) {
-        snapshotFlow {
-            scrollState.firstVisibleItemIndex to scrollState.firstVisibleItemScrollOffset
-        }
-            .distinctUntilChanged()
-            .collect { (index, offset) ->
-                val currentY = index * 100_000f + offset
-                if (currentY > lastScrollY + 20f && currentY > 100f) {
-                    topBarVisible = false
-                } else if (currentY < lastScrollY - 20f) {
-                    topBarVisible = true
-                }
-                lastScrollY = currentY
-            }
-    }
-
     val topBarHeightDp = 52.dp + statusBarDp + 4.dp
-    val density = LocalDensity.current
-    val topBarOffsetY by animateDpAsState(
-        targetValue = if (topBarVisible) 0.dp else -topBarHeightDp,
-        animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
-    )
 
     Surface(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(DesignTokens.CornerXLarge))) {
     androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
@@ -875,7 +848,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onBack: ()
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .offset { IntOffset(0, with(density) { topBarOffsetY.roundToPx() }) }
+                .scrollLinkedTopBar(scrollState, topBarHeightDp)
         ) {
             Row(
                 modifier = Modifier

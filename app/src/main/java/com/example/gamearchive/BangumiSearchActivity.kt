@@ -7,8 +7,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -107,6 +105,7 @@ private fun BangumiSearchScreen(
 ) {
     val context = LocalContext.current
     val statusBarDp = statusBarHeightDp()
+    val topBarHeightDp = statusBarDp + 56.dp
     val listState = rememberLazyListState()
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<BangumiSubjectDetail>>(emptyList()) }
@@ -159,10 +158,72 @@ private fun BangumiSearchScreen(
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(
+            LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .imePadding()
+                    .imePadding(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    top = topBarHeightDp,
+                    bottom = DesignTokens.SpaceMassive
+                )
+            ) {
+                item("search_field") {
+                    TextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = DesignTokens.SpaceXl,
+                                vertical = DesignTokens.SpaceMd
+                            ),
+                        label = stringResource(R.string.bangumi_search),
+                        useLabelAsPlaceholder = true,
+                        singleLine = true
+                    )
+                }
+                if (!isLoading) {
+                    itemsIndexed(
+                        items = results,
+                        key = { index, subject -> subject.id ?: "missing_$index" }
+                    ) { index, subject ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 18.dp)
+                            )
+                        }
+                        BangumiSearchResult(
+                            subject = subject,
+                            showRating = showRating,
+                            collectionType = subject.id?.let(collectionTypes::get),
+                            modifier = Modifier.animateItem()
+                        ) {
+                            onOpenSubject(subject)
+                        }
+                    }
+                }
+            }
+            when {
+                isLoading -> Box(
+                    Modifier.fillMaxSize().padding(
+                        top = topBarHeightDp + 72.dp
+                    )
+                ) {
+                    BangumiSearchLoadingSkeleton()
+                }
+                searchFailed -> SearchMessage(
+                    text = stringResource(R.string.bangumi_search_failed)
+                )
+                hasSearched && results.isEmpty() -> SearchMessage(
+                    text = stringResource(R.string.bangumi_search_no_results)
+                )
+            }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .scrollLinkedTopBar(listState, topBarHeightDp)
             ) {
                 Row(
                     modifier = Modifier
@@ -185,63 +246,6 @@ private fun BangumiSearchScreen(
                         fontSize = DesignTokens.TextHeadline.sp,
                         modifier = Modifier.padding(start = DesignTokens.SpaceXs)
                     )
-                }
-                TextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = DesignTokens.SpaceXl, vertical = DesignTokens.SpaceMd),
-                    label = stringResource(R.string.bangumi_search),
-                    useLabelAsPlaceholder = true,
-                    singleLine = true
-                )
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Crossfade(
-                        targetState = isLoading,
-                        animationSpec = tween(DesignTokens.AnimDuration),
-                        label = "bangumi_search_loading"
-                    ) { loading ->
-                        if (loading) {
-                            BangumiSearchLoadingSkeleton()
-                        } else {
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                    top = DesignTokens.SpaceXs,
-                                    bottom = DesignTokens.SpaceMassive
-                                )
-                            ) {
-                                itemsIndexed(
-                                    items = results,
-                                    key = { index, subject -> subject.id ?: "missing_$index" }
-                                ) { index, subject ->
-                                    if (index > 0) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 18.dp)
-                                        )
-                                    }
-                                    BangumiSearchResult(
-                                        subject = subject,
-                                        showRating = showRating,
-                                        collectionType = subject.id?.let(collectionTypes::get),
-                                        modifier = Modifier.animateItem()
-                                    ) {
-                                        onOpenSubject(subject)
-                                    }
-                                }
-                            }
-                            when {
-                                searchFailed -> SearchMessage(
-                                    text = stringResource(R.string.bangumi_search_failed)
-                                )
-                                hasSearched && results.isEmpty() -> SearchMessage(
-                                    text = stringResource(R.string.bangumi_search_no_results)
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }

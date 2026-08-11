@@ -35,13 +35,14 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -697,10 +698,11 @@ fun buttonBgColor(lightColor: Color = DesignTokens.AccentBlue): Color =
     if (isAppInDarkTheme()) Color(0xFF3A3A3C) else lightColor
 
 /** 获取状态栏高度（dp），消除 5 处重复代码 */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun statusBarHeightDp(): Dp {
     val density = LocalDensity.current
-    return with(density) { WindowInsets.statusBars.getTop(density).toDp() }
+    return with(density) { WindowInsets.statusBarsIgnoringVisibility.getTop(density).toDp() }
 }
 
 /** 评价分数 → 语义颜色 */

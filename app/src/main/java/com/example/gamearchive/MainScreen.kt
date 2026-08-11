@@ -12,10 +12,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -39,10 +41,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -68,6 +73,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.view.WindowCompat
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -76,13 +82,56 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurBlendMode
+import top.yukonga.miuix.kmp.blur.BlurDefaults
+import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.icon.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.io.File
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
+
+@Composable
+private fun CompactPullToRefresh(
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    content: @Composable (Modifier) -> Unit,
+) {
+    val state = rememberPullToRefreshState()
+    val textSpaceProgress by animateFloatAsState(
+        targetValue = when (state.refreshState) {
+            RefreshState.Idle, RefreshState.RefreshComplete -> 0f
+            else -> state.pullProgress
+        },
+        animationSpec = if (state.refreshState == RefreshState.RefreshComplete) {
+            tween(durationMillis = 200, easing = CubicBezierEasing(0f, 0f, 0f, 0.37f))
+        } else {
+            snap()
+        },
+        label = "pull_refresh_text_space"
+    )
+
+    PullToRefresh(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier,
+        pullToRefreshState = state,
+        contentPadding = contentPadding,
+        circleSize = PullToRefreshDefaults.circleSize * (2f / 3f),
+        refreshTexts = emptyList(),
+    ) {
+        content(Modifier.offset(y = -(36.dp * textSpaceProgress)))
+    }
+}
 
 @Composable
 @Suppress("DEPRECATION")
@@ -100,8 +149,52 @@ internal fun MainScreen() {
     val activityPage = if (activityEnabled) pageCount - 1 else -1
     val pagerState = rememberPagerState(pageCount = { pageCount })
     var bottomBarVisible by remember { mutableStateOf(true) }
-    var topBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
+    val bangumiProfileBackgroundFile = remember(bangumiEnabled) {
+        BangumiProfileBackground.file(context).takeIf { it.isFile }
+    }
+    val isImmersiveLibraryHeader =
+        selectedTab == 0 && UserPrefs.isShowProfile(context)
+    val isImmersiveBangumiHeader = selectedTab == bangumiPage
+    val isImmersiveProfileHeader =
+        isImmersiveLibraryHeader || isImmersiveBangumiHeader
+    val immersiveHeaderUsesDarkBackground =
+        isImmersiveLibraryHeader ||
+            (isImmersiveBangumiHeader && bangumiProfileBackgroundFile != null)
+    val topBarContentColor = if (immersiveHeaderUsesDarkBackground) {
+        Color.White
+    } else {
+        MiuixTheme.colorScheme.onSurface
+    }
+    val mainLifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(
+        mainLifecycleOwner,
+        isImmersiveProfileHeader,
+        immersiveHeaderUsesDarkBackground
+    ) {
+        val activity = context as? android.app.Activity
+        fun updateStatusBarAppearance() {
+            if (activity == null) return
+            if (immersiveHeaderUsesDarkBackground) {
+                WindowCompat.getInsetsController(
+                    activity.window,
+                    activity.window.decorView
+                ).isAppearanceLightStatusBars = false
+            } else {
+                ThemeUtils.applyStatusBarAppearance(activity)
+            }
+        }
+        updateStatusBarAppearance()
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) updateStatusBarAppearance()
+        }
+        mainLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            mainLifecycleOwner.lifecycle.removeObserver(observer)
+            activity?.let(ThemeUtils::applyStatusBarAppearance)
+        }
+    }
 
     val libraryViewModel: LibraryViewModel = viewModel()
     val bangumiViewModel: BangumiViewModel = viewModel()
@@ -130,12 +223,10 @@ internal fun MainScreen() {
     // 滑动检测：仅顶部显示栏，离开顶部即隐藏，回到顶部显示
     LaunchedEffect(activeListState, selectedTab) {
         bottomBarVisible = true
-        topBarVisible = true
         snapshotFlow { activeListState.firstVisibleItemIndex }
             .distinctUntilChanged()
             .collect { index ->
                 bottomBarVisible = index == 0
-                topBarVisible = index == 0
             }
     }
 
@@ -167,17 +258,34 @@ internal fun MainScreen() {
 
     // 动画偏移量
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val topBarOffsetY by animateDpAsState(
-        targetValue = if (topBarVisible) 0.dp else -topBarHeightDp,
-        animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
-    )
     val bottomBarOffsetY by animateDpAsState(
         targetValue = if (bottomBarVisible) 0.dp else 60.dp,
         animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
     )
 
     Surface(modifier = Modifier.fillMaxSize()) {
+    val blurSupported = isRuntimeShaderSupported()
+    val pageBackgroundColor = MiuixTheme.colorScheme.background
+    val bottomBarBackdrop = if (blurSupported) {
+        rememberLayerBackdrop {
+            drawRect(pageBackgroundColor)
+            drawContent()
+        }
+    } else {
+        null
+    }
     Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .then(
+                if (bottomBarBackdrop != null) {
+                    Modifier.layerBackdrop(bottomBarBackdrop)
+                } else {
+                    Modifier
+                }
+            )
+    ) {
 
         // ── 内容层：HorizontalPager 填满全屏 ──
         HorizontalPager(
@@ -234,6 +342,7 @@ internal fun MainScreen() {
                             searchQuery = bangumiSearchQuery,
                             onSearchQueryChange = { bangumiSearchQuery = it },
                             onNavigateToDetail = navigateToBangumiDetail,
+                            profileBackgroundFile = bangumiProfileBackgroundFile,
                             viewModel = bangumiViewModel
                         )
                     }
@@ -242,15 +351,14 @@ internal fun MainScreen() {
         }
 
         // ── 顶栏叠加层 ──
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .graphicsLayer {
-                    translationY = with(density) { topBarOffsetY.toPx() }
-                    alpha = 0.999f
-                }
-        ) {
+        val topBarModifier = Modifier
+            .align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .scrollLinkedTopBar(activeListState, topBarHeightDp)
+            .graphicsLayer {
+                alpha = 0.999f
+            }
+        val topBarContent: @Composable () -> Unit = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -259,19 +367,23 @@ internal fun MainScreen() {
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(
-                        when {
-                            selectedTab == specialsPage -> R.string.nav_specials
-                            selectedTab == bangumiPage -> R.string.nav_bangumi
-                            selectedTab == activityPage -> R.string.nav_activity
-                            else -> R.string.nav_library
-                        }
-                    ),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = DesignTokens.TextTitle.sp,
-                    modifier = Modifier.weight(1f)
-                )
+                if (isImmersiveProfileHeader) {
+                    Spacer(Modifier.weight(1f))
+                } else {
+                    Text(
+                        text = stringResource(
+                            when {
+                                selectedTab == specialsPage -> R.string.nav_specials
+                                selectedTab == activityPage -> R.string.nav_activity
+                                else -> R.string.nav_library
+                            }
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = DesignTokens.TextTitle.sp,
+                        color = topBarContentColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
                 if (selectedTab == bangumiPage) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, BangumiSearchActivity::class.java))
@@ -280,7 +392,7 @@ internal fun MainScreen() {
                             imageVector = MiuixIcons.Demibold.Search,
                             contentDescription = stringResource(R.string.bangumi_search_title),
                             modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                            colorFilter = ColorFilter.tint(topBarContentColor)
                         )
                     }
                 }
@@ -292,7 +404,7 @@ internal fun MainScreen() {
                             imageVector = MiuixIcons.Demibold.Settings,
                             contentDescription = stringResource(R.string.settings_title),
                             modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                            colorFilter = ColorFilter.tint(topBarContentColor)
                         )
                     }
                 } else {
@@ -321,21 +433,69 @@ internal fun MainScreen() {
                 }
             }
         }
+        if (isImmersiveProfileHeader) {
+            Box(modifier = topBarModifier) {
+                topBarContent()
+            }
+        } else {
+            Surface(modifier = topBarModifier) {
+                topBarContent()
+            }
+        }
+    }
 
         // ── 底栏叠加层（至少2页时显示） ──
         if (pageCount > 1) {
-        Surface(
+        val bottomBarTint = MiuixTheme.colorScheme.surface.copy(
+            alpha = if (isAppInDarkTheme()) 0.62f else 0.72f
+        )
+        val bottomBarBlurColors = if (bottomBarBackdrop != null) {
+            BlurDefaults.blurColors(
+                blendColors = listOf(
+                    BlendColorEntry(bottomBarTint, BlurBlendMode.SrcOver)
+                ),
+                saturation = 1.1f
+            )
+        } else {
+            null
+        }
+        val bottomBarBackgroundModifier = if (bottomBarBackdrop != null) {
+            Modifier.textureBlur(
+                backdrop = bottomBarBackdrop,
+                shape = RectangleShape,
+                blurRadius = 24f,
+                colors = bottomBarBlurColors!!
+            )
+        } else {
+            Modifier.background(bottomBarTint)
+        }
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .height(DesignTokens.BottomBarHeight)
                 .clickable(enabled = false, onClick = {})
                 .graphicsLayer {
                     translationY = with(density) { bottomBarOffsetY.toPx() }
                     alpha = 0.999f
                 }
         ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .then(bottomBarBackgroundModifier)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .blur(1.dp, BlurredEdgeTreatment.Unbounded)
+                    .background(bottomBarTint)
+            )
             Row(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(DesignTokens.BottomBarHeight)
                     .padding(bottom = 4.dp),
@@ -498,7 +658,6 @@ private fun LibraryScreen(
     val games = uiState.games
     val player = uiState.player
     val profileDecor = uiState.profileDecor
-    val level = uiState.level
     val loading = uiState.isLoading
     val priceMap = uiState.prices
 
@@ -587,40 +746,122 @@ private fun LibraryScreen(
 
     // 顶栏叠加层占位高度
     val topBarInsetDp = 48.dp + statusBarHeightDp() + 4.dp
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val windowWidth = with(density) {
+        LocalWindowInfo.current.containerSize.width.toDp()
+    }
+    val profileContentHeight = 88.2.dp
+    val profileOverlapHeight = DesignTokens.CornerXLarge
+    val minimumProfileBackgroundHeight =
+        topBarInsetDp + profileContentHeight + profileOverlapHeight
+    val profileBackgroundHeight = maxOf(
+        minimumProfileBackgroundHeight,
+        windowWidth / (16f / 9f) * 1.2f
+    )
+    val profileHeaderHeight = profileBackgroundHeight - profileOverlapHeight
+    val profileAreaHeight = profileHeaderHeight - topBarInsetDp
+    val profileContentGap = DesignTokens.SpaceMd
+    val profileHeaderHeightPx = with(density) { profileHeaderHeight.toPx() }
+    val topBarInsetPx = with(density) { topBarInsetDp.toPx() }
+    val profileShimmer = rememberLoadingSkeletonBrush()
+    val contentSheetShape = RoundedCornerShape(
+        topStart = DesignTokens.CornerXLarge,
+        topEnd = DesignTokens.CornerXLarge
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+    if (showProfile) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val scrollOffset = when (listState.firstVisibleItemIndex) {
+                        0 -> listState.firstVisibleItemScrollOffset.toFloat()
+                        1 -> topBarInsetPx + listState.firstVisibleItemScrollOffset
+                        else -> profileHeaderHeightPx
+                    }
+                    translationY = -scrollOffset
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(profileBackgroundHeight)
+                    .background(MiuixTheme.colorScheme.secondaryContainer)
+            ) {
+                if (loading != true) {
+                    SteamProfileHeroBackground(
+                        decor = profileDecor,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(profileAreaHeight)
+                        .offset(y = topBarInsetDp)
+                        .padding(bottom = DesignTokens.SpaceXxs),
+                    contentAlignment = Alignment.BottomStart
+                ) {
+                    if (loading == true) {
+                        SteamProfileSkeleton(profileShimmer)
+                    } else if (player != null) {
+                        ProfileHeader(
+                            player = player,
+                            gameCount = gameList.size,
+                            totalHours = gameList.sumOf { it.playtime_forever } / 60.0,
+                            decor = profileDecor
+                        )
+                    }
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(y = profileHeaderHeight)
+                    .clip(contentSheetShape)
+                    .background(MiuixTheme.colorScheme.background)
+            )
+        }
+    }
 
     Crossfade(loading == true, animationSpec = tween(250)) { showSkeleton ->
     if (showSkeleton) {
-        LibraryLoadingSkeleton(topBarInsetDp, showProfile)
+        LibraryLoadingSkeleton(
+            topInset = topBarInsetDp,
+            showProfile = showProfile,
+            immersiveProfileSpace = if (showProfile) {
+                profileAreaHeight + profileContentGap
+            } else {
+                0.dp
+            },
+            listState = listState
+        )
     } else {
-        PullToRefresh(
+        CompactPullToRefresh(
             isRefreshing = false,
             onRefresh = { viewModel.refresh(apiKey, steamId, context); listRefreshTrigger++ },
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = topBarInsetDp),
-            refreshTexts = listOf(
-                stringResource(R.string.general_pull_down),
-                stringResource(R.string.general_release),
-                stringResource(R.string.general_refreshing),
-                stringResource(R.string.general_refreshed)
+            contentPadding = PaddingValues(
+                top = if (showProfile) {
+                    profileHeaderHeight + profileContentGap
+                } else {
+                    topBarInsetDp
+                }
             ),
-        ) {
+        ) { refreshContentModifier ->
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = refreshContentModifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 bottom = if (showBottomBar) 72.dp else DesignTokens.SpaceXl
             )
         ) {
             item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
-            if (showProfile && player != null) {
-                item("profile") {
-                    ProfileHeader(
-                        player = player,
-                        gameCount = gameList.size,
-                        totalHours = gameList.sumOf { it.playtime_forever } / 60.0,
-                        level = level ?: 0,
-                        decor = profileDecor
-                    )
+            if (showProfile) {
+                item("profile_space") { Spacer(Modifier.height(profileAreaHeight)) }
+                item("profile_content_gap") {
+                    Spacer(Modifier.height(profileContentGap))
                 }
             }
 
@@ -762,177 +1003,182 @@ private fun LibraryScreen(
         } // close PullToRefresh
     } // close if/else
     } // close Crossfade
+    } // close root Box
 }
 
 // ── 游玩时长徽章颜色 → DesignTokens.badgeColor() / badgeColorMap
 // ── 状态颜色 → DesignTokens.Status*
 
 @Composable
+private fun SteamProfileHeroBackground(
+    decor: SteamProfileDecor?,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val customBgUrl = UserPrefs.getCustomBgUrl(context)
+    val automaticBackgroundDecor = decor?.takeIf {
+        it.backgroundMp4Url != null || it.backgroundWebmUrl != null
+    }
+    val hasBackground = customBgUrl.isNotEmpty() || automaticBackgroundDecor != null
+
+    Box(modifier) {
+        if (customBgUrl.isNotEmpty()) {
+            AsyncImage(
+                model = customBgUrl,
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center
+            )
+        } else if (automaticBackgroundDecor != null) {
+            SteamProfileBackground(
+                decor = automaticBackgroundDecor,
+                playMotion = true,
+                modifier = Modifier.matchParentSize()
+            )
+        }
+        if (hasBackground) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(DesignTokens.ScrimDark.copy(alpha = 0.15f))
+            )
+        }
+    }
+}
+
+@Composable
+private fun SteamProfileSkeleton(shimmer: androidx.compose.ui.graphics.Brush) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 5.4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 7.2.dp,
+                    bottom = 7.2.dp
+                )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(63.dp).clip(CircleShape).background(shimmer))
+                Spacer(Modifier.width(21.6.dp))
+                Column(Modifier.width(126.dp)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(0.72f)
+                            .height(14.4.dp)
+                            .clip(RoundedCornerShape(DesignTokens.CornerSmall))
+                            .background(shimmer)
+                    )
+                    Spacer(Modifier.height(7.2.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(10.8.dp)
+                            .clip(RoundedCornerShape(DesignTokens.CornerSmall))
+                            .background(shimmer)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProfileHeader(
     player: PlayerInfo,
     gameCount: Int,
     totalHours: Double,
-    level: Int,
     decor: SteamProfileDecor?
 ) {
     val context = LocalContext.current
-    val customBgUrl = UserPrefs.getCustomBgUrl(context)
     val customFrameUrl = UserPrefs.getCustomFrameUrl(context)
     val customAvatar = UserPrefs.getCustomAvatarUrl(context)
     val automaticAvatar = SteamProfileDecorRepository.proxiedMediaUrl(decor?.avatarUrl)
     val automaticFrame = SteamProfileDecorRepository.proxiedMediaUrl(decor?.avatarFrameUrl)
     val avatarModel = customAvatar.ifBlank { automaticAvatar ?: player.avatarfull }
     val frameModel = customFrameUrl.ifBlank { automaticFrame.orEmpty() }
-    val automaticBackgroundDecor = decor?.takeIf {
-        it.backgroundMp4Url != null || it.backgroundWebmUrl != null
+    val totalHoursText = if (totalHours < 0.05) {
+        "0h"
+    } else {
+        String.format(Locale.ROOT, "%.1fh", totalHours)
     }
     val textShadow = androidx.compose.ui.graphics.Shadow(
-        color = DesignTokens.TextShadowColor, offset = androidx.compose.ui.geometry.Offset(1f, 1f), blurRadius = 2f
+        color = DesignTokens.TextShadowColor,
+        offset = androidx.compose.ui.geometry.Offset(1f, 1f),
+        blurRadius = 2f
     )
 
-    androidx.compose.foundation.layout.Box(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 6.dp)
-            .background(DesignTokens.AccentBlue, RoundedCornerShape(DesignTokens.CornerXLarge))
-            .clip(RoundedCornerShape(DesignTokens.CornerXLarge))
+            .padding(horizontal = 18.dp, vertical = 5.4.dp)
     ) {
-        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth()) {
-            // 自定义背景图 + 半透明遮罩
-            if (customBgUrl.isNotEmpty()) {
-                AsyncImage(
-                    model = customBgUrl,
-                    contentDescription = null,
-                    modifier = Modifier.matchParentSize(),
-                    contentScale = ContentScale.Crop
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 7.2.dp,
+                    bottom = 7.2.dp
                 )
-                Box(modifier = Modifier.matchParentSize().background(DesignTokens.ProfileOverlay))
-            } else {
-                automaticBackgroundDecor?.let { backgroundDecor ->
-                    SteamProfileBackground(
-                        decor = backgroundDecor,
-                        playMotion = true,
-                        modifier = Modifier.matchParentSize()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.size(63.dp)) {
+                    AsyncImage(
+                        model = avatarModel,
+                        contentDescription = player.personaname,
+                        modifier = Modifier
+                            .size(52.2.dp)
+                            .align(Alignment.Center),
+                        contentScale = ContentScale.Crop
                     )
-                    Box(modifier = Modifier.matchParentSize().background(DesignTokens.ProfileOverlay))
-                }
-            }
-
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // 上半区：头像 + 名字 + 等级 + 状态
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, top = 24.dp, end = 20.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    // 头像 + 挂件框 — 挂件为外框，头像居中在内
-                    Box(modifier = Modifier.size(DesignTokens.AvatarOuter)) {
+                    if (frameModel.isNotEmpty()) {
                         AsyncImage(
-                            model = avatarModel,
+                            model = frameModel,
                             contentDescription = null,
-                            modifier = Modifier.size(DesignTokens.AvatarInner)
-                                .align(Alignment.Center),
-                            contentScale = ContentScale.Crop
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
                         )
-                        // 挂件铺满外框，叠在头像上方
-                        if (frameModel.isNotEmpty()) {
-                            AsyncImage(
-                                model = frameModel,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-                        }
-                    }
-
-                    // 名字 + 等级 + 状态
-                    Column(modifier = Modifier.padding(start = 24.dp).weight(1f)) {
-                        Text(
-                            text = player.personaname,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextHeadline.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                        )
-                        Text(
-                            text = stringResource(R.string.profile_level, level),
-                            color = DesignTokens.ProfileTextDim2,
-                            fontSize = DesignTokens.TextBody2.sp,
-                            fontWeight = FontWeight.Bold,
-                            style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        // 在线状态
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val (statusText, statusColor) = if (player.gameextrainfo != null) {
-                                stringResource(R.string.profile_playing) to DesignTokens.StatusInGame
-                            } else if (player.personastate == 0) {
-                                stringResource(R.string.profile_offline) to DesignTokens.StatusOffline
-                            } else {
-                                stringResource(R.string.profile_online) to DesignTokens.StatusOnline
-                            }
-                            Text(
-                                text = statusText,
-                                color = statusColor,
-                                fontSize = DesignTokens.TextBody2.sp,
-                                fontWeight = FontWeight.Bold,
-                                style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                            )
-                            // 正在玩的游戏名（跑马灯）
-                            val gameName = player.gameextrainfo
-                            if (gameName != null) {
-                                Text(
-                                    text = gameName,
-                                    color = DesignTokens.StatusInGame,
-                                    fontSize = DesignTokens.TextBody2.sp,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    modifier = Modifier.padding(start = 6.dp),
-                                    style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                                )
-                            }
-                        }
                     }
                 }
-
-                // 下半区：统计数据
-                Row(
-                    modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 24.dp)
-                ) {
-                    // 总时长
-                    Column {
-                        Text(
-                            text = if (totalHours < 0.05) "0h" else String.format(Locale.ROOT, "%.1fh", totalHours),
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp,
-                            style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                        )
-                        Text(
-                            text = stringResource(R.string.profile_playtime_label),
-                            color = DesignTokens.ProfileTextDim1,
-                            fontSize = DesignTokens.TextCaption.sp,
-                            style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                        )
-                    }
-                    Spacer(Modifier.width(32.dp))
-                    // 库存数量
-                    Column {
-                        Text(
-                            text = "$gameCount",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp,
-                            style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                        )
-                        Text(
-                            text = stringResource(R.string.profile_count_label),
-                            color = DesignTokens.ProfileTextDim1,
-                            fontSize = DesignTokens.TextCaption.sp,
-                            style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
-                        )
-                    }
+                Spacer(Modifier.width(21.6.dp))
+                Column(Modifier.widthIn(max = 190.dp)) {
+                    Text(
+                        text = player.personaname,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.profile_summary,
+                            totalHoursText,
+                            gameCount
+                        ),
+                        color = Color.White.copy(alpha = DesignTokens.OpacityBody),
+                        fontSize = 10.8.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
+                    )
                 }
             }
         }
@@ -972,7 +1218,18 @@ private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
 
 // ── 标记筛选胶囊 ──
 @Composable
-private fun MarkFilterChip(label: String, selected: Boolean, color: Color?, onClick: () -> Unit) {
+private fun MarkFilterChip(
+    label: String,
+    selected: Boolean,
+    color: Color?,
+    count: Int? = null,
+    onClick: () -> Unit
+) {
+    val textColor = if (selected && color != null) {
+        color
+    } else {
+        MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityEmphasis)
+    }
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(DesignTokens.CornerLarge))
@@ -987,12 +1244,25 @@ private fun MarkFilterChip(label: String, selected: Boolean, color: Color?, onCl
             .motionClickable(pressedScale = 0.96f, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        Text(
-            text = label,
-            fontSize = DesignTokens.TextBody2.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = if (selected && color != null) color else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityEmphasis)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = label,
+                fontSize = DesignTokens.TextBody2.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                color = textColor
+            )
+            count?.let {
+                Spacer(Modifier.width(DesignTokens.SpaceXxs))
+                Text(
+                    text = it.toString(),
+                    fontSize = DesignTokens.TextCaption.sp,
+                    color = textColor
+                )
+            }
+        }
     }
 }
 
@@ -1697,7 +1967,7 @@ private fun ActivityPage(
     if (loading) {
         ActivityPageLoadingSkeleton(topBarInsetDp)
     } else {
-        PullToRefresh(
+        CompactPullToRefresh(
         isRefreshing = false,
         onRefresh = {
             libraryViewModel.refresh(apiKey, steamId, context)
@@ -1711,16 +1981,10 @@ private fun ActivityPage(
         },
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = topBarInsetDp),
-        refreshTexts = listOf(
-            stringResource(R.string.general_pull_down),
-            stringResource(R.string.general_release),
-            stringResource(R.string.general_refreshing),
-            stringResource(R.string.general_refreshed)
-        )
-    ) {
+    ) { refreshContentModifier ->
         LazyColumn(
             state = listState,
-            modifier = Modifier
+            modifier = refreshContentModifier
                 .fillMaxSize()
                 .clickable(
                     indication = null,
@@ -2156,6 +2420,7 @@ private fun BangumiPage(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onNavigateToDetail: (Int, String, String, String) -> Unit,
+    profileBackgroundFile: File?,
     viewModel: BangumiViewModel
 ) {
     val context = LocalContext.current
@@ -2231,22 +2496,115 @@ private fun BangumiPage(
         return
     }
 
-    PullToRefresh(
+    val collectionMap = collections
+    val showSkeleton = loading == true
+    val showEmpty = !showSkeleton && (collectionMap == null || collectionMap.isEmpty())
+    val totalCount = collectionMap?.values?.sumOf { it.size } ?: 0
+    val shimmer = rememberLoadingSkeletonBrush()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val windowWidth = with(density) {
+        LocalWindowInfo.current.containerSize.width.toDp()
+    }
+    val profileBackgroundAspectRatio = remember(profileBackgroundFile) {
+        profileBackgroundFile?.let(BangumiProfileBackground::aspectRatio)
+    }
+    val profileContentHeight = 88.2.dp
+    val profileOverlapHeight = DesignTokens.CornerXLarge
+    val minimumProfileBackgroundHeight =
+        topBarInsetDp + profileContentHeight + profileOverlapHeight
+    val imageHeight = profileBackgroundAspectRatio
+        ?.takeIf { it > 0f }
+        ?.let { windowWidth / it * 1.2f }
+    val profileBackgroundHeight = maxOf(
+        minimumProfileBackgroundHeight,
+        imageHeight ?: minimumProfileBackgroundHeight
+    )
+    val profileHeaderHeight = profileBackgroundHeight - profileOverlapHeight
+    val profileAreaHeight = profileHeaderHeight - topBarInsetDp
+    val profileContentGap = DesignTokens.SpaceMd
+    val contentSheetShape = RoundedCornerShape(
+        topStart = DesignTokens.CornerXLarge,
+        topEnd = DesignTokens.CornerXLarge
+    )
+    val topBarInsetPx = with(density) { topBarInsetDp.toPx() }
+    val profileHeaderHeightPx = with(density) { profileHeaderHeight.toPx() }
+    val profileBackgroundModel = remember(profileBackgroundFile) {
+        profileBackgroundFile?.let { file ->
+            ImageRequest.Builder(context)
+                .data(file)
+                .memoryCacheKey("${file.absolutePath}:${file.lastModified()}")
+                .build()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val scrollOffset = when (listState.firstVisibleItemIndex) {
+                        0 -> listState.firstVisibleItemScrollOffset.toFloat()
+                        1 -> topBarInsetPx + listState.firstVisibleItemScrollOffset
+                        else -> profileHeaderHeightPx
+                    }
+                    translationY = -scrollOffset
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(profileBackgroundHeight)
+                    .background(MiuixTheme.colorScheme.secondaryContainer)
+            ) {
+                if (!showSkeleton && profileBackgroundModel != null) {
+                    AsyncImage(
+                        model = profileBackgroundModel,
+                        contentDescription = null,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.Center
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(DesignTokens.ScrimDark.copy(alpha = 0.15f))
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(profileAreaHeight)
+                        .offset(y = topBarInsetDp)
+                        .padding(bottom = DesignTokens.SpaceXxs),
+                    contentAlignment = Alignment.BottomStart
+                ) {
+                    if (showSkeleton) {
+                        BangumiProfileSkeleton(shimmer)
+                    } else {
+                        BangumiProfileCard(
+                            username = bgmUsername,
+                            user = bgmUser,
+                            totalCount = totalCount,
+                            hasCustomBackground = profileBackgroundFile != null
+                        )
+                    }
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(y = profileHeaderHeight)
+                    .clip(contentSheetShape)
+                    .background(MiuixTheme.colorScheme.background)
+            )
+        }
+
+    CompactPullToRefresh(
         isRefreshing = refreshing == true,
         onRefresh = { viewModel.refresh(bgmUsername, bgmAccessToken, context) },
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = topBarInsetDp),
-        refreshTexts = listOf(
-            stringResource(R.string.general_pull_down),
-            stringResource(R.string.general_release),
-            stringResource(R.string.general_refreshing),
-            stringResource(R.string.general_refreshed)
-        ),
-    ) {
-        val collectionMap = collections
-        val showSkeleton = loading == true
-        val showEmpty = !showSkeleton && (collectionMap == null || collectionMap.isEmpty())
-
+        contentPadding = PaddingValues(top = profileHeaderHeight + profileContentGap),
+    ) { refreshContentModifier ->
         // ── 骨架屏数量 ──
         val windowHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
             LocalWindowInfo.current.containerSize.height.toDp()
@@ -2254,10 +2612,6 @@ private fun BangumiPage(
         val skeletonCount = remember(windowHeight) {
             maxOf(4, ((windowHeight - 260.dp) / 132.dp).toInt())
         }
-        // 骨架材质（@Composable，在此处初始化供 LazyColumn 使用）
-        val shimmer = rememberLoadingSkeletonBrush()
-        val skelBg = loadingSkeletonBaseColor()
-
         // ── 状态变量 ──
         val allItems = remember(collectionMap) {
             collectionMap?.entries?.flatMap { (type, list) -> list.map { Pair(it, type) } } ?: emptyList()
@@ -2273,46 +2627,19 @@ private fun BangumiPage(
             }
             list
         }
-        val totalCount = collectionMap?.values?.sumOf { it.size } ?: 0
-
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = refreshContentModifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 72.dp)
         ) {
             item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
+            item("bgm_profile_space") { Spacer(Modifier.height(profileAreaHeight)) }
+            item("bgm_profile_content_gap") {
+                Spacer(Modifier.height(profileContentGap))
+            }
 
             if (showSkeleton) {
                 // ── 加载骨架 ──
-                // 个人资料卡骨架
-                item("skel_profile") {
-                    Box(
-                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)
-                            .clip(RoundedCornerShape(DesignTokens.CornerXLarge)).background(skelBg)
-                    ) {
-                        Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(70.dp).clip(CircleShape).background(shimmer))
-                                Spacer(Modifier.width(24.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Box(Modifier.fillMaxWidth(0.45f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                                    Spacer(Modifier.height(8.dp))
-                                    Box(Modifier.fillMaxWidth(0.25f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                                }
-                            }
-                            Spacer(Modifier.height(24.dp))
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                repeat(5) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Box(Modifier.size(24.dp, 14.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                                        Spacer(Modifier.height(6.dp))
-                                        Box(Modifier.size(32.dp, 10.dp).clip(RoundedCornerShape(4.dp)).background(shimmer))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
                 // 搜索栏骨架
                 item("skel_search") {
                     Box(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 18.dp, vertical = 4.dp)
@@ -2344,11 +2671,6 @@ private fun BangumiPage(
                     }
                 }
             } else {
-                // ── 个人资料卡 ──
-                item("bgm_profile") {
-                    BangumiProfileCard(bgmUsername, bgmUser, totalCount, collectionMap.orEmpty())
-                }
-
                 // ── 搜索栏 ──
                 item("search_bar") {
                     var textFieldValue by remember(searchQuery) { mutableStateOf(searchQuery) }
@@ -2376,7 +2698,10 @@ private fun BangumiPage(
                                 label = stringResource(nameRes),
                                 selected = typeFilter == type,
                                 color = BANGUMI_TYPE_COLORS[type],
-                                onClick = { onTypeFilterChange(if (typeFilter == type) 2 else type) }
+                                count = collectionMap?.get(type)?.size ?: 0,
+                                onClick = {
+                                    onTypeFilterChange(if (typeFilter == type) 2 else type)
+                                }
                             )
                         }
                     }
@@ -2444,6 +2769,7 @@ private fun BangumiPage(
                 }
             }
         }
+    }
     }
 }
 
@@ -2607,55 +2933,94 @@ private fun BangumiGridItem(imageUrl: String?, modifier: Modifier = Modifier, on
 
 // ── 动漫个人资料卡 ──
 @Composable
-private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount: Int, collectionMap: Map<Int, List<BangumiCollection>>) {
-    val context = LocalContext.current
+private fun BangumiProfileSkeleton(shimmer: androidx.compose.ui.graphics.Brush) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 5.4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 7.2.dp,
+                    bottom = 7.2.dp
+                )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(63.dp).clip(CircleShape).background(shimmer))
+                Spacer(Modifier.width(21.6.dp))
+                Column(Modifier.width(126.dp)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(0.45f)
+                            .height(14.4.dp)
+                            .clip(RoundedCornerShape(DesignTokens.CornerSmall))
+                            .background(shimmer)
+                    )
+                    Spacer(Modifier.height(7.2.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth(0.25f)
+                            .height(10.8.dp)
+                            .clip(RoundedCornerShape(DesignTokens.CornerSmall))
+                            .background(shimmer)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BangumiProfileCard(
+    username: String,
+    user: BangumiUser?,
+    totalCount: Int,
+    hasCustomBackground: Boolean
+) {
     // Bangumi 用户头像（medium 尺寸，56dp 圆形 — 对齐游戏页 AvatarInner）
     val avatarUrl = user?.avatar?.medium ?: user?.avatar?.small
     val displayName = user?.nickname?.ifBlank { null } ?: "@$username"
-    val backgroundFile = remember {
-        BangumiProfileBackground.file(context).takeIf { it.isFile }
-    }
-    val hasCustomBackground = backgroundFile != null
     val primaryTextColor = if (hasCustomBackground) {
         Color.White
     } else {
         MiuixTheme.colorScheme.onSurface
     }
     val secondaryTextColor = primaryTextColor.copy(alpha = DesignTokens.OpacityBody)
-    val cardShape = RoundedCornerShape(DesignTokens.CornerXLarge)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 6.dp)
-            .clip(cardShape)
-            .background(MiuixTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 18.dp, vertical = 5.4.dp)
     ) {
-        if (backgroundFile != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(backgroundFile)
-                    .memoryCacheKey("${backgroundFile.absolutePath}:${backgroundFile.lastModified()}")
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(DesignTokens.ScrimDark.copy(alpha = 0.42f))
-            )
-        }
-
-        Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 7.2.dp,
+                    bottom = 7.2.dp
+                )
+        ) {
             // 头像 + 用户名行
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 // 头像（圆形，56dp — 对齐游戏页 AvatarInner）
                 Box(
                     modifier = Modifier
-                        .size(70.dp)
-                        .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                        .size(63.dp)
+                        .clip(RoundedCornerShape(7.2.dp))
                         .background(
                             if (hasCustomBackground) {
                                 Color.White.copy(alpha = 0.16f)
@@ -2676,47 +3041,26 @@ private fun BangumiProfileCard(username: String, user: BangumiUser?, totalCount:
                         Image(
                             imageVector = MiuixIcons.Light.Album,
                             contentDescription = null,
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(25.2.dp),
                             colorFilter = ColorFilter.tint(secondaryTextColor)
                         )
                     }
                 }
-                Spacer(Modifier.width(24.dp))
+                Spacer(Modifier.width(21.6.dp))
                 Column {
                     Text(
                         text = displayName,
                         color = primaryTextColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = DesignTokens.TextHeadline.sp,
+                        fontSize = 18.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = stringResource(R.string.bangumi_profile_total, totalCount),
                         color = secondaryTextColor,
-                        fontSize = DesignTokens.TextBody2.sp
+                        fontSize = 10.8.sp
                     )
-                }
-            }
-
-            // 分类统计行
-            Spacer(Modifier.height(24.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                BangumiViewModel.typeNames.forEach { (type, nameRes) ->
-                    val count = collectionMap[type]?.size ?: 0
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "$count",
-                            color = primaryTextColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = DesignTokens.TextSubtitle.sp
-                        )
-                        Text(
-                            text = stringResource(nameRes),
-                            color = secondaryTextColor,
-                            fontSize = DesignTokens.TextCaption.sp
-                        )
-                    }
                 }
             }
         }

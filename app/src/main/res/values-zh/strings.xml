@@ -108,6 +108,7 @@
     <string name="profile_level">Lv. %d</string>
     <string name="profile_playtime_label">游戏时长</string>
     <string name="profile_count_label">库存数量</string>
+    <string name="profile_summary">游戏时长 %1$s\n库存数量 %2$d</string>
 
     <!-- Review Score Format -->
     <string name="review_score_format">%d%% 好评</string>

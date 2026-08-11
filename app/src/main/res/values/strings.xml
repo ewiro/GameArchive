@@ -108,6 +108,7 @@
     <string name="profile_level">Lv. %d</string>
     <string name="profile_playtime_label">Playtime</string>
     <string name="profile_count_label">Games</string>
+    <string name="profile_summary">Playtime %1$s\nInventory %2$d</string>
 
     <!-- Review Score Format -->
     <string name="review_score_format">%d%% Positive</string>
