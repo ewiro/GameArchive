@@ -99,6 +99,8 @@ import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
 
+private const val PORTRAIT_COVER_ASPECT_RATIO = 2f / 3f
+
 @Composable
 private fun CompactPullToRefresh(
     isRefreshing: Boolean,
@@ -150,6 +152,8 @@ internal fun MainScreen() {
     var showSpecialsPage by remember { mutableStateOf(false) }
     var bottomBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
+    val displayStyle = ThemeUtils.getDisplayStyle(context)
+    val coverMotion = remember { mutableStateOf(CoverMotion()) }
     val bangumiProfileBackgroundFile = remember(bangumiEnabled) {
         BangumiProfileBackground.file(context).takeIf { it.isFile }
     }
@@ -327,6 +331,7 @@ internal fun MainScreen() {
             when (page) {
                 0 -> LibraryScreen(
                     listState = libraryListState,
+                    coverMotion = coverMotion,
                     showBottomBar = pageCount > 1,
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToSettings = {
@@ -338,12 +343,14 @@ internal fun MainScreen() {
                     listState = activityListState,
                     libraryViewModel = libraryViewModel,
                     bangumiViewModel = bangumiViewModel,
+                    coverMotion = coverMotion,
                     includeAnime = bangumiEnabled,
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToBangumiDetail = navigateToBangumiDetail
                 )
                 else -> BangumiPage(
                     listState = bangumiListState,
+                    coverMotion = coverMotion,
                     typeFilter = bangumiTypeFilter,
                     onTypeFilterChange = { bangumiTypeFilter = it },
                     searchQuery = bangumiSearchQuery,
@@ -636,6 +643,7 @@ internal fun MainScreen() {
 @Composable
 private fun LibraryScreen(
     listState: LazyListState,
+    coverMotion: State<CoverMotion>,
     showBottomBar: Boolean,
     onNavigateToDetail: (Int, String, String) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -677,6 +685,7 @@ private fun LibraryScreen(
     }
 
     val isGrouping = ThemeUtils.isGroupingEnabled(context)
+    val displayStyle = ThemeUtils.getDisplayStyle(context)
     val showPlaytimeBackground = ThemeUtils.isPlaytimeBadgeBackgroundEnabled(context)
     val usePlaytimeBadgeTextColor = ThemeUtils.isPlaytimeBadgeTextColorEnabled(context)
     val sortMode = ThemeUtils.getSortMode(context)
@@ -717,6 +726,32 @@ private fun LibraryScreen(
     var searchQuery by remember { mutableStateOf("") }
     val markSnapshot = remember(listRefreshTrigger) { GameMarks.getAllMarks(context) }
     val nameSnapshot = remember(listRefreshTrigger) { GameNames.getAllNames(context) }
+    val resolvedGamePortraits = remember { mutableStateMapOf<Int, String>() }
+    val resolvingGamePortraits = remember { mutableStateMapOf<Int, Boolean>() }
+    val failedGamePortraits = remember { mutableStateMapOf<Int, Boolean>() }
+    val portraitScope = rememberCoroutineScope()
+
+    fun resolvePortrait(game: GameInfo) {
+        if (resolvingGamePortraits[game.appid] == true ||
+            resolvedGamePortraits.containsKey(game.appid) ||
+            failedGamePortraits[game.appid] == true
+        ) return
+        resolvingGamePortraits[game.appid] = true
+        portraitScope.launch {
+            val portraitUrl = withContext(Dispatchers.IO) {
+                readCachedPortraitUrl(context, game.appid)
+                    ?: runCatchingCancellable { resolveSteamPortraitUrl(game.appid) }.getOrNull()
+            }
+            resolvingGamePortraits.remove(game.appid)
+            if (portraitUrl != null) {
+                cachePortraitUrl(context, game.appid, portraitUrl)
+                resolvedGamePortraits[game.appid] = portraitUrl
+                failedGamePortraits.remove(game.appid)
+            } else {
+                failedGamePortraits[game.appid] = true
+            }
+        }
+    }
 
     // 应用搜索 + 标记筛选
     val filteredGames = remember(sortedGames, markFilter, searchQuery, markSnapshot) {
@@ -920,7 +955,56 @@ private fun LibraryScreen(
                 }
             }
 
-            if (!isGrouping || markFilter != -1) {
+            if (displayStyle == 1) {
+                val recent = filteredGames.filter { (it.playtime_2weeks ?: 0) > 0 }
+                val recentIds = recent.mapTo(hashSetOf()) { it.appid }
+                val played = filteredGames.filter {
+                    it.playtime_forever > 0 && it.appid !in recentIds
+                }
+                val unplayed = filteredGames.filter { it.playtime_forever == 0 }
+                val gridGames = recent + played + unplayed
+                val rows = gridGames.chunked(3)
+                items(
+                    count = rows.size,
+                    key = { rowIndex ->
+                        rows[rowIndex].joinToString(
+                            prefix = "library_grid_row_",
+                            separator = "_"
+                        ) { it.appid.toString() }
+                    }
+                ) { rowIndex ->
+                    Row(
+                        modifier = Modifier
+                            .animateItem()
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rows[rowIndex].forEach { game ->
+                            GameGridItem(
+                                game = game,
+                                modifier = Modifier.weight(1f),
+                                coverMotion = coverMotion,
+                                resolvedPortraitUrl = resolvedGamePortraits[game.appid],
+                                useFallback = failedGamePortraits[game.appid] == true,
+                                onResolvePortrait = { resolvePortrait(game) },
+                                onPortraitError = {
+                                    resolvedGamePortraits.remove(game.appid)
+                                    failedGamePortraits[game.appid] = true
+                                },
+                                onClick = {
+                                    onNavigateToDetail(
+                                        game.appid,
+                                        game.name,
+                                        priceMap[game.appid] ?: "Free / Unknown"
+                                    )
+                                }
+                            )
+                        }
+                        repeat(3 - rows[rowIndex].size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            } else if (!isGrouping || markFilter != -1) {
                 items(filteredGames, key = { "g_${it.appid}" }) { game ->
                     GameItem(
                         game = game,
@@ -992,6 +1076,68 @@ private fun LibraryScreen(
     } // close if/else
     } // close Crossfade
     } // close root Box
+}
+
+/** 游戏页网格封面：沿用记录页的竖屏素材、三列铁牌动效与横图兜底。 */
+@Composable
+private fun GameGridItem(
+    game: GameInfo,
+    modifier: Modifier = Modifier,
+    coverMotion: State<CoverMotion>,
+    resolvedPortraitUrl: String?,
+    useFallback: Boolean,
+    onResolvePortrait: () -> Unit,
+    onPortraitError: () -> Unit,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val cachedPortraitUrl = remember(game.appid) {
+        readCachedPortraitUrl(context, game.appid)
+    }
+    LaunchedEffect(game.appid, resolvedPortraitUrl, cachedPortraitUrl, useFallback) {
+        if (resolvedPortraitUrl == null && cachedPortraitUrl == null && !useFallback) {
+            onResolvePortrait()
+        }
+    }
+    val portraitUrl = resolvedPortraitUrl ?: cachedPortraitUrl
+    val showingPortrait = !useFallback && portraitUrl != null
+    val imageModel = when {
+        useFallback -> buildHeaderUrl(context, game.appid)
+        portraitUrl != null -> portraitUrl
+        else -> null
+    }
+    Box(modifier = modifier.aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                .background(MiuixTheme.colorScheme.surfaceVariant)
+                .motionClickable(pressedScale = 0.95f, onClick = onClick)
+        ) {
+            val imageRequest = remember(imageModel, game.appid, showingPortrait) {
+                ImageRequest.Builder(context)
+                    .data(imageModel)
+                    .crossfade(true)
+                    .memoryCacheKey(
+                        "${if (showingPortrait) "portrait" else "header"}_${game.appid}"
+                    )
+                    .listener(
+                        onError = { _, _ ->
+                            if (showingPortrait) onPortraitError()
+                        }
+                    )
+                    .build()
+            }
+            if (imageModel != null) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = stringResource(R.string.activity_game_cover, game.name),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+    }
 }
 
 // ── 游玩时长徽章颜色 → DesignTokens.badgeColor() / badgeColorMap
@@ -1281,7 +1427,6 @@ internal fun GameItem(
     } else {
         playtimeContentColor
     }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -1862,6 +2007,7 @@ private fun ActivityPage(
     listState: LazyListState,
     libraryViewModel: LibraryViewModel,
     bangumiViewModel: BangumiViewModel,
+    coverMotion: State<CoverMotion>,
     includeAnime: Boolean,
     onNavigateToDetail: (Int, String, String) -> Unit,
     onNavigateToBangumiDetail: (Int, String, String, String) -> Unit
@@ -2140,7 +2286,7 @@ private fun ActivityPage(
                     }
                 }
             } else {
-                val rows = displayedEntries.chunked(4)
+                val rows = displayedEntries.chunked(3)
                 items(
                     count = rows.size,
                     key = { rowIndex ->
@@ -2161,6 +2307,7 @@ private fun ActivityPage(
                             ActivityCover(
                                 entry = entry,
                                 modifier = Modifier.weight(1f),
+                                coverMotion = coverMotion,
                                 resolvedPortraitUrl = resolvedGamePortraits[entry.id],
                                 useFallback = failedGamePortraits[entry.id] == true,
                                 onPortraitError = {
@@ -2200,7 +2347,7 @@ private fun ActivityPage(
                                 }
                             )
                         }
-                        repeat(4 - rows[rowIndex].size) { Spacer(Modifier.weight(1f)) }
+                        repeat(3 - rows[rowIndex].size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
@@ -2294,6 +2441,7 @@ private fun ActivityHeatmap(
 private fun ActivityCover(
     entry: ActivityEntry,
     modifier: Modifier,
+    coverMotion: State<CoverMotion>,
     resolvedPortraitUrl: String?,
     useFallback: Boolean,
     onPortraitError: () -> Unit,
@@ -2329,13 +2477,14 @@ private fun ActivityCover(
         },
         entry.secondaryTitle.ifBlank { entry.title }
     )
-    Box(
-        modifier = modifier
-            .aspectRatio(0.67f)
-            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-            .background(MiuixTheme.colorScheme.surfaceVariant)
-            .motionClickable(pressedScale = 0.95f, onClick = onClick)
-    ) {
+    Box(modifier = modifier.aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                .background(MiuixTheme.colorScheme.surfaceVariant)
+                .motionClickable(pressedScale = 0.95f, onClick = onClick)
+        ) {
         val imageRequest = remember(imageModel, entry.kind, entry.id) {
             ImageRequest.Builder(context)
                 .data(imageModel)
@@ -2349,12 +2498,13 @@ private fun ActivityCover(
                 )
                 .build()
         }
-        AsyncImage(
-            model = imageRequest,
-            contentDescription = description,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = description,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
     }
 }
 
@@ -2403,6 +2553,7 @@ private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
 @Composable
 private fun BangumiPage(
     listState: LazyListState,
+    coverMotion: State<CoverMotion>,
     typeFilter: Int,
     onTypeFilterChange: (Int) -> Unit,
     searchQuery: String,
@@ -2412,7 +2563,7 @@ private fun BangumiPage(
     viewModel: BangumiViewModel
 ) {
     val context = LocalContext.current
-    val displayStyle = ThemeUtils.getBangumiDisplayStyle(context)  // 0=list, 1=grid
+    val displayStyle = ThemeUtils.getDisplayStyle(context)  // 0=list, 1=grid
     val ratingMode = UserPrefs.getBangumiRatingMode(context)
     val bgmUsername = UserPrefs.getBangumiUsername(context)
     val bgmAccessToken = UserPrefs.getBangumiAccessToken(context)
@@ -2698,8 +2849,8 @@ private fun BangumiPage(
 
                 // ── 动漫列表 ──
                 if (displayStyle == 1) {
-                    // 网格模式：每行4个封面
-                    val chunked = filteredItems.chunked(4)
+                    // 网格模式：每行3个封面
+                    val chunked = filteredItems.chunked(3)
                     items(
                         count = chunked.size,
                         key = { rowIndex ->
@@ -2718,6 +2869,7 @@ private fun BangumiPage(
                                 BangumiGridItem(
                                     imageUrl = sub?.images?.common ?: sub?.images?.medium,
                                     modifier = Modifier.weight(1f),
+                                    coverMotion = coverMotion,
                                     onClick = {
                                         onNavigateToDetail(item.subject_id,
                                             sub?.name ?: "",
@@ -2727,7 +2879,7 @@ private fun BangumiPage(
                                 )
                             }
                             // 填充空位
-                            repeat(4 - chunked[rowIndex].size) {
+                            repeat(3 - chunked[rowIndex].size) {
                                 Spacer(Modifier.weight(1f))
                             }
                         }
@@ -2898,23 +3050,29 @@ internal fun BangumiItem(
 
 /** 网格模式封面（仅封面，无文字） */
 @Composable
-private fun BangumiGridItem(imageUrl: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val aspectRatio = 0.7f  // 标准海报比例
-    Box(
-        modifier = modifier
-            .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(6.dp))
-            .background(MiuixTheme.colorScheme.surfaceVariant)
-            .motionClickable(pressedScale = 0.95f, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        if (imageUrl != null) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+private fun BangumiGridItem(
+    imageUrl: String?,
+    modifier: Modifier = Modifier,
+    coverMotion: State<CoverMotion>,
+    onClick: () -> Unit
+) {
+    Box(modifier = modifier.aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(6.dp))
+                .background(MiuixTheme.colorScheme.surfaceVariant)
+                .motionClickable(pressedScale = 0.95f, onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            if (imageUrl != null) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
     }
 }

@@ -203,9 +203,9 @@
     <string name="settings_bangumi_rating_all">展示评分</string>
     <string name="settings_bangumi_rating_mine">仅展示我的评分</string>
     <string name="settings_bangumi_rating_none">不展示</string>
-    <string name="settings_bangumi_display_style">展示风格</string>
-    <string name="settings_bangumi_display_list">列表</string>
-    <string name="settings_bangumi_display_grid">网格</string>
+    <string name="settings_display_style">展示风格</string>
+    <string name="settings_display_list">列表</string>
+    <string name="settings_display_grid">网格</string>
     <string name="settings_bangumi_profile_background">资料背景</string>
     <string name="settings_bangumi_background_saved">资料背景已更新</string>
     <string name="settings_bangumi_background_failed">无法读取这张图片</string>

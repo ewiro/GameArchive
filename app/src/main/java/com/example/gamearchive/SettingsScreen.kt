@@ -85,6 +85,7 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
     // ── 外观设置状态 ──
     var themeMode by remember { mutableIntStateOf(ThemeUtils.getThemeMode(context)) }
     var language by remember { mutableIntStateOf(ThemeUtils.getLanguage(context)) }
+    var displayStyle by remember { mutableIntStateOf(ThemeUtils.getDisplayStyle(context)) }
 
     // ── 个人资料状态 ──
     var showProfile by remember { mutableStateOf(UserPrefs.isShowProfile(context)) }
@@ -402,6 +403,22 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         selectedIndex = langIndex,
                         onSelect = { idx ->
                             language = langValues[idx]; ThemeUtils.saveLanguage(context, language); onRecreate()
+                        }
+                    )
+
+                    DividerLine()
+
+                    val displayOptions = listOf(
+                        stringResource(R.string.settings_display_list),
+                        stringResource(R.string.settings_display_grid)
+                    )
+                    DropdownSelector(
+                        label = stringResource(R.string.settings_display_style),
+                        options = displayOptions,
+                        selectedIndex = displayStyle,
+                        onSelect = {
+                            displayStyle = it
+                            ThemeUtils.setDisplayStyle(context, it)
                         }
                     )
                 }
@@ -796,19 +813,6 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                         options = ratingOptions,
                         selectedIndex = ratingMode,
                         onSelect = { ratingMode = it; UserPrefs.setBangumiRatingMode(context, it) }
-                    )
-
-                    // 展示风格下拉
-                    var displayStyle by remember { mutableIntStateOf(ThemeUtils.getBangumiDisplayStyle(context)) }
-                    val displayOptions = listOf(
-                        stringResource(R.string.settings_bangumi_display_list),
-                        stringResource(R.string.settings_bangumi_display_grid)
-                    )
-                    DropdownSelector(
-                        label = stringResource(R.string.settings_bangumi_display_style),
-                        options = displayOptions,
-                        selectedIndex = displayStyle,
-                        onSelect = { displayStyle = it; ThemeUtils.setBangumiDisplayStyle(context, it) }
                     )
 
                     Row(

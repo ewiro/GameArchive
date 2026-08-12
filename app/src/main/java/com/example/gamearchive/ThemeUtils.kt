@@ -136,10 +136,14 @@ object ThemeUtils {
     }
     fun isActivityEnabled(context: Context) = getPrefs(context).getBoolean(KEY_SHOW_ACTIVITY, true)
 
-    // 0=list, 1=grid
-    fun getBangumiDisplayStyle(context: Context) = getPrefs(context).getInt(KEY_BANGUMI_DISPLAY_STYLE, 0)
-    fun setBangumiDisplayStyle(context: Context, style: Int) =
+    // 游戏页与动漫页共用：0=list, 1=grid。保留旧 key 兼容现有设置与备份。
+    fun getDisplayStyle(context: Context) = getPrefs(context).getInt(KEY_BANGUMI_DISPLAY_STYLE, 0)
+    fun setDisplayStyle(context: Context, style: Int) {
         getPrefs(context).edit {putInt(KEY_BANGUMI_DISPLAY_STYLE, style)}
+        isChanged = true
+    }
+    fun getBangumiDisplayStyle(context: Context) = getDisplayStyle(context)
+    fun setBangumiDisplayStyle(context: Context, style: Int) = setDisplayStyle(context, style)
 
     /** 检测语言是否在上次应用后发生了变化（用于触发 Activity 重建） */
     fun hasLanguageChanged(context: Context): Boolean {

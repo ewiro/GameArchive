@@ -203,9 +203,9 @@
     <string name="settings_bangumi_rating_all">Show Rating</string>
     <string name="settings_bangumi_rating_mine">My Rating Only</string>
     <string name="settings_bangumi_rating_none">Hide</string>
-    <string name="settings_bangumi_display_style">Display Style</string>
-    <string name="settings_bangumi_display_list">List</string>
-    <string name="settings_bangumi_display_grid">Grid</string>
+    <string name="settings_display_style">Display Style</string>
+    <string name="settings_display_list">List</string>
+    <string name="settings_display_grid">Grid</string>
     <string name="settings_bangumi_profile_background">Profile Background</string>
     <string name="settings_bangumi_background_saved">Profile background updated</string>
     <string name="settings_bangumi_background_failed">Couldn\'t read this image</string>
