@@ -328,7 +328,10 @@ internal fun BangumiDetailScreen(
                     result
                 }
             }.getOrDefault(emptyList())
-            myTagSuggestions = rankBangumiTags(remoteTagGroups + cachedTagGroups)
+            myTagSuggestions = appendNewBangumiTags(
+                existing = myTagSuggestions,
+                incoming = rankBangumiTags(remoteTagGroups + cachedTagGroups)
+            )
             isMyTagsLoading = false
         }
     }
@@ -2018,6 +2021,18 @@ private fun rankBangumiTags(tagGroups: Iterable<List<String>>): List<String> {
                 .thenBy { firstSeen.getOrDefault(it, Int.MAX_VALUE) }
         )
         .mapNotNull(labels::get)
+}
+
+private fun appendNewBangumiTags(
+    existing: List<String>,
+    incoming: List<String>
+): List<String> = buildList {
+    addAll(existing)
+    val existingKeys = existing
+        .mapTo(mutableSetOf()) { it.trim().lowercase(Locale.ROOT) }
+    incoming.forEach { tag ->
+        if (existingKeys.add(tag.trim().lowercase(Locale.ROOT))) add(tag)
+    }
 }
 
 private fun insertTagAtSelection(

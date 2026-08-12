@@ -372,6 +372,18 @@ internal fun MainScreen() {
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (!showSpecialsPage && selectedTab == bangumiPage) {
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, BangumiSearchActivity::class.java))
+                    }) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Search,
+                            contentDescription = stringResource(R.string.bangumi_search_title),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(topBarContentColor)
+                        )
+                    }
+                }
                 if (!showSpecialsPage && selectedTab == 0) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, WishlistActivity::class.java))
@@ -414,18 +426,6 @@ internal fun MainScreen() {
                         color = topBarContentColor,
                         modifier = Modifier.weight(1f)
                     )
-                }
-                if (!showSpecialsPage && selectedTab == bangumiPage) {
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, BangumiSearchActivity::class.java))
-                    }) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Search,
-                            contentDescription = stringResource(R.string.bangumi_search_title),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(topBarContentColor)
-                        )
-                    }
                 }
                 if (!showSpecialsPage) {
                     IconButton(onClick = {
