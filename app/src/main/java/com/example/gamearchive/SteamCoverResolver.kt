@@ -30,13 +30,18 @@ internal fun cachePortraitUrl(context: Context, appId: Int, url: String) {
 }
 
 internal suspend fun resolveSteamPortraitUrl(appId: Int): String? {
+    return resolveSteamPortraitUrl(appId, "CN")
+        ?: resolveSteamPortraitUrl(appId, "US")
+}
+
+private suspend fun resolveSteamPortraitUrl(appId: Int, countryCode: String): String? {
     val request = JSONObject()
         .put("ids", JSONArray().put(JSONObject().put("appid", appId)))
         .put(
             "context",
             JSONObject()
                 .put("language", LocaleHelper.currentApiLanguage)
-                .put("country_code", "CN")
+                .put("country_code", countryCode)
                 .put("steam_realm", 1)
         )
         .put("data_request", JSONObject().put("include_assets", true))
