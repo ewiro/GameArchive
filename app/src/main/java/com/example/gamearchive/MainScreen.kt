@@ -153,7 +153,11 @@ internal fun MainScreen() {
     var bottomBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
     val displayStyle = ThemeUtils.getDisplayStyle(context)
-    val coverMotion = remember { mutableStateOf(CoverMotion()) }
+    val coverMotion = rememberCoverMotion(
+        enabled = !showSpecialsPage &&
+            (selectedTab == activityPage || displayStyle == 1 &&
+                (selectedTab == 0 || selectedTab == bangumiPage))
+    )
     val bangumiProfileBackgroundFile = remember(bangumiEnabled) {
         BangumiProfileBackground.file(context).takeIf { it.isFile }
     }
@@ -1106,11 +1110,18 @@ private fun GameGridItem(
         portraitUrl != null -> portraitUrl
         else -> null
     }
+    val coverShape = RoundedCornerShape(DesignTokens.CornerMedium)
     Box(modifier = modifier.aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .metallicCoverShadow(coverMotion, coverShape)
+        )
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                .metallicCoverTilt(coverMotion, coverShape)
+                .clip(coverShape)
                 .background(MiuixTheme.colorScheme.surfaceVariant)
                 .motionClickable(pressedScale = 0.95f, onClick = onClick)
         ) {
@@ -1136,6 +1147,10 @@ private fun GameGridItem(
                     contentScale = ContentScale.Crop
                 )
             }
+            MetallicCoverOverlay(
+                motion = coverMotion,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
@@ -2477,11 +2492,18 @@ private fun ActivityCover(
         },
         entry.secondaryTitle.ifBlank { entry.title }
     )
+    val coverShape = RoundedCornerShape(DesignTokens.CornerMedium)
     Box(modifier = modifier.aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .metallicCoverShadow(coverMotion, coverShape)
+        )
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                .metallicCoverTilt(coverMotion, coverShape)
+                .clip(coverShape)
                 .background(MiuixTheme.colorScheme.surfaceVariant)
                 .motionClickable(pressedScale = 0.95f, onClick = onClick)
         ) {
@@ -2503,6 +2525,10 @@ private fun ActivityCover(
                 contentDescription = description,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
+            )
+            MetallicCoverOverlay(
+                motion = coverMotion,
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
@@ -3056,11 +3082,18 @@ private fun BangumiGridItem(
     coverMotion: State<CoverMotion>,
     onClick: () -> Unit
 ) {
+    val coverShape = RoundedCornerShape(6.dp)
     Box(modifier = modifier.aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .metallicCoverShadow(coverMotion, coverShape)
+        )
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(RoundedCornerShape(6.dp))
+                .metallicCoverTilt(coverMotion, coverShape)
+                .clip(coverShape)
                 .background(MiuixTheme.colorScheme.surfaceVariant)
                 .motionClickable(pressedScale = 0.95f, onClick = onClick),
             contentAlignment = Alignment.Center
@@ -3073,6 +3106,10 @@ private fun BangumiGridItem(
                     contentScale = ContentScale.Crop
                 )
             }
+            MetallicCoverOverlay(
+                motion = coverMotion,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
