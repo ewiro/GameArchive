@@ -4,6 +4,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.edit
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
@@ -140,22 +141,21 @@ internal fun MainScreen() {
     val specialsEnabled = ThemeUtils.isSpecialsEnabled(context)
     val bangumiEnabled = ThemeUtils.isBangumiEnabled(context)
     val activityEnabled = ThemeUtils.isActivityEnabled(context)
-    val specialsPage = if (specialsEnabled) 1 else -1
-    val bangumiPage = if (bangumiEnabled) (if (specialsEnabled) 2 else 1) else -1
+    val bangumiPage = if (bangumiEnabled) 1 else -1
     val pageCount = 1 +
-        (if (specialsEnabled) 1 else 0) +
         (if (bangumiEnabled) 1 else 0) +
         (if (activityEnabled) 1 else 0)
     val activityPage = if (activityEnabled) pageCount - 1 else -1
     val pagerState = rememberPagerState(pageCount = { pageCount })
+    var showSpecialsPage by remember { mutableStateOf(false) }
     var bottomBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
     val bangumiProfileBackgroundFile = remember(bangumiEnabled) {
         BangumiProfileBackground.file(context).takeIf { it.isFile }
     }
-    val isImmersiveLibraryHeader =
+    val isImmersiveLibraryHeader = !showSpecialsPage &&
         selectedTab == 0 && UserPrefs.isShowProfile(context)
-    val isImmersiveBangumiHeader = selectedTab == bangumiPage
+    val isImmersiveBangumiHeader = !showSpecialsPage && selectedTab == bangumiPage
     val isImmersiveProfileHeader =
         isImmersiveLibraryHeader || isImmersiveBangumiHeader
     val immersiveHeaderUsesDarkBackground =
@@ -204,9 +204,10 @@ internal fun MainScreen() {
     val activityListState = rememberLazyListState()
     var bangumiTypeFilter by remember { mutableIntStateOf(2) }  // 默认在看
     var bangumiSearchQuery by remember { mutableStateOf("") }
-    val activeListState = when (selectedTab) {
+    val activeListState = if (showSpecialsPage) {
+        specialsListState
+    } else when (selectedTab) {
         0 -> libraryListState
-        specialsPage -> specialsListState
         bangumiPage -> bangumiListState
         activityPage -> activityListState
         else -> libraryListState
@@ -248,6 +249,9 @@ internal fun MainScreen() {
             }
         }
     }
+    BackHandler(enabled = showSpecialsPage) {
+        showSpecialsPage = false
+    }
 
     // 状态栏高度（顶栏叠加层需要）
     val statusBarDp = statusBarHeightDp()
@@ -255,6 +259,26 @@ internal fun MainScreen() {
 
     // 排序弹窗状态（从 SpecialsScreen 提升上来）
     var showSortDialog by remember { mutableStateOf(false) }
+    val navigateToDetail: (Int, String, String) -> Unit = { appId, name, price ->
+        context.startActivity(Intent(context, DetailActivity::class.java).apply {
+            putExtra("APP_ID", appId)
+            putExtra("APP_NAME", name)
+            putExtra("APP_PRICE", price)
+        })
+        (context as? android.app.Activity)?.overridePendingTransition(
+            R.anim.slide_in_right,
+            R.anim.slide_out_left
+        )
+    }
+    val navigateToBangumiDetail: (Int, String, String, String) -> Unit =
+        { id, name, nameCn, imageUrl ->
+            context.startActivity(Intent(context, BangumiDetailActivity::class.java).apply {
+                putExtra("SUBJECT_ID", id)
+                putExtra("SUBJECT_NAME", name)
+                putExtra("SUBJECT_NAME_CN", nameCn)
+                putExtra("SUBJECT_IMAGE", imageUrl)
+            })
+        }
 
     // 动画偏移量
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -287,27 +311,19 @@ internal fun MainScreen() {
             )
     ) {
 
-        // ── 内容层：HorizontalPager 填满全屏 ──
-        HorizontalPager(
+        // ── 内容层：特惠独立打开，主分页与底栏顺序一致 ──
+        if (showSpecialsPage) {
+            SpecialsScreen(
+                listState = specialsListState,
+                showSortDialog = showSortDialog,
+                onDismissSortDialog = { showSortDialog = false },
+                onNavigateToDetail = navigateToDetail
+            )
+        } else HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
             userScrollEnabled = true
         ) { page ->
-            val navigateToDetail: (Int, String, String) -> Unit = { appId, name, price ->
-                context.startActivity(Intent(context, DetailActivity::class.java).apply {
-                    putExtra("APP_ID", appId); putExtra("APP_NAME", name); putExtra("APP_PRICE", price)
-                })
-                (context as? android.app.Activity)?.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-            }
-            val navigateToBangumiDetail: (Int, String, String, String) -> Unit = { id, name, nameCn, imageUrl ->
-                context.startActivity(Intent(context, BangumiDetailActivity::class.java).apply {
-                    putExtra("SUBJECT_ID", id)
-                    putExtra("SUBJECT_NAME", name)
-                    putExtra("SUBJECT_NAME_CN", nameCn)
-                    putExtra("SUBJECT_IMAGE", imageUrl)
-                })
-            }
-
             when (page) {
                 0 -> LibraryScreen(
                     listState = libraryListState,
@@ -326,27 +342,16 @@ internal fun MainScreen() {
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToBangumiDetail = navigateToBangumiDetail
                 )
-                else -> {
-                    if (specialsEnabled && page == 1) {
-                        SpecialsScreen(
-                            listState = specialsListState,
-                            showSortDialog = showSortDialog,
-                            onDismissSortDialog = { showSortDialog = false },
-                            onNavigateToDetail = navigateToDetail
-                        )
-                    } else {
-                        BangumiPage(
-                            listState = bangumiListState,
-                            typeFilter = bangumiTypeFilter,
-                            onTypeFilterChange = { bangumiTypeFilter = it },
-                            searchQuery = bangumiSearchQuery,
-                            onSearchQueryChange = { bangumiSearchQuery = it },
-                            onNavigateToDetail = navigateToBangumiDetail,
-                            profileBackgroundFile = bangumiProfileBackgroundFile,
-                            viewModel = bangumiViewModel
-                        )
-                    }
-                }
+                else -> BangumiPage(
+                    listState = bangumiListState,
+                    typeFilter = bangumiTypeFilter,
+                    onTypeFilterChange = { bangumiTypeFilter = it },
+                    searchQuery = bangumiSearchQuery,
+                    onSearchQueryChange = { bangumiSearchQuery = it },
+                    onNavigateToDetail = navigateToBangumiDetail,
+                    profileBackgroundFile = bangumiProfileBackgroundFile,
+                    viewModel = bangumiViewModel
+                )
             }
         }
 
@@ -367,47 +372,7 @@ internal fun MainScreen() {
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isImmersiveProfileHeader) {
-                    Spacer(Modifier.weight(1f))
-                } else {
-                    Text(
-                        text = stringResource(
-                            when {
-                                selectedTab == specialsPage -> R.string.nav_specials
-                                selectedTab == activityPage -> R.string.nav_activity
-                                else -> R.string.nav_library
-                            }
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = DesignTokens.TextTitle.sp,
-                        color = topBarContentColor,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (selectedTab == bangumiPage) {
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, BangumiSearchActivity::class.java))
-                    }) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Search,
-                            contentDescription = stringResource(R.string.bangumi_search_title),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(topBarContentColor)
-                        )
-                    }
-                }
-                if (selectedTab == 0 || selectedTab == bangumiPage || selectedTab == activityPage) {
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, SettingsActivity::class.java))
-                    }) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Settings,
-                            contentDescription = stringResource(R.string.settings_title),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(topBarContentColor)
-                        )
-                    }
-                } else {
+                if (!showSpecialsPage && selectedTab == 0) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, WishlistActivity::class.java))
                         (context as? android.app.Activity)?.overridePendingTransition(
@@ -419,9 +384,61 @@ internal fun MainScreen() {
                             imageVector = MiuixIcons.Demibold.Favorites,
                             contentDescription = stringResource(R.string.wishlist_title),
                             modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                            colorFilter = ColorFilter.tint(topBarContentColor)
                         )
                     }
+                    if (specialsEnabled) {
+                        IconButton(onClick = { showSpecialsPage = true }) {
+                            Image(
+                                imageVector = MiuixIcons.Demibold.Promotions,
+                                contentDescription = stringResource(R.string.nav_specials),
+                                modifier = Modifier.size(DesignTokens.IconXl),
+                                colorFilter = ColorFilter.tint(topBarContentColor)
+                            )
+                        }
+                    }
+                }
+                if (isImmersiveProfileHeader) {
+                    Spacer(Modifier.weight(1f))
+                } else {
+                    Text(
+                        text = stringResource(
+                            when {
+                                showSpecialsPage -> R.string.nav_specials
+                                selectedTab == activityPage -> R.string.nav_activity
+                                else -> R.string.nav_library
+                            }
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = DesignTokens.TextTitle.sp,
+                        color = topBarContentColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (!showSpecialsPage && selectedTab == bangumiPage) {
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, BangumiSearchActivity::class.java))
+                    }) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Search,
+                            contentDescription = stringResource(R.string.bangumi_search_title),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(topBarContentColor)
+                        )
+                    }
+                }
+                if (!showSpecialsPage) {
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, SettingsActivity::class.java))
+                    }) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Settings,
+                            contentDescription = stringResource(R.string.settings_title),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(topBarContentColor)
+                        )
+                    }
+                } else {
                     IconButton(onClick = { showSortDialog = true }) {
                         Image(
                             imageVector = MiuixIcons.Demibold.Filter,
@@ -444,8 +461,8 @@ internal fun MainScreen() {
         }
     }
 
-        // ── 底栏叠加层（至少2页时显示） ──
-        if (pageCount > 1) {
+        // ── 底栏叠加层（游戏、动漫、记录中至少2页时显示） ──
+        if (!showSpecialsPage && pageCount > 1) {
         val bottomBarTint = MiuixTheme.colorScheme.surface.copy(
             alpha = if (isAppInDarkTheme()) 0.62f else 0.72f
         )
@@ -528,35 +545,6 @@ internal fun MainScreen() {
                     )
                     Text(text = stringResource(R.string.nav_library), fontSize = DesignTokens.TextCaption.sp,
                         color = if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
-                }
-                // 特惠 Tab（仅开启时显示）
-                if (specialsEnabled) {
-                    val tabAnim1 by animateFloatAsState(
-                        targetValue = if (selectedTab == 1) 1f else 0f,
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-                        label = "tab_anim_1"
-                    )
-                    Column(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                scaleX = 0.85f + 0.15f * tabAnim1
-                                scaleY = 0.85f + 0.15f * tabAnim1
-                            }
-                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                                navigateToPage(1)
-                            }
-                            .padding(horizontal = 24.dp, vertical = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Image(
-                            imageVector = if (selectedTab == 1) MiuixIcons.Demibold.Promotions else MiuixIcons.Light.Promotions,
-                            contentDescription = stringResource(R.string.nav_specials),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
-                        )
-                        Text(text = stringResource(R.string.nav_specials), fontSize = DesignTokens.TextCaption.sp,
-                            color = if (selectedTab == 1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
-                    }
                 }
                 // 动漫 Tab
                 if (bangumiEnabled) {
@@ -1069,21 +1057,21 @@ private fun SteamProfileSkeleton(shimmer: androidx.compose.ui.graphics.Brush) {
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(63.dp).clip(CircleShape).background(shimmer))
-                Spacer(Modifier.width(21.6.dp))
-                Column(Modifier.width(126.dp)) {
+                Box(Modifier.size(78.dp).clip(CircleShape).background(shimmer))
+                Spacer(Modifier.width(24.dp))
+                Column(Modifier.width(140.dp)) {
                     Box(
                         Modifier
                             .fillMaxWidth(0.72f)
-                            .height(14.4.dp)
+                            .height(16.dp)
                             .clip(RoundedCornerShape(DesignTokens.CornerSmall))
                             .background(shimmer)
                     )
-                    Spacer(Modifier.height(7.2.dp))
+                    Spacer(Modifier.height(8.dp))
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .height(10.8.dp)
+                            .height(12.dp)
                             .clip(RoundedCornerShape(DesignTokens.CornerSmall))
                             .background(shimmer)
                     )
@@ -1138,12 +1126,12 @@ private fun ProfileHeader(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(modifier = Modifier.size(63.dp)) {
+                Box(modifier = Modifier.size(78.dp)) {
                     AsyncImage(
                         model = avatarModel,
                         contentDescription = player.personaname,
                         modifier = Modifier
-                            .size(52.2.dp)
+                            .size(65.dp)
                             .align(Alignment.Center),
                         contentScale = ContentScale.Crop
                     )
@@ -1156,13 +1144,13 @@ private fun ProfileHeader(
                         )
                     }
                 }
-                Spacer(Modifier.width(21.6.dp))
+                Spacer(Modifier.width(24.dp))
                 Column(Modifier.widthIn(max = 190.dp)) {
                     Text(
                         text = player.personaname,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = DesignTokens.TextHeadline.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
@@ -1174,7 +1162,7 @@ private fun ProfileHeader(
                             gameCount
                         ),
                         color = Color.White.copy(alpha = DesignTokens.OpacityBody),
-                        fontSize = 10.8.sp,
+                        fontSize = DesignTokens.TextBody2.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         style = androidx.compose.ui.text.TextStyle(shadow = textShadow)
@@ -2954,21 +2942,21 @@ private fun BangumiProfileSkeleton(shimmer: androidx.compose.ui.graphics.Brush) 
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(63.dp).clip(CircleShape).background(shimmer))
-                Spacer(Modifier.width(21.6.dp))
-                Column(Modifier.width(126.dp)) {
+                Box(Modifier.size(78.dp).clip(CircleShape).background(shimmer))
+                Spacer(Modifier.width(24.dp))
+                Column(Modifier.width(140.dp)) {
                     Box(
                         Modifier
                             .fillMaxWidth(0.45f)
-                            .height(14.4.dp)
+                            .height(16.dp)
                             .clip(RoundedCornerShape(DesignTokens.CornerSmall))
                             .background(shimmer)
                     )
-                    Spacer(Modifier.height(7.2.dp))
+                    Spacer(Modifier.height(8.dp))
                     Box(
                         Modifier
                             .fillMaxWidth(0.25f)
-                            .height(10.8.dp)
+                            .height(12.dp)
                             .clip(RoundedCornerShape(DesignTokens.CornerSmall))
                             .background(shimmer)
                     )
@@ -2985,7 +2973,7 @@ private fun BangumiProfileCard(
     totalCount: Int,
     hasCustomBackground: Boolean
 ) {
-    // Bangumi 用户头像（medium 尺寸，56dp 圆形 — 对齐游戏页 AvatarInner）
+    // Bangumi 用户头像（medium 尺寸，对齐游戏页资料头像）
     val avatarUrl = user?.avatar?.medium ?: user?.avatar?.small
     val displayName = user?.nickname?.ifBlank { null } ?: "@$username"
     val primaryTextColor = if (hasCustomBackground) {
@@ -3016,10 +3004,10 @@ private fun BangumiProfileCard(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 头像（圆形，56dp — 对齐游戏页 AvatarInner）
+                // 头像（对齐游戏页资料头像）
                 Box(
                     modifier = Modifier
-                        .size(63.dp)
+                        .size(78.dp)
                         .clip(RoundedCornerShape(7.2.dp))
                         .background(
                             if (hasCustomBackground) {
@@ -3046,20 +3034,20 @@ private fun BangumiProfileCard(
                         )
                     }
                 }
-                Spacer(Modifier.width(21.6.dp))
+                Spacer(Modifier.width(24.dp))
                 Column {
                     Text(
                         text = displayName,
                         color = primaryTextColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = DesignTokens.TextHeadline.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = stringResource(R.string.bangumi_profile_total, totalCount),
                         color = secondaryTextColor,
-                        fontSize = 10.8.sp
+                        fontSize = DesignTokens.TextBody2.sp
                     )
                 }
             }
