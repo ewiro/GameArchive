@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -914,12 +915,17 @@ private fun LibraryScreen(
             item("mark_filter") {
                 Column {
                     val markScrollState = rememberScrollState()
-                    Box(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp)
+                            .clipToBounds()
+                    ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(markScrollState)
-                            .padding(horizontal = 18.dp, vertical = 8.dp),
+                            .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // "全部" 按钮
@@ -944,7 +950,9 @@ private fun LibraryScreen(
                     }
                     HorizontalScrollEdgeFades(
                         canScrollBackward = markScrollState.canScrollBackward,
-                        canScrollForward = markScrollState.canScrollForward
+                        canScrollForward = markScrollState.canScrollForward,
+                        edgeColor = MiuixTheme.colorScheme.background,
+                        width = 24.dp
                     )
                     }
                     if (markFilter != -1) {
