@@ -27,3 +27,17 @@ internal fun bangumiScoreColor(score: Double): Color = when {
     score >= 5.0 -> Color(0xFF42A5F5)
     else -> Color(0xFF9E9E9E)
 }
+
+internal fun bangumiPersonalGradeRes(rating: Int): Int? = when (rating) {
+    10 -> R.string.bangumi_grade_legendary
+    9 -> R.string.bangumi_grade_masterpiece
+    8 -> R.string.bangumi_grade_highly_recommended
+    7 -> R.string.bangumi_grade_recommended
+    6 -> R.string.bangumi_grade_decent
+    5 -> R.string.bangumi_grade_not_recommended
+    4 -> R.string.bangumi_grade_poor
+    3 -> R.string.bangumi_grade_bad
+    2 -> R.string.bangumi_grade_very_bad
+    1 -> R.string.bangumi_grade_unbearable
+    else -> null
+}

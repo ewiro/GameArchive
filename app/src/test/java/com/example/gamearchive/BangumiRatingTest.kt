@@ -26,4 +26,12 @@ class BangumiRatingTest {
         assertNull(normalizeBangumiScore(Double.NaN))
         assertNull(normalizeBangumiScore(11.0))
     }
+
+    @Test
+    fun mapsPersonalRatingsToTheirExactGrade() {
+        assertEquals(R.string.bangumi_grade_unbearable, bangumiPersonalGradeRes(1))
+        assertEquals(R.string.bangumi_grade_recommended, bangumiPersonalGradeRes(7))
+        assertEquals(R.string.bangumi_grade_legendary, bangumiPersonalGradeRes(10))
+        assertNull(bangumiPersonalGradeRes(0))
+    }
 }

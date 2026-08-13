@@ -937,7 +937,7 @@ internal fun BangumiDetailScreen(
                                             bottom = DesignTokens.SpaceXl
                                         )
                                     ) {
-                                    Spacer(Modifier.height(DesignTokens.SpaceLg))
+                                    Spacer(Modifier.height(DesignTokens.SpaceXxl / 4f))
 
                                     Row(
                                         modifier = Modifier
@@ -954,7 +954,7 @@ internal fun BangumiDetailScreen(
                                             }
                                             .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                                             .noRippleClickable { isStatusDropdownVisible = true }
-                                            .padding(vertical = DesignTokens.SpaceLg),
+                                            .height(DesignTokens.IconXl),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
@@ -1088,13 +1088,16 @@ internal fun BangumiDetailScreen(
                                     Spacer(Modifier.height(DesignTokens.SpaceXxl / 4f))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.Top
                                     ) {
                                         Text(
                                             text = stringResource(R.string.bangumi_my_rating),
                                             fontSize = DesignTokens.TextBody1.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = MiuixTheme.colorScheme.onSurface
+                                            color = MiuixTheme.colorScheme.onSurface,
+                                            modifier = Modifier
+                                                .height(DesignTokens.IconXl)
+                                                .wrapContentHeight(Alignment.CenterVertically)
                                         )
                                         Spacer(Modifier.width(DesignTokens.SpaceMd))
                                         Row(
@@ -1110,11 +1113,16 @@ internal fun BangumiDetailScreen(
                                             }
                                             for (i in 1..10) {
                                                 val selected = i <= draftRate
+                                                val selectedGradeRes = if (i == draftRate) {
+                                                    bangumiPersonalGradeRes(draftRate)
+                                                } else {
+                                                    null
+                                                }
                                                 val ratingDescription = stringResource(
                                                     R.string.bangumi_rating_value,
                                                     i
                                                 )
-                                                Box(
+                                                Column(
                                                     modifier = Modifier
                                                         .weight(1f)
                                                         .fillMaxHeight()
@@ -1124,11 +1132,29 @@ internal fun BangumiDetailScreen(
                                                         .noRippleClickable {
                                                             draftRate = if (draftRate == i) 0 else i
                                                         },
-                                                    contentAlignment = Alignment.Center
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Top
                                                 ) {
-                                                    SoftRatingStar(
-                                                        selected = selected,
-                                                        selectedColor = selectedRatingColor
+                                                    Box(
+                                                        modifier = Modifier.height(DesignTokens.IconXl),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        SoftRatingStar(
+                                                            selected = selected,
+                                                            selectedColor = selectedRatingColor
+                                                        )
+                                                    }
+                                                    Spacer(Modifier.height(DesignTokens.SpaceXxs))
+                                                    Text(
+                                                        text = selectedGradeRes?.let {
+                                                            stringResource(it)
+                                                        }.orEmpty(),
+                                                        modifier = Modifier.wrapContentWidth(unbounded = true),
+                                                        color = MiuixTheme.colorScheme.onSurface.copy(
+                                                            alpha = DesignTokens.OpacityBody
+                                                        ),
+                                                        fontSize = DesignTokens.TextCaption.sp,
+                                                        maxLines = 1
                                                     )
                                                 }
                                             }
@@ -2113,12 +2139,12 @@ private fun BangumiCollectionLoadingSkeleton() {
         modifier = Modifier.padding(
             start = DesignTokens.SpaceXl,
             end = DesignTokens.SpaceXl,
+            top = DesignTokens.SpaceXxl / 4f,
             bottom = DesignTokens.SpaceXl
         ),
-        verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceLg)
+        verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceXxl / 4f)
     ) {
-        Spacer(Modifier.height(DesignTokens.SpaceXs))
-        LoadingSkeletonBlock(Modifier.fillMaxWidth().height(DesignTokens.ButtonHeight))
+        LoadingSkeletonBlock(Modifier.fillMaxWidth().height(DesignTokens.IconXl))
         LoadingSkeletonBlock(Modifier.fillMaxWidth().height(DesignTokens.ButtonHeight))
         LoadingSkeletonBlock(Modifier.fillMaxWidth().height(DesignTokens.ButtonHeight))
     }

@@ -220,8 +220,11 @@
     <string name="bangumi_grade_highly_recommended">Highly Recommended</string>
     <string name="bangumi_grade_recommended">Recommended</string>
     <string name="bangumi_grade_decent">Decent</string>
+    <string name="bangumi_grade_not_recommended">Not Recommended</string>
     <string name="bangumi_grade_poor">Poor</string>
     <string name="bangumi_grade_bad">Bad</string>
+    <string name="bangumi_grade_very_bad">Very Bad</string>
+    <string name="bangumi_grade_unbearable">Unbearable</string>
     <string name="bangumi_no_username">Enter Bangumi username in Settings</string>
     <string name="bangumi_empty">No anime collection found</string>
     <string name="bangumi_profile_total">%d anime in collection</string>

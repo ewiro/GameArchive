@@ -220,8 +220,11 @@
     <string name="bangumi_grade_highly_recommended">力荐</string>
     <string name="bangumi_grade_recommended">推荐</string>
     <string name="bangumi_grade_decent">还行</string>
+    <string name="bangumi_grade_not_recommended">不推荐</string>
     <string name="bangumi_grade_poor">较差</string>
     <string name="bangumi_grade_bad">差</string>
+    <string name="bangumi_grade_very_bad">很差</string>
+    <string name="bangumi_grade_unbearable">不忍直视</string>
     <string name="bangumi_no_username">请在设置中填写 Bangumi 用户名</string>
     <string name="bangumi_empty">暂无动漫收藏记录</string>
     <string name="bangumi_profile_total">共收藏 %d 部动漫</string>
