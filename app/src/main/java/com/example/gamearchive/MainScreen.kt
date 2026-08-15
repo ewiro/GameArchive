@@ -49,7 +49,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -478,6 +477,12 @@ internal fun MainScreen() {
         val bottomBarTint = MiuixTheme.colorScheme.surface.copy(
             alpha = if (isAppInDarkTheme()) 0.62f else 0.72f
         )
+        val bottomBarShape = RoundedCornerShape(
+            topStart = DesignTokens.CornerXLarge,
+            topEnd = DesignTokens.CornerXLarge,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        )
         val bottomBarBlurColors = if (bottomBarBackdrop != null) {
             BlurDefaults.blurColors(
                 blendColors = listOf(
@@ -491,12 +496,12 @@ internal fun MainScreen() {
         val bottomBarBackgroundModifier = if (bottomBarBackdrop != null) {
             Modifier.textureBlur(
                 backdrop = bottomBarBackdrop,
-                shape = RectangleShape,
+                shape = bottomBarShape,
                 blurRadius = 24f,
                 colors = bottomBarBlurColors!!
             )
         } else {
-            Modifier.background(bottomBarTint)
+            Modifier.background(bottomBarTint, bottomBarShape)
         }
         Box(
             modifier = Modifier
@@ -512,16 +517,22 @@ internal fun MainScreen() {
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .then(bottomBarBackgroundModifier)
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .blur(1.dp, BlurredEdgeTreatment.Unbounded)
-                    .background(bottomBarTint)
-            )
+                    .clip(bottomBarShape)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(bottomBarBackgroundModifier)
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .blur(1.dp, BlurredEdgeTreatment.Unbounded)
+                        .background(bottomBarTint)
+                )
+            }
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
