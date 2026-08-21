@@ -9,6 +9,8 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,10 +35,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -51,6 +56,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -77,6 +83,7 @@ import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.roundToInt
 
 private data class BangumiDetailValue(
     val text: String,
@@ -99,7 +106,8 @@ internal fun BangumiDetailScreen(
     subjectName: String,
     subjectNameCn: String,
     subjectImage: String,
-    initialCoverPainter: Painter? = null,
+    initialCoverImage: ImageBitmap? = null,
+    transitionSourceRect: Rect? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -124,6 +132,31 @@ internal fun BangumiDetailScreen(
             BANGUMI_GRID_ITEM_SPACING * 2
         ) / 3f
     val detailCoverHeight = detailCoverWidth / PORTRAIT_COVER_ASPECT_RATIO
+    val initialCoverPainter = remember(initialCoverImage) {
+        initialCoverImage?.let(::BitmapPainter)
+    }
+    val hasCoverTransition = initialCoverImage != null && transitionSourceRect != null
+    val coverTransitionProgress = remember(subjectId, hasCoverTransition) {
+        Animatable(if (hasCoverTransition) 0f else 1f)
+    }
+    var coverTransitionFinished by remember(subjectId, hasCoverTransition) {
+        mutableStateOf(!hasCoverTransition)
+    }
+    LaunchedEffect(subjectId, hasCoverTransition) {
+        if (hasCoverTransition) {
+            coverTransitionProgress.snapTo(0f)
+            withFrameNanos { }
+            coverTransitionProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = DesignTokens.ExpandDuration,
+                    easing = FastOutSlowInEasing
+                )
+            )
+            coverTransitionFinished = true
+        }
+    }
+    val showEmbeddedCover = !hasCoverTransition || coverTransitionFinished
     val sequelCoverGap = DesignTokens.SpaceXs + with(detailDensity) {
         DesignTokens.TextBody1.sp.toDp()
     }
@@ -137,8 +170,8 @@ internal fun BangumiDetailScreen(
     val actorChineseNames = remember { mutableStateMapOf<Int, String>() }
     var myCollection by remember { mutableStateOf<BangumiMyCollection?>(null) }
     var isLoading by remember { mutableStateOf(true) }
-    var animateLoadingSkeleton by remember(initialCoverPainter) {
-        mutableStateOf(initialCoverPainter == null)
+    var animateLoadingSkeleton by remember(initialCoverImage) {
+        mutableStateOf(initialCoverImage == null)
     }
     var isCollectionLoaded by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
@@ -168,8 +201,8 @@ internal fun BangumiDetailScreen(
         detailViewModel.load(subjectId)
     }
 
-    LaunchedEffect(initialCoverPainter) {
-        if (initialCoverPainter != null) {
+    LaunchedEffect(initialCoverImage) {
+        if (initialCoverImage != null) {
             delay(160)
             animateLoadingSkeleton = true
         }
@@ -617,8 +650,19 @@ internal fun BangumiDetailScreen(
     )
 
     Box(Modifier.fillMaxSize()) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    alpha = coverTransitionProgress.value
+                },
+            color = Color.Transparent
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MiuixTheme.colorScheme.surface)
+            ) {
                 // 顶栏
                 Crossfade(
                     targetState = isLoading,
@@ -630,10 +674,11 @@ internal fun BangumiDetailScreen(
                     Box(Modifier.fillMaxSize().padding(top = topBarHeightDp)) {
                         AnimeDetailLoadingSkeleton(
                             coverImageUrl = subjectImage,
-                            coverPainter = initialCoverPainter,
+                            coverImage = initialCoverImage,
                             coverWidth = detailCoverWidth,
                             coverHeight = detailCoverHeight,
                             coverCornerRadius = BANGUMI_GRID_COVER_CORNER,
+                            showCoverContent = showEmbeddedCover,
                             animated = animateLoadingSkeleton
                         )
                     }
@@ -759,6 +804,9 @@ internal fun BangumiDetailScreen(
                                         height = detailCoverHeight
                                     )
                                     .clip(RoundedCornerShape(BANGUMI_GRID_COVER_CORNER))
+                                    .graphicsLayer {
+                                        alpha = if (showEmbeddedCover) 1f else 0f
+                                    }
                             ) {
                                 val coverUrl = subjectImage.ifBlank {
                                     d.images?.large ?: d.images?.common.orEmpty()
@@ -1706,6 +1754,47 @@ internal fun BangumiDetailScreen(
                         )
                     }
                 }
+        }
+        }
+
+        if (hasCoverTransition && !coverTransitionFinished) {
+            val sourceRect = requireNotNull(transitionSourceRect)
+            val targetLeftPx = with(detailDensity) { DesignTokens.SpaceXl.toPx() }
+            val targetTopPx = with(detailDensity) {
+                (topBarHeightDp + DesignTokens.SpaceMd).toPx()
+            }
+            val targetWidthPx = with(detailDensity) { detailCoverWidth.toPx() }
+            val targetHeightPx = with(detailDensity) { detailCoverHeight.toPx() }
+            val startScaleX = sourceRect.width / targetWidthPx
+            val startScaleY = sourceRect.height / targetHeightPx
+            val transitionPainter = requireNotNull(initialCoverPainter)
+
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = targetLeftPx.roundToInt(),
+                            y = targetTopPx.roundToInt()
+                        )
+                    }
+                    .graphicsLayer {
+                        val progress = coverTransitionProgress.value
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        translationX = (sourceRect.left - targetLeftPx) * (1f - progress)
+                        translationY = (sourceRect.top - targetTopPx) * (1f - progress)
+                        scaleX = startScaleX + (1f - startScaleX) * progress
+                        scaleY = startScaleY + (1f - startScaleY) * progress
+                    }
+                    .size(detailCoverWidth, detailCoverHeight)
+                    .clip(RoundedCornerShape(BANGUMI_GRID_COVER_CORNER))
+                    .background(MiuixTheme.colorScheme.surfaceVariant)
+            ) {
+                Image(
+                    painter = transitionPainter,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
 

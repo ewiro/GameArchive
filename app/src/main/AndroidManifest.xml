@@ -83,6 +83,12 @@
             android:exported="false" />
 
         <activity
+            android:name=".BangumiCoverTransitionActivity"
+            android:theme="@style/Theme.SteamTracker.BangumiTransition"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="false" />
+
+        <activity
             android:name=".BangumiPersonDetailActivity"
             android:exported="false" />
 

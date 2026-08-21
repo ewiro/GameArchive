@@ -28,15 +28,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -145,10 +147,11 @@ internal fun GameDetailLoadingSkeleton(topInset: Dp) {
 @Composable
 internal fun AnimeDetailLoadingSkeleton(
     coverImageUrl: String? = null,
-    coverPainter: Painter? = null,
+    coverImage: ImageBitmap? = null,
     coverWidth: Dp = 120.dp,
     coverHeight: Dp = 168.dp,
     coverCornerRadius: Dp = DesignTokens.CornerLarge,
+    showCoverContent: Boolean = true,
     showCoverPlaceholder: Boolean = true,
     animated: Boolean = true
 ) {
@@ -165,19 +168,23 @@ internal fun AnimeDetailLoadingSkeleton(
         item("header") {
             Row(horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceLg)) {
                 when {
-                    coverPainter != null -> Box(
-                        modifier = Modifier
-                            .width(coverWidth)
-                            .height(coverHeight)
-                            .clip(RoundedCornerShape(coverCornerRadius))
-                            .background(loadingSkeletonBaseColor())
-                    ) {
-                        Image(
-                            painter = coverPainter,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                    !showCoverContent -> Spacer(Modifier.width(coverWidth).height(coverHeight))
+                    coverImage != null -> {
+                        val coverPainter = remember(coverImage) { BitmapPainter(coverImage) }
+                        Box(
+                            modifier = Modifier
+                                .width(coverWidth)
+                                .height(coverHeight)
+                                .clip(RoundedCornerShape(coverCornerRadius))
+                                .background(loadingSkeletonBaseColor())
+                        ) {
+                            Image(
+                                painter = coverPainter,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
                     !coverImageUrl.isNullOrBlank() -> Box(
                         modifier = Modifier

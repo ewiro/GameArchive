@@ -4,44 +4,53 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.ImageBitmap
 
-internal const val EXTRA_BANGUMI_COVER_TRANSITION = "BANGUMI_COVER_TRANSITION"
+internal data class BangumiCoverTransitionData(
+    val imageBitmap: ImageBitmap,
+    val sourceRect: Rect
+)
 
 internal object BangumiCoverTransitionStore {
     private data class Entry(
         val subjectId: Int,
-        val painter: Painter
+        val imageBitmap: ImageBitmap,
+        val sourceRect: Rect
     )
 
     private var entry: Entry? = null
 
     @Synchronized
-    fun put(subjectId: Int, painter: Painter) {
-        entry = Entry(subjectId, painter)
+    fun begin(subjectId: Int, imageBitmap: ImageBitmap, sourceRect: Rect) {
+        entry = Entry(subjectId, imageBitmap, sourceRect)
     }
 
     @Synchronized
-    fun take(subjectId: Int): Painter? {
-        val current = entry
+    fun take(subjectId: Int): BangumiCoverTransitionData? {
+        val current = entry?.takeIf { it.subjectId == subjectId } ?: return null
         entry = null
-        return current?.takeIf { it.subjectId == subjectId }?.painter
+        return BangumiCoverTransitionData(current.imageBitmap, current.sourceRect)
+    }
+
+    @Synchronized
+    fun clear(subjectId: Int) {
+        if (entry?.subjectId == subjectId) entry = null
     }
 }
 
-class BangumiDetailActivity : ComponentActivity() {
+open class BangumiDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (intent.getBooleanExtra(EXTRA_BANGUMI_COVER_TRANSITION, false)) {
-            setTheme(R.style.Theme_SteamTracker_BangumiTransition)
-        }
+        val subjectId = intent.getIntExtra("SUBJECT_ID", 0)
+        val coverTransition = if (this is BangumiCoverTransitionActivity) {
+            BangumiCoverTransitionStore.take(subjectId)
+        } else null
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val subjectId = intent.getIntExtra("SUBJECT_ID", 0)
         val subjectName = intent.getStringExtra("SUBJECT_NAME") ?: ""
         val subjectNameCn = intent.getStringExtra("SUBJECT_NAME_CN") ?: ""
         val subjectImage = intent.getStringExtra("SUBJECT_IMAGE") ?: ""
-        val transitionCoverPainter = BangumiCoverTransitionStore.take(subjectId)
 
         setContent {
             MiuixThemeForApp {
@@ -50,10 +59,13 @@ class BangumiDetailActivity : ComponentActivity() {
                     subjectName = subjectName,
                     subjectNameCn = subjectNameCn,
                     subjectImage = subjectImage,
-                    initialCoverPainter = transitionCoverPainter,
+                    initialCoverImage = coverTransition?.imageBitmap,
+                    transitionSourceRect = coverTransition?.sourceRect,
                     onBack = { finish() }
                 )
             }
         }
     }
 }
+
+class BangumiCoverTransitionActivity : BangumiDetailActivity()
