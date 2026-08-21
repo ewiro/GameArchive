@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -63,6 +64,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -97,6 +99,7 @@ internal fun BangumiDetailScreen(
     subjectName: String,
     subjectNameCn: String,
     subjectImage: String,
+    initialCoverPainter: Painter? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -112,7 +115,16 @@ internal fun BangumiDetailScreen(
     val statusBarDp = statusBarHeightDp()
     val topBarHeightDp = statusBarDp + 56.dp
     val detailScrollState = rememberScrollState()
-    val sequelCoverGap = DesignTokens.SpaceXs + with(LocalDensity.current) {
+    val detailDensity = LocalDensity.current
+    val detailWindowWidth = with(detailDensity) {
+        LocalWindowInfo.current.containerSize.width.toDp()
+    }
+    val detailCoverWidth = (
+        detailWindowWidth - BANGUMI_GRID_HORIZONTAL_PADDING * 2 -
+            BANGUMI_GRID_ITEM_SPACING * 2
+        ) / 3f
+    val detailCoverHeight = detailCoverWidth / PORTRAIT_COVER_ASPECT_RATIO
+    val sequelCoverGap = DesignTokens.SpaceXs + with(detailDensity) {
         DesignTokens.TextBody1.sp.toDp()
     }
 
@@ -125,6 +137,9 @@ internal fun BangumiDetailScreen(
     val actorChineseNames = remember { mutableStateMapOf<Int, String>() }
     var myCollection by remember { mutableStateOf<BangumiMyCollection?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var animateLoadingSkeleton by remember(initialCoverPainter) {
+        mutableStateOf(initialCoverPainter == null)
+    }
     var isCollectionLoaded by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var draftType by remember { mutableIntStateOf(0) }
@@ -151,6 +166,13 @@ internal fun BangumiDetailScreen(
 
     LaunchedEffect(subjectId) {
         detailViewModel.load(subjectId)
+    }
+
+    LaunchedEffect(initialCoverPainter) {
+        if (initialCoverPainter != null) {
+            delay(160)
+            animateLoadingSkeleton = true
+        }
     }
 
     LaunchedEffect(detailUiState) {
@@ -606,7 +628,14 @@ internal fun BangumiDetailScreen(
                 ) { loading ->
                 if (loading) {
                     Box(Modifier.fillMaxSize().padding(top = topBarHeightDp)) {
-                        AnimeDetailLoadingSkeleton()
+                        AnimeDetailLoadingSkeleton(
+                            coverImageUrl = subjectImage,
+                            coverPainter = initialCoverPainter,
+                            coverWidth = detailCoverWidth,
+                            coverHeight = detailCoverHeight,
+                            coverCornerRadius = BANGUMI_GRID_COVER_CORNER,
+                            animated = animateLoadingSkeleton
+                        )
                     }
                 } else if (detail != null) {
                     val d = detail ?: return@Crossfade
@@ -725,16 +754,25 @@ internal fun BangumiDetailScreen(
                             // 封面
                             Box(
                                 modifier = Modifier
-                                    .size(width = 120.dp, height = 168.dp)
-                                    .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                                    .size(
+                                        width = detailCoverWidth,
+                                        height = detailCoverHeight
+                                    )
+                                    .clip(RoundedCornerShape(BANGUMI_GRID_COVER_CORNER))
                             ) {
-                                val coverUrl = d.images?.large ?: d.images?.common ?: subjectImage
-                                if (coverUrl.isNotEmpty()) {
+                                val coverUrl = subjectImage.ifBlank {
+                                    d.images?.large ?: d.images?.common.orEmpty()
+                                }
+                                if (initialCoverPainter != null) {
+                                    Image(
+                                        painter = initialCoverPainter,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else if (coverUrl.isNotEmpty()) {
                                     AsyncImage(
-                                        model = ImageRequest.Builder(context)
-                                            .data(coverUrl)
-                                            .crossfade(true)
-                                            .build(),
+                                        model = coverUrl,
                                         contentDescription = null,
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Crop
@@ -743,7 +781,11 @@ internal fun BangumiDetailScreen(
                             }
                             Spacer(Modifier.width(16.dp))
                             // 信息
-                            Column(modifier = Modifier.weight(1f).heightIn(min = 168.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = detailCoverHeight)
+                            ) {
                                 Text(
                                     text = d.name ?: subjectName,
                                     fontSize = DesignTokens.TextTitle.sp,

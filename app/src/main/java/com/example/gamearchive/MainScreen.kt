@@ -15,6 +15,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
@@ -50,11 +51,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -67,6 +73,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -75,11 +82,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
@@ -98,8 +108,21 @@ import java.io.File
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
-private const val PORTRAIT_COVER_ASPECT_RATIO = 2f / 3f
+internal const val PORTRAIT_COVER_ASPECT_RATIO = 2f / 3f
+internal val BANGUMI_GRID_HORIZONTAL_PADDING = 18.dp
+internal val BANGUMI_GRID_ITEM_SPACING = 8.dp
+internal val BANGUMI_GRID_COVER_CORNER = 6.dp
+
+private data class BangumiCoverTransition(
+    val subjectId: Int,
+    val subjectName: String,
+    val subjectNameCn: String,
+    val imageUrl: String,
+    val sourceRect: Rect,
+    val painter: Painter
+)
 
 @Composable
 private fun CompactPullToRefresh(
@@ -267,6 +290,8 @@ internal fun MainScreen() {
 
     // 排序弹窗状态（从 SpecialsScreen 提升上来）
     var showSortDialog by remember { mutableStateOf(false) }
+    var bangumiCoverTransition by remember { mutableStateOf<BangumiCoverTransition?>(null) }
+    val bangumiCoverTransitionProgress = remember { Animatable(0f) }
     val navigateToDetail: (Int, String, String) -> Unit = { appId, name, price ->
         context.startActivity(Intent(context, DetailActivity::class.java).apply {
             putExtra("APP_ID", appId)
@@ -287,6 +312,50 @@ internal fun MainScreen() {
                 putExtra("SUBJECT_IMAGE", imageUrl)
             })
         }
+    val navigateToBangumiDetailWithCover: (Int, String, String, String, Rect, Painter) -> Unit =
+        { id, name, nameCn, imageUrl, sourceRect, painter ->
+            if (bangumiCoverTransition == null) {
+                bangumiCoverTransition = BangumiCoverTransition(
+                    subjectId = id,
+                    subjectName = name,
+                    subjectNameCn = nameCn,
+                    imageUrl = imageUrl,
+                    sourceRect = sourceRect,
+                    painter = painter
+                )
+            }
+        }
+
+    LaunchedEffect(bangumiCoverTransition) {
+        val transition = bangumiCoverTransition ?: return@LaunchedEffect
+        (context as? android.app.Activity)?.let { activity ->
+            WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+                .show(WindowInsetsCompat.Type.statusBars())
+            ThemeUtils.applyStatusBarAppearance(activity)
+        }
+        bangumiCoverTransitionProgress.snapTo(0f)
+        bangumiCoverTransitionProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = DesignTokens.ExpandDuration,
+                easing = FastOutSlowInEasing
+            )
+        )
+        BangumiCoverTransitionStore.put(transition.subjectId, transition.painter)
+        context.startActivity(Intent(context, BangumiDetailActivity::class.java).apply {
+            putExtra("SUBJECT_ID", transition.subjectId)
+            putExtra("SUBJECT_NAME", transition.subjectName)
+            putExtra("SUBJECT_NAME_CN", transition.subjectNameCn)
+            putExtra("SUBJECT_IMAGE", transition.imageUrl)
+            putExtra(EXTRA_BANGUMI_COVER_TRANSITION, true)
+        })
+        (context as? android.app.Activity)?.overridePendingTransition(0, 0)
+        mainLifecycleOwner.lifecycle.currentStateFlow.first { state ->
+            !state.isAtLeast(Lifecycle.State.STARTED)
+        }
+        bangumiCoverTransition = null
+        bangumiCoverTransitionProgress.snapTo(0f)
+    }
 
     // 动画偏移量
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -360,6 +429,8 @@ internal fun MainScreen() {
                     searchQuery = bangumiSearchQuery,
                     onSearchQueryChange = { bangumiSearchQuery = it },
                     onNavigateToDetail = navigateToBangumiDetail,
+                    onNavigateToDetailWithCover = navigateToBangumiDetailWithCover,
+                    transitioningSubjectId = bangumiCoverTransition?.subjectId,
                     profileBackgroundFile = bangumiProfileBackgroundFile,
                     viewModel = bangumiViewModel
                 )
@@ -648,6 +719,124 @@ internal fun MainScreen() {
                 }
             }
         }
+        }
+
+        bangumiCoverTransition?.let { transition ->
+            val targetLeft = DesignTokens.SpaceXl
+            val targetTop = statusBarDp + 56.dp + DesignTokens.SpaceMd
+            val targetWidth = with(density) { transition.sourceRect.width.toDp() }
+            val targetHeight = with(density) { transition.sourceRect.height.toDp() }
+            val displayName = transition.subjectNameCn.ifBlank { transition.subjectName }
+            val targetLeftPx = with(density) { targetLeft.toPx() }
+            val targetTopPx = with(density) { targetTop.toPx() }
+            val transitionCoverShape = RoundedCornerShape(BANGUMI_GRID_COVER_CORNER)
+
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures { }
+                    }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer {
+                            alpha = bangumiCoverTransitionProgress.value
+                        }
+                        .background(pageBackgroundColor)
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer {
+                            val progress = bangumiCoverTransitionProgress.value
+                            alpha = ((progress - 0.08f) / 0.92f).coerceIn(0f, 1f)
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = statusBarDp + 56.dp)
+                    ) {
+                        AnimeDetailLoadingSkeleton(
+                            coverWidth = targetWidth,
+                            coverHeight = targetHeight,
+                            showCoverPlaceholder = false,
+                            animated = false
+                        )
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    top = statusBarDp + DesignTokens.SpaceXs,
+                                    end = DesignTokens.SpaceLg,
+                                    bottom = DesignTokens.SpaceXs
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = {}) {
+                                Image(
+                                    imageVector = MiuixIcons.Demibold.Back,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(DesignTokens.IconXl),
+                                    colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                                )
+                            }
+                            Text(
+                                text = displayName,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = DesignTokens.TextHeadline.sp,
+                                modifier = Modifier.weight(1f).padding(start = DesignTokens.SpaceXs),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MiuixTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .offset {
+                            val progress = bangumiCoverTransitionProgress.value
+                            IntOffset(
+                                x = (
+                                    transition.sourceRect.left +
+                                        (targetLeftPx - transition.sourceRect.left) * progress
+                                    ).roundToInt(),
+                                y = (
+                                    transition.sourceRect.top +
+                                        (targetTopPx - transition.sourceRect.top) * progress
+                                    ).roundToInt()
+                            )
+                        }
+                        .size(width = targetWidth, height = targetHeight)
+                        .clip(transitionCoverShape)
+                        .background(MiuixTheme.colorScheme.surfaceVariant)
+                ) {
+                    Image(
+                        painter = transition.painter,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    MetallicCoverOverlay(
+                        motion = coverMotion,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = 1f - bangumiCoverTransitionProgress.value
+                            }
+                    )
+                }
+            }
         }
 
     } // Box
@@ -2604,6 +2793,8 @@ private fun BangumiPage(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onNavigateToDetail: (Int, String, String, String) -> Unit,
+    onNavigateToDetailWithCover: (Int, String, String, String, Rect, Painter) -> Unit,
+    transitioningSubjectId: Int?,
     profileBackgroundFile: File?,
     viewModel: BangumiViewModel
 ) {
@@ -2906,20 +3097,29 @@ private fun BangumiPage(
                         }
                     ) { rowIndex ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.fillMaxWidth().padding(
+                                horizontal = BANGUMI_GRID_HORIZONTAL_PADDING,
+                                vertical = DesignTokens.SpaceXs
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(BANGUMI_GRID_ITEM_SPACING)
                         ) {
                             chunked[rowIndex].forEach { (item, _) ->
                                 val sub = item.subject
+                                val gridImageUrl = sub?.images?.common ?: sub?.images?.medium
                                 BangumiGridItem(
-                                    imageUrl = sub?.images?.common ?: sub?.images?.medium,
+                                    imageUrl = gridImageUrl,
                                     modifier = Modifier.weight(1f),
                                     coverMotion = coverMotion,
-                                    onClick = {
-                                        onNavigateToDetail(item.subject_id,
+                                    isTransitionSource = transitioningSubjectId == item.subject_id,
+                                    onClick = { sourceRect, painter ->
+                                        onNavigateToDetailWithCover(
+                                            item.subject_id,
                                             sub?.name ?: "",
                                             sub?.name_cn ?: "",
-                                            sub?.images?.large ?: "")
+                                            gridImageUrl ?: sub?.images?.large ?: "",
+                                            sourceRect,
+                                            painter
+                                        )
                                     }
                                 )
                             }
@@ -3099,10 +3299,29 @@ private fun BangumiGridItem(
     imageUrl: String?,
     modifier: Modifier = Modifier,
     coverMotion: State<CoverMotion>,
-    onClick: () -> Unit
+    isTransitionSource: Boolean,
+    onClick: (Rect, Painter) -> Unit
 ) {
-    val coverShape = RoundedCornerShape(6.dp)
-    Box(modifier = modifier.aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)) {
+    val coverShape = RoundedCornerShape(BANGUMI_GRID_COVER_CORNER)
+    val coverPainter = rememberAsyncImagePainter(model = imageUrl)
+    var coverRect by remember { mutableStateOf(Rect.Zero) }
+    Box(
+        modifier = modifier
+            .aspectRatio(PORTRAIT_COVER_ASPECT_RATIO)
+            .onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInWindow()
+                coverRect = Rect(
+                    offset = position,
+                    size = Size(
+                        width = coordinates.size.width.toFloat(),
+                        height = coordinates.size.height.toFloat()
+                    )
+                )
+            }
+            .graphicsLayer {
+                alpha = if (isTransitionSource) 0f else 1f
+            }
+    ) {
         Box(
             Modifier
                 .matchParentSize()
@@ -3114,12 +3333,21 @@ private fun BangumiGridItem(
                 .metallicCoverTilt(coverMotion, coverShape)
                 .clip(coverShape)
                 .background(MiuixTheme.colorScheme.surfaceVariant)
-                .motionClickable(pressedScale = 0.95f, onClick = onClick),
+                .motionClickable(
+                    enabled = !isTransitionSource,
+                    pressedScale = 1f,
+                    pressedAlpha = 1f,
+                    onClick = {
+                        if (coverRect.width > 0f && coverRect.height > 0f) {
+                            onClick(coverRect, coverPainter)
+                        }
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (imageUrl != null) {
-                AsyncImage(
-                    model = imageUrl,
+                Image(
+                    painter = coverPainter,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

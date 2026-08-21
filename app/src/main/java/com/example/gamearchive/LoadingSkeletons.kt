@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,11 +34,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -77,12 +82,18 @@ internal fun LoadingSkeletonBlock(
     modifier: Modifier,
     cornerRadius: Dp = 6.dp,
     baseColor: Color? = null,
-    highlightColor: Color? = null
+    highlightColor: Color? = null,
+    animated: Boolean = true
 ) {
+    val backgroundBrush = if (animated) {
+        rememberLoadingSkeletonBrush(baseColor, highlightColor)
+    } else {
+        SolidColor(baseColor ?: loadingSkeletonBaseColor())
+    }
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .background(rememberLoadingSkeletonBrush(baseColor, highlightColor))
+            .background(backgroundBrush)
     )
 }
 
@@ -132,42 +143,95 @@ internal fun GameDetailLoadingSkeleton(topInset: Dp) {
 }
 
 @Composable
-internal fun AnimeDetailLoadingSkeleton() {
+internal fun AnimeDetailLoadingSkeleton(
+    coverImageUrl: String? = null,
+    coverPainter: Painter? = null,
+    coverWidth: Dp = 120.dp,
+    coverHeight: Dp = 168.dp,
+    coverCornerRadius: Dp = DesignTokens.CornerLarge,
+    showCoverPlaceholder: Boolean = true,
+    animated: Boolean = true
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            horizontal = DesignTokens.SpaceXl,
-            vertical = DesignTokens.SpaceLg
+            start = DesignTokens.SpaceXl,
+            top = DesignTokens.SpaceMd,
+            end = DesignTokens.SpaceXl,
+            bottom = DesignTokens.SpaceLg
         ),
         verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceLg)
     ) {
         item("header") {
             Row(horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpaceLg)) {
-                LoadingSkeletonBlock(
-                    modifier = Modifier.width(120.dp).height(168.dp),
-                    cornerRadius = DesignTokens.CornerMedium
-                )
+                when {
+                    coverPainter != null -> Box(
+                        modifier = Modifier
+                            .width(coverWidth)
+                            .height(coverHeight)
+                            .clip(RoundedCornerShape(coverCornerRadius))
+                            .background(loadingSkeletonBaseColor())
+                    ) {
+                        Image(
+                            painter = coverPainter,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    !coverImageUrl.isNullOrBlank() -> Box(
+                        modifier = Modifier
+                            .width(coverWidth)
+                            .height(coverHeight)
+                            .clip(RoundedCornerShape(coverCornerRadius))
+                            .background(loadingSkeletonBaseColor())
+                    ) {
+                        AsyncImage(
+                            model = coverImageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    showCoverPlaceholder -> LoadingSkeletonBlock(
+                        modifier = Modifier.width(coverWidth).height(coverHeight),
+                        cornerRadius = coverCornerRadius,
+                        animated = animated
+                    )
+                    else -> Spacer(Modifier.width(coverWidth).height(coverHeight))
+                }
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(DesignTokens.SpaceMd)
                 ) {
-                    LoadingSkeletonBlock(Modifier.fillMaxWidth().height(18.dp))
-                    LoadingSkeletonBlock(Modifier.fillMaxWidth(0.72f).height(14.dp))
-                    LoadingSkeletonBlock(Modifier.fillMaxWidth(0.5f).height(14.dp))
+                    LoadingSkeletonBlock(
+                        Modifier.fillMaxWidth().height(18.dp),
+                        animated = animated
+                    )
+                    LoadingSkeletonBlock(
+                        Modifier.fillMaxWidth(0.72f).height(14.dp),
+                        animated = animated
+                    )
+                    LoadingSkeletonBlock(
+                        Modifier.fillMaxWidth(0.5f).height(14.dp),
+                        animated = animated
+                    )
                 }
             }
         }
         item("progress") {
             LoadingSkeletonBlock(
                 modifier = Modifier.fillMaxWidth().height(128.dp),
-                cornerRadius = DesignTokens.CornerLarge
+                cornerRadius = DesignTokens.CornerLarge,
+                animated = animated
             )
         }
         items(5, key = { "anime_detail_line_$it" }) { index ->
             LoadingSkeletonBlock(
                 modifier = Modifier
                     .fillMaxWidth(if (index == 4) 0.68f else 1f)
-                    .height(14.dp)
+                    .height(14.dp),
+                animated = animated
             )
         }
     }

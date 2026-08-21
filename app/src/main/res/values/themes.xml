@@ -8,4 +8,8 @@
         <item name="colorOnSurface">@color/miuix_text_primary_light</item>
         <item name="colorOnSurfaceVariant">@color/miuix_text_secondary_light</item>
     </style>
+
+    <style name="Theme.SteamTracker.BangumiTransition" parent="Theme.SteamTracker">
+        <item name="android:windowDisablePreview">true</item>
+    </style>
 </resources>
