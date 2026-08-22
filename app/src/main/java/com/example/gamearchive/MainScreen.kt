@@ -886,9 +886,8 @@ private fun LibraryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(profileAreaHeight)
-                        .offset(y = topBarInsetDp)
-                        .padding(bottom = DesignTokens.SpaceXxs),
-                    contentAlignment = Alignment.BottomStart
+                        .offset(y = topBarInsetDp - 45.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     if (loading == true) {
                         SteamProfileSkeleton(profileShimmer)
@@ -1286,7 +1285,7 @@ private fun SteamProfileSkeleton(shimmer: androidx.compose.ui.graphics.Brush) {
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(78.dp).clip(CircleShape).background(shimmer))
+                Box(Modifier.size(63.dp).clip(CircleShape).background(shimmer))
                 Spacer(Modifier.width(24.dp))
                 Column(Modifier.width(140.dp)) {
                     Box(
@@ -1358,12 +1357,12 @@ private fun ProfileHeader(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(modifier = Modifier.size(78.dp)) {
+                Box(modifier = Modifier.size(63.dp)) {
                     AsyncImage(
                         model = avatarModel,
                         contentDescription = player.personaname,
                         modifier = Modifier
-                            .size(65.dp)
+                            .size(52.2.dp)
                             .align(Alignment.Center),
                         contentScale = ContentScale.Crop
                     )
@@ -1393,7 +1392,7 @@ private fun ProfileHeader(
                             totalHoursText,
                             gameCount
                         ),
-                        color = Color.White.copy(alpha = DesignTokens.OpacityBody),
+                        color = Color.White.copy(alpha = DesignTokens.OpacityEmphasis),
                         fontSize = DesignTokens.TextBody2.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -2813,9 +2812,8 @@ private fun BangumiPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(profileAreaHeight)
-                        .offset(y = topBarInsetDp)
-                        .padding(bottom = DesignTokens.SpaceXxs),
-                    contentAlignment = Alignment.BottomStart
+                        .offset(y = topBarInsetDp - 45.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     if (showSkeleton) {
                         BangumiProfileSkeleton(shimmer)
@@ -3263,7 +3261,7 @@ private fun BangumiProfileSkeleton(shimmer: androidx.compose.ui.graphics.Brush) 
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(78.dp).clip(CircleShape).background(shimmer))
+                Box(Modifier.size(63.dp).clip(CircleShape).background(shimmer))
                 Spacer(Modifier.width(24.dp))
                 Column(Modifier.width(140.dp)) {
                     Box(
@@ -3331,7 +3329,7 @@ private fun BangumiProfileCard(
                 // 头像（对齐游戏页资料头像）
                 Box(
                     modifier = Modifier
-                        .size(78.dp)
+                        .size(63.dp)
                         .clip(RoundedCornerShape(7.2.dp))
                         .background(
                             if (hasCustomBackground) {
@@ -3370,7 +3368,7 @@ private fun BangumiProfileCard(
                     )
                     Text(
                         text = stringResource(R.string.bangumi_profile_total, totalCount),
-                        color = secondaryTextColor,
+                        color = primaryTextColor.copy(alpha = DesignTokens.OpacityEmphasis),
                         fontSize = DesignTokens.TextBody2.sp
                     )
                 }
