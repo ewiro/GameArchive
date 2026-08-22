@@ -168,8 +168,12 @@ internal fun MainScreen() {
     val displayStyle = ThemeUtils.getDisplayStyle(context)
     val coverMotion = rememberCoverMotion(
         enabled = !showSpecialsPage &&
-            (selectedTab == activityPage || displayStyle == 1 &&
-                (selectedTab == 0 || selectedTab == bangumiPage))
+            (
+                selectedTab == activityPage ||
+                    selectedTab == 0 &&
+                    (UserPrefs.isShowProfile(context) || displayStyle == 1) ||
+                    selectedTab == bangumiPage
+                )
     )
     val bangumiProfileBackgroundFile = remember(bangumiEnabled) {
         BangumiProfileBackground.file(context).takeIf { it.isFile }
@@ -871,7 +875,9 @@ private fun LibraryScreen(
                 if (loading != true) {
                     SteamProfileHeroBackground(
                         decor = profileDecor,
-                        modifier = Modifier.matchParentSize()
+                        modifier = Modifier
+                            .matchParentSize()
+                            .profileGravityBackground(coverMotion)
                     )
                 }
                 Box(
@@ -889,7 +895,8 @@ private fun LibraryScreen(
                             player = player,
                             gameCount = gameList.size,
                             totalHours = gameList.sumOf { it.playtime_forever } / 60.0,
-                            decor = profileDecor
+                            decor = profileDecor,
+                            motion = coverMotion
                         )
                     }
                 }
@@ -1306,7 +1313,8 @@ private fun ProfileHeader(
     player: PlayerInfo,
     gameCount: Int,
     totalHours: Double,
-    decor: SteamProfileDecor?
+    decor: SteamProfileDecor?,
+    motion: State<CoverMotion>
 ) {
     val context = LocalContext.current
     val customFrameUrl = UserPrefs.getCustomFrameUrl(context)
@@ -1342,7 +1350,9 @@ private fun ProfileHeader(
                 )
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .profileGravityForeground(motion),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -2785,7 +2795,9 @@ private fun BangumiPage(
                     AsyncImage(
                         model = profileBackgroundModel,
                         contentDescription = null,
-                        modifier = Modifier.matchParentSize(),
+                        modifier = Modifier
+                            .matchParentSize()
+                            .profileGravityBackground(coverMotion),
                         contentScale = ContentScale.Crop,
                         alignment = Alignment.Center
                     )
@@ -2810,7 +2822,8 @@ private fun BangumiPage(
                             username = bgmUsername,
                             user = bgmUser,
                             totalCount = totalCount,
-                            hasCustomBackground = profileBackgroundFile != null
+                            hasCustomBackground = profileBackgroundFile != null,
+                            motion = coverMotion
                         )
                     }
                 }
@@ -3277,7 +3290,8 @@ private fun BangumiProfileCard(
     username: String,
     user: BangumiUser?,
     totalCount: Int,
-    hasCustomBackground: Boolean
+    hasCustomBackground: Boolean,
+    motion: State<CoverMotion>
 ) {
     // Bangumi 用户头像（medium 尺寸，对齐游戏页资料头像）
     val avatarUrl = user?.avatar?.medium ?: user?.avatar?.small
@@ -3306,7 +3320,9 @@ private fun BangumiProfileCard(
         ) {
             // 头像 + 用户名行
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .profileGravityForeground(motion),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {

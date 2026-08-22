@@ -36,7 +36,10 @@ import kotlin.math.sin
 
 internal data class CoverMotion(
     val horizontal: Float = 0f,
-    val vertical: Float = 0f
+    val vertical: Float = 0f,
+    val impulseX: Float = 0f,
+    val impulseY: Float = 0f,
+    val depth: Float = 0f
 )
 
 @Composable
@@ -59,6 +62,7 @@ internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
             ?: sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        val accelerationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
         if (sensor == null) {
             motion.value = CoverMotion()
             return@DisposableEffect onDispose { }
@@ -71,13 +75,73 @@ internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
         var baselineRoll: Float? = null
         var filteredHorizontal = 0f
         var filteredVertical = 0f
+        var filteredImpulseX = 0f
+        var filteredImpulseY = 0f
+        var filteredDepth = 0f
         var registered = false
 
         fun angleDelta(value: Float, baseline: Float): Float =
             atan2(sin(value - baseline), cos(value - baseline))
 
+        fun normalizedAcceleration(value: Float): Float {
+            val magnitude = abs(value)
+            if (magnitude <= ACCELERATION_DEAD_ZONE) return 0f
+            val normalized = (
+                (magnitude - ACCELERATION_DEAD_ZONE) /
+                    (ACCELERATION_RANGE - ACCELERATION_DEAD_ZONE)
+                ).coerceIn(0f, 1f)
+            return if (value < 0f) -normalized else normalized
+        }
+
+        fun publishMotion() {
+            val current = motion.value
+            if (
+                abs(current.horizontal - filteredHorizontal) >= MOTION_UPDATE_THRESHOLD ||
+                abs(current.vertical - filteredVertical) >= MOTION_UPDATE_THRESHOLD ||
+                abs(current.impulseX - filteredImpulseX) >= ACCELERATION_UPDATE_THRESHOLD ||
+                abs(current.impulseY - filteredImpulseY) >= ACCELERATION_UPDATE_THRESHOLD ||
+                abs(current.depth - filteredDepth) >= ACCELERATION_UPDATE_THRESHOLD
+            ) {
+                motion.value = CoverMotion(
+                    horizontal = filteredHorizontal,
+                    vertical = filteredVertical,
+                    impulseX = filteredImpulseX,
+                    impulseY = filteredImpulseY,
+                    depth = filteredDepth
+                )
+            }
+        }
+
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
+                if (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
+                    @Suppress("DEPRECATION")
+                    val displayRotation = (context as? Activity)
+                        ?.windowManager
+                        ?.defaultDisplay
+                        ?.rotation
+                        ?: Surface.ROTATION_0
+                    val rawX = event.values[0]
+                    val rawY = event.values[1]
+                    val (screenX, screenY) = when (displayRotation) {
+                        Surface.ROTATION_90 -> rawY to -rawX
+                        Surface.ROTATION_180 -> -rawX to -rawY
+                        Surface.ROTATION_270 -> -rawY to rawX
+                        else -> rawX to rawY
+                    }
+                    val targetImpulseX = normalizedAcceleration(screenX)
+                    val targetImpulseY = normalizedAcceleration(-screenY)
+                    val targetDepth = normalizedAcceleration(event.values[2])
+                    filteredImpulseX +=
+                        (targetImpulseX - filteredImpulseX) * ACCELERATION_SMOOTHING
+                    filteredImpulseY +=
+                        (targetImpulseY - filteredImpulseY) * ACCELERATION_SMOOTHING
+                    filteredDepth +=
+                        (targetDepth - filteredDepth) * ACCELERATION_SMOOTHING
+                    publishMotion()
+                    return
+                }
+
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                 @Suppress("DEPRECATION")
                 val displayRotation = (context as? Activity)
@@ -132,14 +196,7 @@ internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
                 ).coerceIn(-1f, 1f)
                 filteredHorizontal += (targetHorizontal - filteredHorizontal) * MOTION_SMOOTHING
                 filteredVertical += (targetVertical - filteredVertical) * MOTION_SMOOTHING
-
-                val current = motion.value
-                if (
-                    abs(current.horizontal - filteredHorizontal) >= MOTION_UPDATE_THRESHOLD ||
-                    abs(current.vertical - filteredVertical) >= MOTION_UPDATE_THRESHOLD
-                ) {
-                    motion.value = CoverMotion(filteredHorizontal, filteredVertical)
-                }
+                publishMotion()
             }
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
@@ -151,12 +208,22 @@ internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
             baselineRoll = null
             filteredHorizontal = 0f
             filteredVertical = 0f
+            filteredImpulseX = 0f
+            filteredImpulseY = 0f
+            filteredDepth = 0f
             motion.value = CoverMotion()
             registered = sensorManager.registerListener(
                 listener,
                 sensor,
                 SensorManager.SENSOR_DELAY_GAME
             )
+            if (registered && accelerationSensor != null) {
+                sensorManager.registerListener(
+                    listener,
+                    accelerationSensor,
+                    SensorManager.SENSOR_DELAY_UI
+                )
+            }
         }
 
         fun unregisterSensor() {
@@ -198,6 +265,44 @@ internal fun Modifier.metallicCoverTilt(
         rotationY = value.horizontal * MAX_TILT_DEGREES
         cameraDistance = 10f * density
         this.shape = shape
+    }
+}
+
+@Composable
+internal fun Modifier.profileGravityBackground(
+    motion: State<CoverMotion>
+): Modifier {
+    val density = LocalDensity.current.density
+    return graphicsLayer {
+        val value = motion.value
+        translationX = value.horizontal * PROFILE_BACKGROUND_OFFSET_DP * density
+        translationY = -value.vertical * PROFILE_BACKGROUND_OFFSET_DP * density
+        scaleX = 1f + abs(value.horizontal) * PROFILE_BACKGROUND_SCALE_X
+        scaleY = 1f + abs(value.vertical) * PROFILE_BACKGROUND_SCALE_Y
+    }
+}
+
+@Composable
+internal fun Modifier.profileGravityForeground(
+    motion: State<CoverMotion>
+): Modifier {
+    val density = LocalDensity.current.density
+    return graphicsLayer {
+        val value = motion.value
+        translationX = (
+            value.horizontal * MAX_SHADOW_OFFSET_DP +
+                value.impulseX * PROFILE_IMPULSE_OFFSET_DP
+            ) * density
+        translationY = (
+            -value.vertical * MAX_SHADOW_OFFSET_DP +
+                value.impulseY * PROFILE_IMPULSE_OFFSET_DP
+            ) * density
+        rotationX = -value.vertical * MAX_TILT_DEGREES
+        rotationY = value.horizontal * MAX_TILT_DEGREES
+        cameraDistance = 10f * density
+        val depthScale = 1f + value.depth * PROFILE_DEPTH_SCALE
+        scaleX = depthScale
+        scaleY = depthScale
     }
 }
 
@@ -288,6 +393,10 @@ internal fun MetallicCoverOverlay(
 private const val MOTION_RANGE_RADIANS = 0.38f
 private const val MOTION_SMOOTHING = 0.20f
 private const val MOTION_UPDATE_THRESHOLD = 0.004f
+private const val ACCELERATION_RANGE = 5f
+private const val ACCELERATION_DEAD_ZONE = 0.25f
+private const val ACCELERATION_SMOOTHING = 0.28f
+private const val ACCELERATION_UPDATE_THRESHOLD = 0.008f
 private const val MAX_TILT_DEGREES = 12f
 private const val MAX_SHADOW_OFFSET_DP = 7f
 private const val BASE_SHADOW_OFFSET_DP = 2f
@@ -295,3 +404,8 @@ private const val BASE_SHADOW_BLUR_DP = 4f
 private const val EXTRA_SHADOW_BLUR_DP = 5f
 private const val BASE_SHADOW_ALPHA = 0.20f
 private const val EXTRA_SHADOW_ALPHA = 0.22f
+private const val PROFILE_BACKGROUND_OFFSET_DP = 3f
+private const val PROFILE_BACKGROUND_SCALE_X = 0.02f
+private const val PROFILE_BACKGROUND_SCALE_Y = 0.04f
+private const val PROFILE_IMPULSE_OFFSET_DP = 8f
+private const val PROFILE_DEPTH_SCALE = 0.08f
