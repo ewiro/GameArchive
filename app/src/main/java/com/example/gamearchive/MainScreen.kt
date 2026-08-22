@@ -53,6 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -115,6 +116,42 @@ internal val BANGUMI_GRID_ITEM_SPACING = 8.dp
 internal val BANGUMI_GRID_COVER_CORNER = 6.dp
 
 @Composable
+private fun ActivityTopBarIcon(
+    color: Color,
+    contentDescription: String,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier.semantics {
+            this.contentDescription = contentDescription
+        }
+    ) {
+        val iconSize = size.minDimension
+        val strokeWidth = iconSize * 0.095f
+        val radius = iconSize * 0.41f
+        drawCircle(
+            color = color,
+            radius = radius,
+            style = Stroke(width = strokeWidth)
+        )
+        drawLine(
+            color = color,
+            start = center,
+            end = Offset(center.x, center.y - radius * 0.5f),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = color,
+            start = center,
+            end = Offset(center.x + radius * 0.5f, center.y),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+@Composable
 private fun CompactPullToRefresh(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
@@ -157,19 +194,17 @@ internal fun MainScreen() {
     val bangumiEnabled = ThemeUtils.isBangumiEnabled(context)
     val activityEnabled = ThemeUtils.isActivityEnabled(context)
     val bangumiPage = if (bangumiEnabled) 1 else -1
-    val pageCount = 1 +
-        (if (bangumiEnabled) 1 else 0) +
-        (if (activityEnabled) 1 else 0)
-    val activityPage = if (activityEnabled) pageCount - 1 else -1
+    val pageCount = 1 + (if (bangumiEnabled) 1 else 0)
     val pagerState = rememberPagerState(pageCount = { pageCount })
     var showSpecialsPage by remember { mutableStateOf(false) }
+    var showActivityPage by remember { mutableStateOf(false) }
     var bottomBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
     val displayStyle = ThemeUtils.getDisplayStyle(context)
     val coverMotion = rememberCoverMotion(
         enabled = !showSpecialsPage &&
             (
-                selectedTab == activityPage ||
+                showActivityPage ||
                     selectedTab == 0 &&
                     (UserPrefs.isShowProfile(context) || displayStyle == 1) ||
                     selectedTab == bangumiPage
@@ -178,9 +213,10 @@ internal fun MainScreen() {
     val bangumiProfileBackgroundFile = remember(bangumiEnabled) {
         BangumiProfileBackground.file(context).takeIf { it.isFile }
     }
-    val isImmersiveLibraryHeader = !showSpecialsPage &&
+    val isImmersiveLibraryHeader = !showSpecialsPage && !showActivityPage &&
         selectedTab == 0 && UserPrefs.isShowProfile(context)
-    val isImmersiveBangumiHeader = !showSpecialsPage && selectedTab == bangumiPage
+    val isImmersiveBangumiHeader =
+        !showSpecialsPage && !showActivityPage && selectedTab == bangumiPage
     val isImmersiveProfileHeader =
         isImmersiveLibraryHeader || isImmersiveBangumiHeader
     val immersiveHeaderUsesDarkBackground =
@@ -231,10 +267,11 @@ internal fun MainScreen() {
     var bangumiSearchQuery by remember { mutableStateOf("") }
     val activeListState = if (showSpecialsPage) {
         specialsListState
+    } else if (showActivityPage) {
+        activityListState
     } else when (selectedTab) {
         0 -> libraryListState
         bangumiPage -> bangumiListState
-        activityPage -> activityListState
         else -> libraryListState
     }
 
@@ -276,6 +313,9 @@ internal fun MainScreen() {
     }
     BackHandler(enabled = showSpecialsPage) {
         showSpecialsPage = false
+    }
+    BackHandler(enabled = showActivityPage) {
+        showActivityPage = false
     }
 
     // 状态栏高度（顶栏叠加层需要）
@@ -368,13 +408,23 @@ internal fun MainScreen() {
             )
     ) {
 
-        // ── 内容层：特惠独立打开，主分页与底栏顺序一致 ──
+        // ── 内容层：特惠与记录独立打开，主分页仅包含游戏和动漫 ──
         if (showSpecialsPage) {
             SpecialsScreen(
                 listState = specialsListState,
                 showSortDialog = showSortDialog,
                 onDismissSortDialog = { showSortDialog = false },
                 onNavigateToDetail = navigateToDetail
+            )
+        } else if (showActivityPage) {
+            ActivityPage(
+                listState = activityListState,
+                libraryViewModel = libraryViewModel,
+                bangumiViewModel = bangumiViewModel,
+                coverMotion = coverMotion,
+                includeAnime = bangumiEnabled,
+                onNavigateToDetail = navigateToDetail,
+                onNavigateToBangumiDetail = navigateToBangumiDetail
             )
         } else HorizontalPager(
             state = pagerState,
@@ -385,21 +435,12 @@ internal fun MainScreen() {
                 0 -> LibraryScreen(
                     listState = libraryListState,
                     coverMotion = coverMotion,
-                    showBottomBar = pageCount > 1,
+                    showBottomBar = bangumiEnabled,
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToSettings = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     },
                     viewModel = libraryViewModel
-                )
-                activityPage -> ActivityPage(
-                    listState = activityListState,
-                    libraryViewModel = libraryViewModel,
-                    bangumiViewModel = bangumiViewModel,
-                    coverMotion = coverMotion,
-                    includeAnime = bangumiEnabled,
-                    onNavigateToDetail = navigateToDetail,
-                    onNavigateToBangumiDetail = navigateToBangumiDetail
                 )
                 else -> BangumiPage(
                     listState = bangumiListState,
@@ -433,7 +474,7 @@ internal fun MainScreen() {
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!showSpecialsPage && selectedTab == bangumiPage) {
+                if (!showSpecialsPage && !showActivityPage && selectedTab == bangumiPage) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, BangumiSearchActivity::class.java))
                     }) {
@@ -445,7 +486,7 @@ internal fun MainScreen() {
                         )
                     }
                 }
-                if (!showSpecialsPage && selectedTab == 0) {
+                if (!showSpecialsPage && !showActivityPage && selectedTab == 0) {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, WishlistActivity::class.java))
                         (context as? android.app.Activity)?.overridePendingTransition(
@@ -482,7 +523,16 @@ internal fun MainScreen() {
                         modifier = Modifier.weight(1f)
                     )
                 }
-                if (!showSpecialsPage) {
+                if (!showSpecialsPage && !showActivityPage) {
+                    if (activityEnabled) {
+                        IconButton(onClick = { showActivityPage = true }) {
+                            ActivityTopBarIcon(
+                                color = topBarContentColor,
+                                contentDescription = stringResource(R.string.nav_activity),
+                                modifier = Modifier.size(DesignTokens.IconXl)
+                            )
+                        }
+                    }
                     IconButton(onClick = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }) {
@@ -493,7 +543,7 @@ internal fun MainScreen() {
                             colorFilter = ColorFilter.tint(topBarContentColor)
                         )
                     }
-                } else {
+                } else if (showSpecialsPage) {
                     IconButton(onClick = { showSortDialog = true }) {
                         Image(
                             imageVector = MiuixIcons.Demibold.Filter,
@@ -516,8 +566,8 @@ internal fun MainScreen() {
         }
     }
 
-        // ── 底栏叠加层（游戏、动漫、记录中至少2页时显示） ──
-        if (!showSpecialsPage && pageCount > 1) {
+        // ── 底栏叠加层（仅游戏和动漫主页显示） ──
+        if (!showSpecialsPage && !showActivityPage && bangumiEnabled) {
         val bottomBarTint = MiuixTheme.colorScheme.surface.copy(
             alpha = if (isAppInDarkTheme()) 0.62f else 0.72f
         )
@@ -641,54 +691,6 @@ internal fun MainScreen() {
                     Text(text = stringResource(R.string.nav_bangumi), fontSize = DesignTokens.TextCaption.sp,
                         color = if (selectedTab == bangumiPage) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
                 }
-                }
-                if (activityEnabled) {
-                    val tabAnimActivity by animateFloatAsState(
-                        targetValue = if (selectedTab == activityPage) 1f else 0f,
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-                        label = "tab_anim_activity"
-                    )
-                    Column(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                scaleX = 0.85f + 0.15f * tabAnimActivity
-                                scaleY = 0.85f + 0.15f * tabAnimActivity
-                            }
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                navigateToPage(activityPage)
-                            }
-                            .padding(horizontal = 24.dp, vertical = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Image(
-                            imageVector = if (selectedTab == activityPage) {
-                                MiuixIcons.Demibold.Recent
-                            } else {
-                                MiuixIcons.Light.Recent
-                            },
-                            contentDescription = stringResource(R.string.nav_activity),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(
-                                if (selectedTab == activityPage) {
-                                    DesignTokens.AccentBlue
-                                } else {
-                                    MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive)
-                                }
-                            )
-                        )
-                        Text(
-                            text = stringResource(R.string.nav_activity),
-                            fontSize = DesignTokens.TextCaption.sp,
-                            color = if (selectedTab == activityPage) {
-                                DesignTokens.AccentBlue
-                            } else {
-                                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive)
-                            }
-                        )
-                    }
                 }
             }
         }
@@ -2210,7 +2212,7 @@ private fun ActivityPage(
                 ) {
                     showExactDate = false
                 },
-            contentPadding = PaddingValues(bottom = 72.dp)
+            contentPadding = PaddingValues(bottom = DesignTokens.SpaceXl)
         ) {
             item("activity_top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
             item("activity_year") {
