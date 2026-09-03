@@ -1150,7 +1150,7 @@ internal fun BangumiDetailScreen(
                                                 )
                                             }
                                         }
-                                    } else if (isEpisodeProgressUnavailable) {
+                                    } else if (isEpisodeProgressUnavailable || draftType == 0) {
                                         Spacer(Modifier.height(DesignTokens.SpaceXxl / 4f))
                                         Row(
                                             modifier = Modifier
@@ -1173,13 +1173,6 @@ internal fun BangumiDetailScreen(
                                                 color = dim
                                             )
                                         }
-                                    } else if (draftType == 0) {
-                                        Spacer(
-                                            Modifier.height(
-                                                DesignTokens.SpaceXxl / 4f +
-                                                    DesignTokens.ButtonHeight
-                                            )
-                                        )
                                     }
 
                                     Spacer(Modifier.height(DesignTokens.SpaceXxl / 4f))
