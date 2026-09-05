@@ -179,7 +179,7 @@ private fun CompactPullToRefresh(
         modifier = modifier,
         pullToRefreshState = state,
         contentPadding = contentPadding,
-        circleSize = PullToRefreshDefaults.circleSize * (2f / 3f),
+        circleSize = PullToRefreshDefaults.circleSize * (16f / 15f),
         refreshTexts = emptyList(),
     ) {
         content(Modifier.offset(y = -(36.dp * textSpaceProgress)))
