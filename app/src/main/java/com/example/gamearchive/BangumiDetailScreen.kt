@@ -66,14 +66,12 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import retrofit2.HttpException
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.*
@@ -113,11 +111,6 @@ internal fun BangumiDetailScreen(
     val context = LocalContext.current
     val detailViewModel: BangumiDetailViewModel = viewModel()
     val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
-    val detailLoadFailedText = stringResource(R.string.bangumi_detail_load_failed)
-    val collectionLoadFailedText = stringResource(R.string.bangumi_collection_load_failed)
-    val authorizationExpiredText = stringResource(R.string.bangumi_authorization_expired)
-    val collectionSavedText = stringResource(R.string.bangumi_collection_saved)
-    val collectionSaveFailedText = stringResource(R.string.bangumi_collection_save_failed)
     val episodeDecreaseDescription = stringResource(R.string.bangumi_episode_decrease)
     val episodeIncreaseDescription = stringResource(R.string.bangumi_episode_increase)
     val statusBarDp = statusBarHeightDp()
@@ -161,469 +154,67 @@ internal fun BangumiDetailScreen(
         DesignTokens.TextBody1.sp.toDp()
     }
 
-    var detail by remember { mutableStateOf<BangumiSubjectDetail?>(null) }
-    var subjectPersons by remember { mutableStateOf<List<BangumiPerson>>(emptyList()) }
-    var subjectCharacters by remember { mutableStateOf<List<BangumiRelatedCharacter>>(emptyList()) }
-    var sequelSubjects by remember { mutableStateOf<List<BangumiRelatedSubject>>(emptyList()) }
-    val characterChineseNames = remember { mutableStateMapOf<Int, String>() }
+    val detail = detailUiState.detail
+    val subjectPersons = detailUiState.persons
+    val subjectCharacters = detailUiState.characters
+    val sequelSubjects = remember(detailUiState.relatedSubjects) {
+        detailUiState.relatedSubjects.filter { it.type == 2 && it.relation?.trim() in setOf("续集", "續集") }
+    }
+    val characterChineseNames = remember(detailUiState.legacySubject) {
+        detailUiState.legacySubject?.crt.orEmpty().mapNotNull { character ->
+            val id = character.id ?: return@mapNotNull null
+            val name = character.name_cn?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            id to name
+        }.toMap()
+    }
     val characterCardInfo = remember { mutableStateMapOf<Int, BangumiCharacterCardInfo>() }
     val actorChineseNames = remember { mutableStateMapOf<Int, String>() }
-    var myCollection by remember { mutableStateOf<BangumiMyCollection?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    val myCollection = detailUiState.collection.value
+    val isLoading = detailUiState.isLoading
+    val isCollectionLoaded = detailUiState.collection.isLoaded
+    val isSaving = detailUiState.isSaving
+    val draftType = detailUiState.draft.type
+    val draftRate = detailUiState.draft.rate
+    val draftComment = detailUiState.draft.comment
+    val draftEpisodeProgress = detailUiState.draft.episodeProgress
+    val mainEpisodeCount = detailUiState.collection.episodeCount
+    val mainEpisodes = detailUiState.collection.episodes
+    val isEpisodeProgressUnavailable = detailUiState.collection.isEpisodeProgressUnavailable
+    val myTagSuggestions = detailUiState.tagSuggestions
+    val isMyTagsLoading = detailUiState.isTagsLoading
+    var draftTags by remember(subjectId) { mutableStateOf(TextFieldValue(detailUiState.draft.tags)) }
     var animateLoadingSkeleton by remember(initialCoverImage) {
         mutableStateOf(initialCoverImage == null)
     }
-    var isCollectionLoaded by remember { mutableStateOf(false) }
-    var isSaving by remember { mutableStateOf(false) }
-    var draftType by remember { mutableIntStateOf(0) }
-    var draftRate by remember { mutableIntStateOf(0) }
-    var draftTags by remember { mutableStateOf(TextFieldValue()) }
     var isTagInputFocused by remember { mutableStateOf(false) }
     var tagInputRect by remember { mutableStateOf(Rect.Zero) }
-    var myTagSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
-    var isMyTagsLoading by remember { mutableStateOf(false) }
-    var hasRequestedMyTags by remember { mutableStateOf(false) }
-    var draftComment by remember { mutableStateOf("") }
-    var mainEpisodeCount by remember { mutableStateOf<Int?>(null) }
-    var mainEpisodes by remember { mutableStateOf<List<BangumiUserEpisodeCollection>>(emptyList()) }
-    var isEpisodeProgressUnavailable by remember { mutableStateOf(false) }
-    var savedEpisodeProgress by remember { mutableIntStateOf(0) }
-    var savedRegularEpisodeProgress by remember { mutableIntStateOf(0) }
-    var draftEpisodeProgress by remember { mutableIntStateOf(0) }
     var isStatusDropdownVisible by remember { mutableStateOf(false) }
     var statusDropdownRect by remember { mutableStateOf(Rect.Zero) }
     var isProgressExpanded by remember { mutableStateOf(false) }
     var activityHistoryRevision by remember { mutableIntStateOf(0) }
     var editingWatchRecord by remember { mutableStateOf<ItemActivityRecord?>(null) }
     var editingWatchAmount by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(subjectId) {
-        detailViewModel.load(subjectId)
+        detailViewModel.load(subjectId, context, subjectName, subjectNameCn, subjectImage)
     }
-
     LaunchedEffect(initialCoverImage) {
         if (initialCoverImage != null) {
             delay(160)
             animateLoadingSkeleton = true
         }
     }
-
-    LaunchedEffect(detailUiState) {
-        isLoading = detailUiState.isLoading
-        if (detailUiState.isLoading) return@LaunchedEffect
-        val loadedDetail = detailUiState.detail
-        val loadedPersons = detailUiState.persons
-        val loadedCharacters = detailUiState.characters
-        val loadedEpisodePage = detailUiState.episodes
-        val loadedLegacySubject = detailUiState.legacySubject
-        val loadedSubjectRelations = detailUiState.relatedSubjects
-        detail = loadedDetail
-        subjectPersons = loadedPersons
-        subjectCharacters = loadedCharacters
-        sequelSubjects = loadedSubjectRelations.filter { relatedSubject ->
-            relatedSubject.type == 2 &&
-                relatedSubject.relation?.trim() in setOf("续集", "續集")
-        }
-        characterChineseNames.clear()
-        characterChineseNames.putAll(loadedLegacySubject?.crt.orEmpty()
-            .mapNotNull { character ->
-                val id = character.id ?: return@mapNotNull null
-                val name = character.name_cn?.trim()?.takeIf { it.isNotEmpty() }
-                    ?: return@mapNotNull null
-                id to name
-            }
-            .toMap())
-        characterCardInfo.clear()
-        actorChineseNames.clear()
-        mainEpisodeCount = loadedEpisodePage?.total?.takeIf { it > 0 }
-        mainEpisodes = loadedEpisodePage?.data.orEmpty()
-            .sortedWith(compareBy(
-                { it.ep ?: Double.MAX_VALUE },
-                { it.sort ?: Double.MAX_VALUE }
-            ))
-            .map { BangumiUserEpisodeCollection(episode = it, type = 0) }
-        isLoading = false
-        if (loadedDetail == null) {
-            Toast.makeText(context, detailLoadFailedText, Toast.LENGTH_SHORT).show()
-        }
-        val token = UserPrefs.getBangumiAccessToken(context)
-        if (token.isNotEmpty()) {
-            val collectionResult = runCatchingCancellable {
-                BangumiAuthSession.execute(context) { service ->
-                    var username = UserPrefs.getBangumiUsername(context)
-                    if (username.isBlank()) {
-                        username = service.getCurrentUser().username
-                        UserPrefs.setBangumiUsername(context, username)
-                    }
-                    val collection = service.getMyCollection(username, subjectId)
-                    val episodes = try {
-                        service.getEpisodeCollections(subjectId)
-                    } catch (error: HttpException) {
-                        if (error.code() == 401) throw error
-                        null
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (_: Exception) {
-                        null
-                    }
-                    Triple(username, collection, episodes)
-                }
-            }
-            val loadedCollection = collectionResult.getOrNull()
-            if (loadedCollection != null) {
-                val (username, collection, loadedEpisodes) = loadedCollection
-                val preferredTagOrder = withContext(Dispatchers.IO) {
-                    BangumiTagOrder.get(context, username, subjectId)
-                }
-                val orderedCollection = collection.copy(
-                    tags = BangumiTagOrder.restore(collection.tags, preferredTagOrder)
-                )
-                myCollection = orderedCollection
-                draftType = orderedCollection.type ?: 1
-                draftRate = orderedCollection.rate ?: 0
-                val orderedTagText = orderedCollection.tags.orEmpty().joinToString(", ")
-                draftTags = TextFieldValue(
-                    text = orderedTagText,
-                    selection = TextRange(orderedTagText.length)
-                )
-                draftComment = orderedCollection.comment.orEmpty()
-                savedEpisodeProgress = orderedCollection.ep_status ?: 0
-                savedRegularEpisodeProgress = savedEpisodeProgress
-                draftEpisodeProgress = savedEpisodeProgress
-                if (loadedEpisodes != null) {
-                    mainEpisodes = loadedEpisodes.data.orEmpty()
-                        .sortedWith(compareBy(
-                            { it.episode.ep ?: Double.MAX_VALUE },
-                            { it.episode.sort ?: Double.MAX_VALUE }
-                        ))
-                    savedRegularEpisodeProgress = mainEpisodes.count { it.type == 2 }
-                    savedEpisodeProgress = savedRegularEpisodeProgress
-                    draftEpisodeProgress = savedRegularEpisodeProgress
-                } else {
-                    isEpisodeProgressUnavailable = true
-                }
-            } else {
-                val error = collectionResult.exceptionOrNull()
-                if ((error as? HttpException)?.code() != 404) {
-                    val message = if ((error as? HttpException)?.code() == 401) {
-                        authorizationExpiredText
-                    } else {
-                        collectionLoadFailedText
-                    }
-                    Toast.makeText(
-                        context,
-                        message,
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }
-        isCollectionLoaded = true
+    LaunchedEffect(detailUiState.draft.tags) {
+        val text = detailUiState.draft.tags
+        if (draftTags.text != text) draftTags = TextFieldValue(text, TextRange(text.length))
     }
-
-    LaunchedEffect(draftType, mainEpisodes.size, isCollectionLoaded) {
-        if (isCollectionLoaded && draftType == 2 && mainEpisodes.isNotEmpty()) {
-            draftEpisodeProgress = mainEpisodes.size
-        }
-    }
-
-    val coroutineScope = rememberCoroutineScope()
-
-    fun loadMyTagSuggestions() {
-        if (hasRequestedMyTags || isMyTagsLoading) return
-        val token = UserPrefs.getBangumiAccessToken(context)
-        if (token.isEmpty()) return
-        hasRequestedMyTags = true
-        isMyTagsLoading = true
-        coroutineScope.launch {
-            var username = UserPrefs.getBangumiUsername(context)
-            val cachedTagGroups = withContext(Dispatchers.IO) {
-                val collectionTags = if (username.isBlank()) {
-                    emptyList()
-                } else {
-                    BangumiPageCache.load(context, username)
-                        ?.collections
-                        .orEmpty()
-                        .values
-                        .flatten()
-                        .map { it.tags.orEmpty() }
-                }
-                val locallyOrderedTags = if (username.isBlank()) {
-                    emptyList()
-                } else {
-                    BangumiTagOrder.snapshot(context, username).values.toList()
-                }
-                collectionTags + locallyOrderedTags
-            }
-            myTagSuggestions = rankBangumiTags(cachedTagGroups)
-
-            val remoteTagGroups = runCatchingCancellable {
-                BangumiAuthSession.execute(context) { service ->
-                    if (username.isBlank()) {
-                        username = service.getCurrentUser().username
-                        UserPrefs.setBangumiUsername(context, username)
-                    }
-                    val result = mutableListOf<List<String>>()
-                    var offset = 0
-                    while (true) {
-                        val page = service.getUserCollections(
-                            username = username,
-                            subjectType = 2,
-                            collectionType = null,
-                            limit = 50,
-                            offset = offset
-                        )
-                        val collections = page.data.orEmpty()
-                        result += collections.map { it.tags.orEmpty() }
-                        if (collections.isEmpty() || offset + collections.size >= page.total) {
-                            break
-                        }
-                        offset += collections.size
-                    }
-                    result
-                }
-            }.getOrDefault(emptyList())
-            myTagSuggestions = appendNewBangumiTags(
-                existing = myTagSuggestions,
-                incoming = rankBangumiTags(remoteTagGroups + cachedTagGroups)
-            )
-            isMyTagsLoading = false
-        }
-    }
-
-    fun saveCollection() {
-        val token = UserPrefs.getBangumiAccessToken(context)
-        if (token.isEmpty() || isSaving || draftType == 0) return
-        val tags = draftTags.text
-            .split(Regex("[,，\\s]+"))
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .distinctBy { it.lowercase() }
-        val previousApiType = myCollection?.type ?: 0
-        val targetApiType = draftType
-        val previousRegularProgress = savedRegularEpisodeProgress
-        isSaving = true
-        coroutineScope.launch {
-            try {
-                BangumiAuthSession.execute(context) { service ->
-                    var username = UserPrefs.getBangumiUsername(context)
-                    if (username.isBlank()) {
-                        username = service.getCurrentUser().username
-                        UserPrefs.setBangumiUsername(context, username)
-                    }
-                    val trimmedComment = draftComment.trim()
-                    val isPrivate = myCollection?.private ?: false
-                    val legacyStatus = legacyBangumiCollectionStatus(targetApiType)
-                    val legacySaved = legacyStatus != null && runCatchingCancellable {
-                        val legacyResponse = service.updateCollectionLegacy(
-                            subjectId = subjectId,
-                            appId = AppConfig.BANGUMI_CLIENT_ID,
-                            status = legacyStatus,
-                            tags = tags.joinToString(" "),
-                            comment = trimmedComment,
-                            rating = draftRate,
-                            privacy = if (isPrivate) 1 else 0
-                        )
-                        if (
-                            !legacyResponse.isSuccessful ||
-                            legacyResponse.body()?.code != null ||
-                            legacyResponse.body()?.error != null
-                        ) {
-                            return@runCatchingCancellable false
-                        }
-                        val verified = service.getMyCollection(username, subjectId)
-                        verified.type == targetApiType &&
-                            verified.rate == draftRate &&
-                            verified.comment.orEmpty() == trimmedComment &&
-                            verified.private == isPrivate &&
-                            BangumiTagOrder.hasSameOrder(verified.tags, tags)
-                    }.getOrDefault(false)
-
-                    if (!legacySaved) {
-                        val response = service.updateCollection(
-                            subjectId,
-                            BangumiCollectionUpdate(
-                                type = targetApiType,
-                                rate = draftRate,
-                                comment = trimmedComment,
-                                tags = tags,
-                                `private` = isPrivate
-                            )
-                        )
-                        if (!response.isSuccessful) throw HttpException(response)
-                    }
-                    withContext(Dispatchers.IO) {
-                        BangumiTagOrder.save(context, username, subjectId, tags)
-                    }
-
-                    val episodesForSave = if (targetApiType == 2 && mainEpisodes.isEmpty()) {
-                        runCatchingCancellable {
-                            service.getEpisodeCollections(subjectId).data.orEmpty()
-                                .sortedWith(compareBy(
-                                    { it.episode.ep ?: Double.MAX_VALUE },
-                                    { it.episode.sort ?: Double.MAX_VALUE }
-                                ))
-                        }.getOrDefault(emptyList())
-                    } else {
-                        mainEpisodes
-                    }
-                    val targetEpisodeProgress = if (targetApiType == 2) {
-                        episodesForSave.size
-                    } else {
-                        draftEpisodeProgress
-                    }
-                    val boundedEpisodeProgress = targetEpisodeProgress.coerceIn(
-                        0,
-                        episodesForSave.size
-                    )
-                    val boundedSavedProgress = savedEpisodeProgress.coerceIn(
-                        0,
-                        episodesForSave.size
-                    )
-                    val changedEpisodes = when {
-                        targetApiType == 2 ->
-                            episodesForSave.filter { it.type != 2 } to 2
-                        boundedEpisodeProgress > boundedSavedProgress ->
-                            episodesForSave.subList(
-                                boundedSavedProgress,
-                                boundedEpisodeProgress
-                            ) to 2
-                        boundedEpisodeProgress < boundedSavedProgress ->
-                            episodesForSave.subList(
-                                boundedEpisodeProgress,
-                                boundedSavedProgress
-                            ) to 0
-                        else -> emptyList<BangumiUserEpisodeCollection>() to 0
-                    }
-                    if (changedEpisodes.first.isNotEmpty()) {
-                        val episodeResponse = service.updateEpisodeCollections(
-                            subjectId,
-                            BangumiEpisodeCollectionUpdate(
-                                episode_id = changedEpisodes.first.map { it.episode.id },
-                                type = changedEpisodes.second
-                            )
-                        )
-                        if (!episodeResponse.isSuccessful) throw HttpException(episodeResponse)
-                    }
-                    val changedEpisodeIds = changedEpisodes.first
-                        .mapTo(hashSetOf()) { it.episode.id }
-                    val updatedEpisodes = episodesForSave.map { episode ->
-                        val type = if (episode.episode.id in changedEpisodeIds) {
-                            changedEpisodes.second
-                        } else {
-                            episode.type
-                        }
-                        episode.copy(type = type)
-                    }
-                    val currentWatchedEpisodeIds = updatedEpisodes.mapNotNull { episode ->
-                        episode.episode.id.takeIf { episode.type == 2 }
-                    }
-
-                    val refreshedCollection = service.getMyCollection(username, subjectId)
-                    val recordedEpisodeProgress = if (targetApiType == 2) {
-                        resolvedCompletedEpisodeCount(
-                            loadedEpisodeCount = episodesForSave.size,
-                            episodePageTotal = mainEpisodeCount,
-                            subjectEpisodeCount = detail?.eps,
-                            collectionEpisodeCount = refreshedCollection.ep_status
-                        )
-                    } else {
-                        boundedEpisodeProgress
-                    }
-                    val orderedTags = BangumiTagOrder.restore(refreshedCollection.tags, tags)
-                    myCollection = refreshedCollection.copy(tags = orderedTags)
-                    val orderedTagText = orderedTags.orEmpty().joinToString(", ")
-                    draftTags = TextFieldValue(
-                        text = orderedTagText,
-                        selection = TextRange(orderedTagText.length)
-                    )
-                    val knownSuggestionKeys = myTagSuggestions
-                        .map { it.lowercase(Locale.ROOT) }
-                        .toSet()
-                    myTagSuggestions = myTagSuggestions + orderedTags.orEmpty().filter {
-                        it.lowercase(Locale.ROOT) !in knownSuggestionKeys
-                    }
-                    withContext(Dispatchers.IO) {
-                        ActivityStats.recordBangumiSave(
-                            context = context,
-                            subjectId = subjectId,
-                            title = detail?.name ?: subjectName,
-                            secondaryTitle = detail?.name_cn ?: subjectNameCn,
-                            imageUrl = detail?.images?.large
-                                ?: detail?.images?.common
-                                ?: subjectImage,
-                            previousApiType = previousApiType,
-                            currentApiType = targetApiType,
-                            previousEpisodes = previousRegularProgress,
-                            currentEpisodes = recordedEpisodeProgress,
-                            currentEpisodeIds = currentWatchedEpisodeIds
-                        )
-                    }
-                    activityHistoryRevision++
-                    mainEpisodes = updatedEpisodes
-                    savedRegularEpisodeProgress = recordedEpisodeProgress
-                    savedEpisodeProgress = recordedEpisodeProgress
-                    draftEpisodeProgress = savedEpisodeProgress
-                    val refreshedSubject = refreshedCollection.subject ?: detail?.let {
-                        BangumiSubject(
-                            id = subjectId,
-                            name = it.name ?: subjectName,
-                            name_cn = it.name_cn ?: subjectNameCn,
-                            type = it.type ?: 2,
-                            summary = it.summary,
-                            eps = it.eps,
-                            total_episodes = it.total_episodes,
-                            rating = it.rating,
-                            images = it.images,
-                            date = it.date,
-                            tags = it.tags
-                        )
-                    }
-                    val cachedCollection = BangumiCollection(
-                        subject_id = refreshedCollection.subject_id ?: subjectId,
-                        subject_type = refreshedCollection.subject_type ?: 2,
-                        rate = refreshedCollection.rate ?: draftRate,
-                        type = bangumiCollectionTypeToUi(
-                            refreshedCollection.type ?: targetApiType
-                        ),
-                        comment = refreshedCollection.comment,
-                        tags = orderedTags,
-                        ep_status = recordedEpisodeProgress,
-                        vol_status = refreshedCollection.vol_status ?: 0,
-                        updated_at = refreshedCollection.updated_at,
-                        `private` = refreshedCollection.private ?: false,
-                        subject = refreshedSubject
-                    )
-                    withContext(Dispatchers.IO) {
-                        BangumiPageCache.updateCollection(
-                            context = context,
-                            username = username,
-                            collection = cachedCollection,
-                            rating = normalizeBangumiScore(refreshedSubject?.rating),
-                            episodeTotal = mainEpisodeCount
-                                ?: episodesForSave.size.takeIf { it > 0 }
-                                ?: detail?.eps,
-                            watchedEpisodeCount = recordedEpisodeProgress
-                        )
-                    }
-                    BangumiViewModel.collectionChanged = true
-                    Toast.makeText(
-                        context,
-                        collectionSavedText,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (e: Exception) {
-                val message = if ((e as? HttpException)?.code() == 401) {
-                    authorizationExpiredText
-                } else {
-                    collectionSaveFailedText
-                }
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }
-            isSaving = false
+    val message = detailUiState.messages.firstOrNull()
+    LaunchedEffect(message?.id) {
+        if (message != null) {
+            Toast.makeText(context, message.resourceId,
+                if (message.longDuration) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+            detailViewModel.consumeMessage(message.id)
         }
     }
 
@@ -633,7 +224,8 @@ internal fun BangumiDetailScreen(
     val watchRecords by produceState<List<ItemActivityRecord>>(
         initialValue = emptyList(),
         subjectId,
-        activityHistoryRevision
+        activityHistoryRevision,
+        detailUiState.saveRevision
     ) {
         value = withContext(Dispatchers.IO) {
             ActivityStats.getAnimeRecords(context, subjectId)
@@ -683,7 +275,7 @@ internal fun BangumiDetailScreen(
                         )
                     }
                 } else if (detail != null) {
-                    val d = detail ?: return@Crossfade
+                    val d = detail
                     val chapterCount = mainEpisodes.size.takeIf { it > 0 }
                         ?: mainEpisodeCount
                         ?: d.eps?.takeIf { it > 0 }
@@ -1092,7 +684,7 @@ internal fun BangumiDetailScreen(
                                                                 contentDescription = episodeDecreaseDescription
                                                             }
                                                             .noRippleClickable {
-                                                                if (canDecrease) draftEpisodeProgress--
+                                                                if (canDecrease) detailViewModel.updateEpisodeProgress(draftEpisodeProgress - 1)
                                                             },
                                                         contentAlignment = Alignment.Center
                                                     ) {
@@ -1145,7 +737,7 @@ internal fun BangumiDetailScreen(
                                                             contentDescription = episodeIncreaseDescription
                                                         }
                                                         .noRippleClickable {
-                                                            if (canIncrease) draftEpisodeProgress++
+                                                            if (canIncrease) detailViewModel.updateEpisodeProgress(draftEpisodeProgress + 1)
                                                         }
                                                 )
                                             }
@@ -1220,7 +812,7 @@ internal fun BangumiDetailScreen(
                                                             contentDescription = ratingDescription
                                                         }
                                                         .noRippleClickable {
-                                                            draftRate = if (draftRate == i) 0 else i
+                                                            detailViewModel.updateRate(if (draftRate == i) 0 else i)
                                                         },
                                                     horizontalAlignment = Alignment.CenterHorizontally,
                                                     verticalArrangement = Arrangement.Top
@@ -1254,7 +846,10 @@ internal fun BangumiDetailScreen(
 
                                     TextField(
                                         value = draftTags,
-                                        onValueChange = { draftTags = it },
+                                        onValueChange = {
+                                            draftTags = it
+                                            detailViewModel.updateTags(it.text)
+                                        },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .onGloballyPositioned { coords ->
@@ -1269,7 +864,7 @@ internal fun BangumiDetailScreen(
                                             }
                                             .onFocusChanged {
                                                 isTagInputFocused = it.isFocused
-                                                if (it.isFocused) loadMyTagSuggestions()
+                                                if (it.isFocused) detailViewModel.loadTagSuggestions()
                                             },
                                         label = stringResource(R.string.bangumi_tags_hint),
                                         useLabelAsPlaceholder = true,
@@ -1279,7 +874,7 @@ internal fun BangumiDetailScreen(
 
                                     TextField(
                                         value = draftComment,
-                                        onValueChange = { draftComment = it },
+                                        onValueChange = detailViewModel::updateComment,
                                         modifier = Modifier.fillMaxWidth(),
                                         label = stringResource(R.string.bangumi_comment_hint),
                                         useLabelAsPlaceholder = true,
@@ -1307,7 +902,7 @@ internal fun BangumiDetailScreen(
                                             .motionClickable(
                                                 enabled = !isSaving && draftType != 0,
                                                 pressedScale = 0.98f,
-                                                onClick = { saveCollection() }
+                                                onClick = detailViewModel::saveCollection
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1899,6 +1494,7 @@ internal fun BangumiDetailScreen(
                                                         value = draftTags,
                                                         tag = tag
                                                     )
+                                                    detailViewModel.updateTags(draftTags.text)
                                                 }
                                             }
                                             .padding(
@@ -1974,10 +1570,7 @@ internal fun BangumiDetailScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .motionClickable {
-                                                draftType = apiType
-                                                if (apiType == 2 && mainEpisodes.isNotEmpty()) {
-                                                    draftEpisodeProgress = mainEpisodes.size
-                                                }
+                                                detailViewModel.updateType(apiType)
                                                 isStatusDropdownVisible = false
                                             }
                                             .padding(
@@ -2155,43 +1748,6 @@ private fun copyAnimationCompany(context: Context, companyName: String) {
     ).show()
 }
 
-private fun rankBangumiTags(tagGroups: Iterable<List<String>>): List<String> {
-    val labels = linkedMapOf<String, String>()
-    val counts = mutableMapOf<String, Int>()
-    val firstSeen = mutableMapOf<String, Int>()
-    var nextOrder = 0
-    tagGroups.forEach { tags ->
-        tags.asSequence()
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .distinctBy { it.lowercase(Locale.ROOT) }
-            .forEach { tag ->
-                val key = tag.lowercase(Locale.ROOT)
-                labels.putIfAbsent(key, tag)
-                counts[key] = counts.getOrDefault(key, 0) + 1
-                firstSeen.putIfAbsent(key, nextOrder++)
-            }
-    }
-    return labels.keys
-        .sortedWith(
-            compareByDescending<String> { counts.getOrDefault(it, 0) }
-                .thenBy { firstSeen.getOrDefault(it, Int.MAX_VALUE) }
-        )
-        .mapNotNull(labels::get)
-}
-
-private fun appendNewBangumiTags(
-    existing: List<String>,
-    incoming: List<String>
-): List<String> = buildList {
-    addAll(existing)
-    val existingKeys = existing
-        .mapTo(mutableSetOf()) { it.trim().lowercase(Locale.ROOT) }
-    incoming.forEach { tag ->
-        if (existingKeys.add(tag.trim().lowercase(Locale.ROOT))) add(tag)
-    }
-}
-
 private fun insertTagAtSelection(
     value: TextFieldValue,
     tag: String
@@ -2224,18 +1780,6 @@ private fun insertTagAtSelection(
         selection = TextRange(updatedCursor)
     )
 }
-
-internal fun resolvedCompletedEpisodeCount(
-    loadedEpisodeCount: Int,
-    episodePageTotal: Int?,
-    subjectEpisodeCount: Int?,
-    collectionEpisodeCount: Int?
-): Int = sequenceOf(
-    loadedEpisodeCount,
-    episodePageTotal,
-    subjectEpisodeCount,
-    collectionEpisodeCount
-).filterNotNull().firstOrNull { it > 0 } ?: 0
 
 @Composable
 private fun ProgressSectionHeader(
@@ -2341,13 +1885,4 @@ private fun SoftRatingStar(
             )
         }
     }
-}
-
-private fun legacyBangumiCollectionStatus(apiType: Int): String? = when (apiType) {
-    1 -> "wish"
-    2 -> "collect"
-    3 -> "do"
-    4 -> "on_hold"
-    5 -> "dropped"
-    else -> null
 }

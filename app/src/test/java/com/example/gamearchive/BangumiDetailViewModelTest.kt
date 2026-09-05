@@ -37,7 +37,8 @@ class BangumiDetailViewModelTest {
 
         assertEquals(42, state.detail?.id)
         assertEquals(emptyList<BangumiPerson>(), state.persons)
-        assertNull(state.episodes)
+        assertNull(state.collection.episodeCount)
+        assertEquals(emptyList<BangumiUserEpisodeCollection>(), state.collection.episodes)
         assertFalse(state.isLoading)
     }
 

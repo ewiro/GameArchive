@@ -45,4 +45,18 @@ class ActivityStatsTest {
         assertEquals("2", formatEpisodeAmount(2.0))
         assertEquals("1.5", formatEpisodeAmount(1.5))
     }
+
+    @Test
+    fun repeatingCompletedCollectionSaveDoesNotAddActivity() {
+        ActivityStats.recordBangumiSave(
+            context, 42, "Subject", "", "", 3, 2, 1, 3, listOf(1, 2, 3)
+        )
+        val firstSave = ActivityStats.getAnimeRecords(context, 42)
+        assertEquals(2.0, firstSave.sumOf { it.amount }, 0.0)
+
+        ActivityStats.recordBangumiSave(
+            context, 42, "Subject", "", "", 2, 2, 3, 3, listOf(1, 2, 3)
+        )
+        assertEquals(firstSave, ActivityStats.getAnimeRecords(context, 42))
+    }
 }
