@@ -15,11 +15,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
@@ -42,8 +39,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
@@ -90,17 +85,9 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurBlendMode
-import top.yukonga.miuix.kmp.blur.BlurDefaults
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
-import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.icon.basic.*
@@ -108,7 +95,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.io.File
 import java.util.Calendar
 import java.util.Locale
-import kotlin.math.abs
 
 internal const val PORTRAIT_COVER_ASPECT_RATIO = 2f / 3f
 internal val BANGUMI_GRID_HORIZONTAL_PADDING = 18.dp
@@ -198,7 +184,6 @@ internal fun MainScreen() {
     val pagerState = rememberPagerState(pageCount = { pageCount })
     var showSpecialsPage by remember { mutableStateOf(false) }
     var showActivityPage by remember { mutableStateOf(false) }
-    var bottomBarVisible by remember { mutableStateOf(true) }
     val selectedTab = pagerState.currentPage
     val displayStyle = ThemeUtils.getDisplayStyle(context)
     val coverMotion = rememberCoverMotion(
@@ -283,34 +268,6 @@ internal fun MainScreen() {
         }
     }
 
-    // 滑动检测：仅顶部显示栏，离开顶部即隐藏，回到顶部显示
-    LaunchedEffect(activeListState, selectedTab) {
-        bottomBarVisible = true
-        snapshotFlow { activeListState.firstVisibleItemIndex }
-            .distinctUntilChanged()
-            .collect { index ->
-                bottomBarVisible = index == 0
-            }
-    }
-
-    val scope = rememberCoroutineScope()
-    val navigateToPage: (Int) -> Unit = { targetPage ->
-        if (targetPage != pagerState.currentPage) {
-            scope.launch {
-                if (abs(targetPage - pagerState.currentPage) == 1) {
-                    pagerState.animateScrollToPage(
-                        page = targetPage,
-                        animationSpec = tween(
-                            durationMillis = DesignTokens.AnimDuration,
-                            easing = FastOutSlowInEasing
-                        )
-                    )
-                } else {
-                    pagerState.scrollToPage(targetPage)
-                }
-            }
-        }
-    }
     BackHandler(enabled = showSpecialsPage) {
         showSpecialsPage = false
     }
@@ -377,37 +334,8 @@ internal fun MainScreen() {
             }
         }
 
-    // 动画偏移量
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val bottomBarOffsetY by animateDpAsState(
-        targetValue = if (bottomBarVisible) 0.dp else 60.dp,
-        animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing)
-    )
-
     Surface(modifier = Modifier.fillMaxSize()) {
-    val blurSupported = isRuntimeShaderSupported()
-    val pageBackgroundColor = MiuixTheme.colorScheme.background
-    val bottomBarBackdrop = if (blurSupported) {
-        rememberLayerBackdrop {
-            drawRect(pageBackgroundColor)
-            drawContent()
-        }
-    } else {
-        null
-    }
     Box(modifier = Modifier.fillMaxSize()) {
-    Box(
-        modifier = Modifier
-            .matchParentSize()
-            .then(
-                if (bottomBarBackdrop != null) {
-                    Modifier.layerBackdrop(bottomBarBackdrop)
-                } else {
-                    Modifier
-                }
-            )
-    ) {
-
         // ── 内容层：特惠与记录独立打开，主分页仅包含游戏和动漫 ──
         if (showSpecialsPage) {
             SpecialsScreen(
@@ -435,7 +363,6 @@ internal fun MainScreen() {
                 0 -> LibraryScreen(
                     listState = libraryListState,
                     coverMotion = coverMotion,
-                    showBottomBar = bangumiEnabled,
                     onNavigateToDetail = navigateToDetail,
                     onNavigateToSettings = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
@@ -564,138 +491,6 @@ internal fun MainScreen() {
                 topBarContent()
             }
         }
-    }
-
-        // ── 底栏叠加层（仅游戏和动漫主页显示） ──
-        if (!showSpecialsPage && !showActivityPage && bangumiEnabled) {
-        val bottomBarTint = MiuixTheme.colorScheme.surface.copy(
-            alpha = if (isAppInDarkTheme()) 0.62f else 0.72f
-        )
-        val bottomBarShape = RoundedCornerShape(
-            topStart = DesignTokens.CornerXLarge,
-            topEnd = DesignTokens.CornerXLarge,
-            bottomStart = 0.dp,
-            bottomEnd = 0.dp
-        )
-        val bottomBarBlurColors = if (bottomBarBackdrop != null) {
-            BlurDefaults.blurColors(
-                blendColors = listOf(
-                    BlendColorEntry(bottomBarTint, BlurBlendMode.SrcOver)
-                ),
-                saturation = 1.1f
-            )
-        } else {
-            null
-        }
-        val bottomBarBackgroundModifier = if (bottomBarBackdrop != null) {
-            Modifier.textureBlur(
-                backdrop = bottomBarBackdrop,
-                shape = bottomBarShape,
-                blurRadius = 24f,
-                colors = bottomBarBlurColors!!
-            )
-        } else {
-            Modifier.background(bottomBarTint, bottomBarShape)
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(DesignTokens.BottomBarHeight)
-                .clickable(enabled = false, onClick = {})
-                .graphicsLayer {
-                    translationY = with(density) { bottomBarOffsetY.toPx() }
-                    alpha = 0.999f
-                }
-        ) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(bottomBarShape)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .then(bottomBarBackgroundModifier)
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .blur(1.dp, BlurredEdgeTreatment.Unbounded)
-                        .background(bottomBarTint)
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(DesignTokens.BottomBarHeight)
-                    .padding(bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 库存 Tab
-                val tabAnim0 by animateFloatAsState(
-                    targetValue = if (selectedTab == 0) 1f else 0f,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-                    label = "tab_anim_0"
-                )
-                Column(
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = 0.85f + 0.15f * tabAnim0
-                            scaleY = 0.85f + 0.15f * tabAnim0
-                        }
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                            navigateToPage(0)
-                        }
-                        .padding(horizontal = 24.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Image(
-                        imageVector = if (selectedTab == 0) MiuixIcons.Demibold.Home else MiuixIcons.Light.Home,
-                        contentDescription = stringResource(R.string.nav_library),
-                        modifier = Modifier.size(DesignTokens.IconXl),
-                        colorFilter = ColorFilter.tint(if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
-                    )
-                    Text(text = stringResource(R.string.nav_library), fontSize = DesignTokens.TextCaption.sp,
-                        color = if (selectedTab == 0) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
-                }
-                // 动漫 Tab
-                if (bangumiEnabled) {
-                val tabAnimBgm by animateFloatAsState(
-                    targetValue = if (selectedTab == bangumiPage) 1f else 0f,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-                    label = "tab_anim_bgm"
-                )
-                Column(
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = 0.85f + 0.15f * tabAnimBgm
-                            scaleY = 0.85f + 0.15f * tabAnimBgm
-                        }
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                            navigateToPage(bangumiPage)
-                        }
-                        .padding(horizontal = 24.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Image(
-                        imageVector = if (selectedTab == bangumiPage) MiuixIcons.Demibold.Album else MiuixIcons.Light.Album,
-                        contentDescription = stringResource(R.string.nav_bangumi),
-                        modifier = Modifier.size(DesignTokens.IconXl),
-                        colorFilter = ColorFilter.tint(if (selectedTab == bangumiPage) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
-                    )
-                    Text(text = stringResource(R.string.nav_bangumi), fontSize = DesignTokens.TextCaption.sp,
-                        color = if (selectedTab == bangumiPage) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityInactive))
-                }
-                }
-            }
-        }
-        }
-
     } // Box
     } // Surface
 }
@@ -706,7 +501,6 @@ internal fun MainScreen() {
 private fun LibraryScreen(
     listState: LazyListState,
     coverMotion: State<CoverMotion>,
-    showBottomBar: Boolean,
     onNavigateToDetail: (Int, String, String) -> Unit,
     onNavigateToSettings: () -> Unit,
     viewModel: LibraryViewModel = viewModel()
@@ -941,7 +735,7 @@ private fun LibraryScreen(
             state = listState,
             modifier = refreshContentModifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                bottom = if (showBottomBar) 72.dp else DesignTokens.SpaceXl
+                bottom = DesignTokens.SpaceXl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             )
         ) {
             item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
@@ -2868,7 +2662,9 @@ private fun BangumiPage(
         LazyColumn(
             state = listState,
             modifier = refreshContentModifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 72.dp)
+            contentPadding = PaddingValues(
+                bottom = DesignTokens.SpaceXl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            )
         ) {
             item("top_spacer") { Spacer(Modifier.height(topBarInsetDp)) }
             item("bgm_profile_space") { Spacer(Modifier.height(profileAreaHeight)) }

@@ -12,7 +12,6 @@
     <string name="login_success">Login successful</string>
 
     <!-- Bottom Navigation -->
-    <string name="nav_library">Games</string>
     <string name="nav_specials">Specials</string>
     <string name="nav_activity">Activity</string>
 
@@ -197,7 +196,6 @@
     <string name="game_restore_default">Restore Default</string>
 
     <!-- Bangumi -->
-    <string name="nav_bangumi">Anime</string>
     <string name="settings_bangumi">Anime Page</string>
     <string name="settings_bangumi_show_rating">Anime Rating</string>
     <string name="settings_bangumi_rating_all">Show Rating</string>

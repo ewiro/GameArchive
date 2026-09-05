@@ -180,7 +180,6 @@ object DesignTokens {
     // ═══════════════════ 组件尺寸 ═══════════════════
 
     // 导航栏（顶栏高度各自 Activity 决定：主页 48dp，详情/设置 52dp）
-    val BottomBarHeight = 56.dp
 
     // 按钮
     val ButtonHeight      = 48.dp   // 主操作按钮
