@@ -98,7 +98,7 @@ private fun tagAlphabetGroup(tag: String, collator: Collator): Char {
 private data class MediaItem(val url: String, val thumbnailUrl: String, val isVideo: Boolean)
 
 @Composable
-internal fun DetailScreen(appId: Int, appName: String, price: String, onBack: () -> Unit) {
+internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStore: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val detailViewModel: DetailViewModel = viewModel()
     val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
@@ -872,9 +872,17 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onBack: ()
                     fontSize = DesignTokens.TextTitle.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(end = 48.dp)
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
                         .noRippleClickable { renameText = gameName; showRenameDialog = true }
                 )
+                IconButton(onClick = onOpenStore) {
+                    Image(
+                        imageVector = MiuixIcons.Demibold.Store,
+                        contentDescription = stringResource(R.string.detail_open_steam_store),
+                        modifier = Modifier.size(DesignTokens.IconXl),
+                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
+                    )
+                }
             }
         }
     } // close Box

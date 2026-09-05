@@ -91,6 +91,7 @@
     <string name="detail_developer">Developer</string>
     <string name="detail_release_date">Release Date</string>
     <string name="detail_unknown">Unknown</string>
+    <string name="detail_open_steam_store">Open Steam Store</string>
 
     <!-- Reviews -->
     <string name="review_recommended">Recommended</string>

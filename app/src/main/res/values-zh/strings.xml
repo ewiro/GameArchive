@@ -91,6 +91,7 @@
     <string name="detail_developer">开发商</string>
     <string name="detail_release_date">发行日期</string>
     <string name="detail_unknown">未知</string>
+    <string name="detail_open_steam_store">打开 Steam 商店</string>
 
     <!-- Reviews -->
     <string name="review_recommended">推荐</string>
