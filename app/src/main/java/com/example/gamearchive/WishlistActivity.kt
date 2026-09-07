@@ -220,7 +220,7 @@ private fun WishlistScreen(
                         Spacer(Modifier.width(DesignTokens.SpaceSm))
                         DropdownArrowEndAction(
                             actionColor = if (showSortOptions) {
-                                DesignTokens.AccentBlue
+                                MiuixTheme.colorScheme.primary
                             } else {
                                 MiuixTheme.colorScheme.onSurface.copy(
                                     alpha = DesignTokens.OpacityBody
@@ -250,6 +250,11 @@ private fun WishlistScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                    .background(
+                                        if (selected) MiuixTheme.colorScheme.tertiaryContainer
+                                        else Color.Transparent
+                                    )
                                     .motionClickable {
                                         sortMode = index
                                         showSortOptions = false
@@ -267,7 +272,7 @@ private fun WishlistScreen(
                                     fontSize = DesignTokens.TextBody1.sp,
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (selected) {
-                                        DesignTokens.AccentBlue
+                                        MiuixTheme.colorScheme.onTertiaryContainer
                                     } else {
                                         MiuixTheme.colorScheme.onSurface
                                     },
@@ -278,7 +283,7 @@ private fun WishlistScreen(
                                     contentDescription = null,
                                     modifier = Modifier.size(DesignTokens.IconMd),
                                     colorFilter = ColorFilter.tint(
-                                        if (selected) DesignTokens.AccentBlue else Color.Transparent
+                                        if (selected) MiuixTheme.colorScheme.onTertiaryContainer else Color.Transparent
                                     )
                                 )
                             }

@@ -90,6 +90,13 @@ object DesignTokens {
     /** Miuix HyperOS 蓝 — 强调色 (保留品牌标志) */
     val AccentBlue = Color(0xFF3482FF)
 
+    // ── 设置页分组点缀色（仅用于装饰标记，不承载状态） ──
+    val SettingsAppearanceAccent = Color(0xFF7E57C2)
+    val SettingsGameAccent       = AccentBlue
+    val SettingsAnimeAccent      = Color(0xFFFF8A34)
+    val SettingsAboutAccent      = Color(0xFF36A269)
+    val SettingsAccountsAccent   = Color(0xFFE85D8E)
+
     // ── 评价语义色 ──
     val ReviewGreat   = Color(0xFFE65100)  // ≥95%
     val ReviewGood    = Color(0xFF1565C0)  // ≥70%
@@ -323,7 +330,7 @@ fun ExpandableSectionTrigger(
     arrowColor: Color = MiuixTheme.colorScheme.onSurface.copy(
         alpha = DesignTokens.OpacityBody
     ),
-    expandedArrowColor: Color = DesignTokens.AccentBlue,
+    expandedArrowColor: Color = MiuixTheme.colorScheme.primary,
     content: @Composable RowScope.() -> Unit
 ) {
     val stateDescriptionText = stringResource(
@@ -636,11 +643,10 @@ fun SelectableIndicator(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    val isDark = isSystemInDarkTheme()
+    val checkColor = MiuixTheme.colorScheme.onPrimary
     val indicatorColor = when {
         !enabled -> MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled)
-        selected -> if (isDark) MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityEmphasis)
-                    else DesignTokens.AccentBlue
+        selected -> MiuixTheme.colorScheme.primary
         else -> MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityHint)
     }
     Box(
@@ -668,7 +674,7 @@ fun SelectableIndicator(
                 }
                 drawPath(
                     path = path,
-                    color = Color.White,
+                    color = checkColor,
                     style = Stroke(
                         width = 2.dp.toPx(),
                         cap = StrokeCap.Round,

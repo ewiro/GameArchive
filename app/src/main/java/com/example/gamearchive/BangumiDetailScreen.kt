@@ -1203,7 +1203,7 @@ internal fun BangumiDetailScreen(
                                                 .padding(horizontal = DesignTokens.SpaceXs),
                                             fontSize = DesignTokens.TextBody2.sp,
                                             color = if (actor.id != null) {
-                                                DesignTokens.AccentBlue
+                                                MiuixTheme.colorScheme.primary
                                             } else {
                                                 dim
                                             },
@@ -1291,7 +1291,7 @@ internal fun BangumiDetailScreen(
                                                 text = displayValue,
                                                 fontSize = 13.sp,
                                                 color = if (isWebsite || isAnimationCompany) {
-                                                    DesignTokens.AccentBlue
+                                                    MiuixTheme.colorScheme.primary
                                                 } else {
                                                     MiuixTheme.colorScheme.onSurface
                                                 },
@@ -1486,7 +1486,11 @@ internal fun BangumiDetailScreen(
                                                 RoundedCornerShape(DesignTokens.CornerMedium)
                                             )
                                             .background(
-                                                MiuixTheme.colorScheme.secondaryContainer
+                                                if (selected) {
+                                                    MiuixTheme.colorScheme.tertiaryContainer
+                                                } else {
+                                                    MiuixTheme.colorScheme.secondaryContainer
+                                                }
                                             )
                                             .motionClickable {
                                                 if (!selected) {
@@ -1506,7 +1510,7 @@ internal fun BangumiDetailScreen(
                                             text = tag,
                                             fontSize = DesignTokens.TextBody2.sp,
                                             color = if (selected) {
-                                                DesignTokens.AccentBlue
+                                                MiuixTheme.colorScheme.onTertiaryContainer
                                             } else {
                                                 MiuixTheme.colorScheme.onSurface
                                             }

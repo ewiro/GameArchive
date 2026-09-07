@@ -1217,7 +1217,7 @@ private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
             text = "<",
             fontSize = DesignTokens.TextSubtitle.sp,
             fontWeight = FontWeight.Bold,
-            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityEmphasis),
+            color = MiuixTheme.colorScheme.primary,
             modifier = Modifier.graphicsLayer { rotationZ = rotation }
         )
         Spacer(Modifier.width(8.dp))
@@ -1238,21 +1238,29 @@ private fun MarkFilterChip(
     count: Int? = null,
     onClick: () -> Unit
 ) {
-    val textColor = if (selected && color != null) {
-        color
-    } else {
-        MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityEmphasis)
+    val textColor = when {
+        selected && color != null -> color
+        selected -> MiuixTheme.colorScheme.onTertiaryContainer
+        else -> MiuixTheme.colorScheme.onSurfaceContainerVariant
+    }
+    val containerColor = when {
+        selected && color != null -> color.copy(alpha = DesignTokens.OpacityChipBg)
+        selected -> MiuixTheme.colorScheme.tertiaryContainer
+        else -> MiuixTheme.colorScheme.surfaceContainerHigh
+    }
+    val borderColor = when {
+        selected && color != null -> color
+        selected -> MiuixTheme.colorScheme.primary
+        else -> MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled)
     }
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-            .background(
-                if (selected && color != null) color.copy(alpha = DesignTokens.OpacityChipBg)
-                else MiuixTheme.colorScheme.surface.copy(alpha = DesignTokens.OpacityInactive)
-            )
-            .then(
-                if (selected && color != null) Modifier.border(DesignTokens.BorderThick, color, RoundedCornerShape(DesignTokens.CornerLarge))
-                else Modifier.border(DesignTokens.BorderThin, MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled), RoundedCornerShape(DesignTokens.CornerLarge))
+            .background(containerColor)
+            .border(
+                if (selected) DesignTokens.BorderThick else DesignTokens.BorderThin,
+                borderColor,
+                RoundedCornerShape(DesignTokens.CornerLarge)
             )
             .motionClickable(pressedScale = 0.96f, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -1646,7 +1654,7 @@ private fun SortDialog(
                     ExpandableArrow(
                         expanded = showSortOptions,
                         color = if (showSortOptions) {
-                            DesignTokens.AccentBlue
+                            MiuixTheme.colorScheme.primary
                         } else {
                             MiuixTheme.colorScheme.onSurface.copy(
                                 alpha = DesignTokens.OpacityBody
@@ -1664,6 +1672,11 @@ private fun SortDialog(
                             val sel = currentSort == i
                             Row(
                                 modifier = Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                    .background(
+                                        if (sel) MiuixTheme.colorScheme.tertiaryContainer
+                                        else Color.Transparent
+                                    )
                                     .motionClickable {
                                         onSortSelected(i)
                                         showSortOptions = false
@@ -1674,7 +1687,7 @@ private fun SortDialog(
                                 Text(text = stringResource(resId),
                                     fontSize = DesignTokens.TextSubtitle.sp,
                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (sel) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                    color = if (sel) MiuixTheme.colorScheme.onTertiaryContainer else MiuixTheme.colorScheme.onSurface,
                                     softWrap = false,
                                     modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(32.dp))
@@ -1682,7 +1695,7 @@ private fun SortDialog(
                                 imageVector = MiuixIcons.Basic.Check,
                                 contentDescription = null,
                                 modifier = Modifier.size(DesignTokens.IconMd),
-                                colorFilter = ColorFilter.tint(if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                                colorFilter = ColorFilter.tint(if (sel) MiuixTheme.colorScheme.onTertiaryContainer else Color.Transparent)
                             )
                             }
                         }
@@ -1716,7 +1729,7 @@ private fun SortDialog(
                     ExpandableArrow(
                         expanded = showPriceOptions,
                         color = if (showPriceOptions) {
-                            DesignTokens.AccentBlue
+                            MiuixTheme.colorScheme.primary
                         } else {
                             MiuixTheme.colorScheme.onSurface.copy(
                                 alpha = DesignTokens.OpacityBody
@@ -1734,6 +1747,11 @@ private fun SortDialog(
                             val sel = currentPrice == i
                             Row(
                                 modifier = Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                    .background(
+                                        if (sel) MiuixTheme.colorScheme.tertiaryContainer
+                                        else Color.Transparent
+                                    )
                                     .motionClickable {
                                         onPriceSelected(i)
                                         showPriceOptions = false
@@ -1744,7 +1762,7 @@ private fun SortDialog(
                                 Text(text = label,
                                     fontSize = DesignTokens.TextSubtitle.sp,
                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (sel) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                    color = if (sel) MiuixTheme.colorScheme.onTertiaryContainer else MiuixTheme.colorScheme.onSurface,
                                     softWrap = false,
                                     modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(32.dp))
@@ -1752,7 +1770,7 @@ private fun SortDialog(
                                 imageVector = MiuixIcons.Basic.Check,
                                 contentDescription = null,
                                 modifier = Modifier.size(DesignTokens.IconMd),
-                                colorFilter = ColorFilter.tint(if (sel) MiuixTheme.colorScheme.primary else Color.Transparent)
+                                colorFilter = ColorFilter.tint(if (sel) MiuixTheme.colorScheme.onTertiaryContainer else Color.Transparent)
                             )
                             }
                         }
@@ -2052,7 +2070,7 @@ private fun ActivityPage(
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = yearFontFamily,
-                            color = DesignTokens.AccentBlue
+                            color = MiuixTheme.colorScheme.primary
                         )
                     }
                     IconButton(
@@ -2251,7 +2269,8 @@ private fun ActivityHeatmap(
     val gapPx = with(density) { 2.dp.toPx() }
     val cornerPx = with(density) { 3.dp.toPx() }
     val borderPx = with(density) { DesignTokens.BorderThick.toPx() }
-    val emptyColor = MiuixTheme.colorScheme.surfaceVariant
+    val emptyColor = MiuixTheme.colorScheme.surfaceContainerHigh
+    val activityColor = MiuixTheme.colorScheme.primary
     val selectedBorderColor = MiuixTheme.colorScheme.onSurface
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     Canvas(
@@ -2286,12 +2305,12 @@ private fun ActivityHeatmap(
             val score = stats[date]?.score ?: 0.0
             val cellColor = when {
                 score <= 0.0 -> emptyColor
-                score <= levelSpan -> DesignTokens.AccentBlue.copy(alpha = 0.25f)
-                score <= levelSpan * 2 -> DesignTokens.AccentBlue.copy(alpha = 0.40f)
-                score <= levelSpan * 3 -> DesignTokens.AccentBlue.copy(alpha = 0.55f)
-                score <= levelSpan * 4 -> DesignTokens.AccentBlue.copy(alpha = 0.70f)
-                score <= levelSpan * 5 -> DesignTokens.AccentBlue.copy(alpha = 0.85f)
-                else -> DesignTokens.AccentBlue
+                score <= levelSpan -> activityColor.copy(alpha = 0.25f)
+                score <= levelSpan * 2 -> activityColor.copy(alpha = 0.40f)
+                score <= levelSpan * 3 -> activityColor.copy(alpha = 0.55f)
+                score <= levelSpan * 4 -> activityColor.copy(alpha = 0.70f)
+                score <= levelSpan * 5 -> activityColor.copy(alpha = 0.85f)
+                else -> activityColor
             }
             val topLeft = Offset(
                 x = column * slotWidth + (slotWidth - cellSize) / 2,

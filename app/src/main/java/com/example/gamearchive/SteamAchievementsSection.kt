@@ -212,21 +212,21 @@ private fun AchievementGroup(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(DesignTokens.CornerMedium))
-            .background(DesignTokens.AccentBlue.copy(alpha = 0.11f)),
+            .background(MiuixTheme.colorScheme.tertiaryContainer),
         contentPadding = PaddingValues(
             horizontal = DesignTokens.SpaceLg,
             vertical = DesignTokens.SpaceMd
         ),
-        arrowColor = DesignTokens.AccentBlue.copy(
+        arrowColor = MiuixTheme.colorScheme.onTertiaryContainer.copy(
             alpha = DesignTokens.OpacityEmphasis
         ),
-        expandedArrowColor = DesignTokens.AccentBlue
+        expandedArrowColor = MiuixTheme.colorScheme.onTertiaryContainer
     ) {
         Text(
             text = title,
             fontSize = DesignTokens.TextBody2.sp,
             fontWeight = FontWeight.Bold,
-            color = DesignTokens.AccentBlue,
+            color = MiuixTheme.colorScheme.onTertiaryContainer,
             modifier = Modifier.weight(1f)
         )
     }

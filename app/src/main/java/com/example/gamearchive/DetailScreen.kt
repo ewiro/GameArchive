@@ -552,7 +552,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                             text = developer,
                             fontWeight = FontWeight.Bold,
                             fontSize = DesignTokens.TextBody1.sp,
-                            color = DesignTokens.AccentBlue,
+                            color = MiuixTheme.colorScheme.primary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 2.dp)
@@ -922,7 +922,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                                 modifier = Modifier
                                     .size(DesignTokens.IconSm)
                                     .background(
-                                        if (currentMark == -1) DesignTokens.AccentBlue else Color.Transparent,
+                                        if (currentMark == -1) MiuixTheme.colorScheme.primary else Color.Transparent,
                                         RoundedCornerShape(DesignTokens.CornerMedium)
                                     )
                                     .then(
@@ -938,7 +938,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                             Text(
                                 text = stringResource(R.string.mark_clear),
                                 fontSize = DesignTokens.TextBody1.sp,
-                                color = if (currentMark == -1) DesignTokens.AccentBlue else MiuixTheme.colorScheme.onSurface
+                                color = if (currentMark == -1) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface
                             )
                         }
                         Spacer(Modifier.height(8.dp))

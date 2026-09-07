@@ -452,7 +452,7 @@ internal fun BangumiPersonInfoboxRow(
                 Text(
                     text = text,
                     fontSize = DesignTokens.TextBody2.sp,
-                    color = if (isWebsite) DesignTokens.AccentBlue
+                    color = if (isWebsite) MiuixTheme.colorScheme.primary
                     else MiuixTheme.colorScheme.onSurface,
                     modifier = if (isWebsite) {
                         Modifier.motionClickable { openExternalWebLink(context, value.text) }

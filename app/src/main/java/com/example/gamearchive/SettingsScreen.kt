@@ -359,7 +359,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         // ── 外观设置 ──
         item("appearance_header") {
-            SectionHeader(text = stringResource(R.string.settings_appearance))
+            SectionHeader(
+                text = stringResource(R.string.settings_appearance),
+                accentColor = DesignTokens.SettingsAppearanceAccent
+            )
         }
 
         item("appearance_card") {
@@ -475,7 +478,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         // ── 个人资料设置 ──
         item("profile_header") {
-            SectionHeader(text = stringResource(R.string.settings_game_page))
+            SectionHeader(
+                text = stringResource(R.string.settings_game_page),
+                accentColor = DesignTokens.SettingsGameAccent
+            )
         }
 
         item("profile_card") {
@@ -793,7 +799,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         // ── Bangumi ──
         if (showBangumi) {
         item("bangumi_header") {
-            SectionHeader(text = stringResource(R.string.settings_bangumi))
+            SectionHeader(
+                text = stringResource(R.string.settings_bangumi),
+                accentColor = DesignTokens.SettingsAnimeAccent
+            )
         }
         item("bangumi_card") {
             Card(
@@ -877,7 +886,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         // ── 关于与更新 ──
         item("about_header") {
-            SectionHeader(text = stringResource(R.string.settings_about))
+            SectionHeader(
+                text = stringResource(R.string.settings_about),
+                accentColor = DesignTokens.SettingsAboutAccent
+            )
         }
         item("about_card") {
             Card(
@@ -939,7 +951,12 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         }
 
         // ── 账号管理 ──
-        item("accounts_header") { SectionHeader(text = stringResource(R.string.settings_accounts)) }
+        item("accounts_header") {
+            SectionHeader(
+                text = stringResource(R.string.settings_accounts),
+                accentColor = DesignTokens.SettingsAccountsAccent
+            )
+        }
         item("accounts_card") {
             Card(
                 modifier = Modifier
@@ -1415,6 +1432,14 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                                            .background(
+                                                if (isSelected) {
+                                                    MiuixTheme.colorScheme.tertiaryContainer
+                                                } else {
+                                                    Color.Transparent
+                                                }
+                                            )
                                             .motionClickable {
                                                 popup.onSelect(index)
                                                 dismissDropdown()
@@ -1426,9 +1451,11 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                             text = option,
                                             fontSize = DesignTokens.TextSubtitle.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isSelected)
-                                                MiuixTheme.colorScheme.primary
-                                            else MiuixTheme.colorScheme.onSurface,
+                                            color = if (isSelected) {
+                                                MiuixTheme.colorScheme.onTertiaryContainer
+                                            } else {
+                                                MiuixTheme.colorScheme.onSurface
+                                            },
                                             softWrap = false
                                         )
                                         Spacer(Modifier.weight(1f))
@@ -1437,9 +1464,13 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
                                             imageVector = MiuixIcons.Basic.Check,
                                             contentDescription = null,
                                             modifier = Modifier.size(DesignTokens.IconMd),
-                                            colorFilter = ColorFilter.tint(if (isSelected)
-                                                MiuixTheme.colorScheme.primary
-                                            else Color.Transparent)
+                                            colorFilter = ColorFilter.tint(
+                                                if (isSelected) {
+                                                    MiuixTheme.colorScheme.onTertiaryContainer
+                                                } else {
+                                                    Color.Transparent
+                                                }
+                                            )
                                         )
                                     }
                                 }
@@ -1478,21 +1509,33 @@ private fun AccountTypeRow(label: String, onClick: () -> Unit) {
             contentDescription = null,
             modifier = Modifier.size(DesignTokens.IconMd),
             colorFilter = ColorFilter.tint(
-                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                MiuixTheme.colorScheme.onSurfaceVariantActions
             )
         )
     }
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-        fontWeight = FontWeight.Bold,
-        fontSize = DesignTokens.TextBody1.sp,
-        modifier = Modifier.padding(start = 16.dp, top = 22.dp, bottom = 8.dp)
-    )
+private fun SectionHeader(text: String, accentColor: Color) {
+    Row(
+        modifier = Modifier.padding(start = 16.dp, top = 22.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(14.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(accentColor)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = text,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            fontWeight = FontWeight.Bold,
+            fontSize = DesignTokens.TextBody1.sp
+        )
+    }
 }
 
 @Composable
@@ -1581,13 +1624,11 @@ private fun DropdownSelector(
             Text(
                 text = options[selectedIndex],
                 fontSize = DesignTokens.TextBody1.sp,
-                color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary
             )
             Spacer(Modifier.width(4.dp))
             DropdownArrowEndAction(
-                actionColor = MiuixTheme.colorScheme.onSurface.copy(
-                    alpha = DesignTokens.OpacityBody
-                )
+                actionColor = MiuixTheme.colorScheme.onSurfaceVariantActions
             )
         }
     }
@@ -1596,7 +1637,11 @@ private fun DropdownSelector(
 @Composable
 private fun LabeledTextField(label: String, value: String, onValueChange: (String) -> Unit, hint: String) {
     Column {
-        Text(text = label, fontSize = DesignTokens.TextBody2.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
+        Text(
+            text = label,
+            fontSize = DesignTokens.TextBody2.sp,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+        )
         Spacer(Modifier.height(4.dp))
         TextField(
             value = value,
