@@ -33,16 +33,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +54,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -121,6 +127,9 @@ private fun BangumiSeasonScreen(
     val bottomPadding = DesignTokens.SpaceXl +
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val showRating = UserPrefs.getBangumiRatingMode(context) == 0
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var collectionTypes by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
+    var resumeRevision by remember { mutableIntStateOf(0) }
     var seasonCount by rememberSaveable { mutableIntStateOf(INITIAL_SEASON_COUNT) }
     val seasons = remember(seasonCount) {
         bangumiSeasonsFrom(currentBangumiSeason(), seasonCount)
@@ -128,6 +137,18 @@ private fun BangumiSeasonScreen(
 
     BackHandler(enabled = selectedSeason != null) {
         viewModel.closeSeason()
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) resumeRevision++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(resumeRevision) {
+        collectionTypes = loadBangumiCollectionTypes(context)
     }
 
     LaunchedEffect(selectedSeason) {
@@ -154,6 +175,7 @@ private fun BangumiSeasonScreen(
                     topPadding = topBarHeightDp,
                     bottomPadding = bottomPadding,
                     showRating = showRating,
+                    collectionTypes = collectionTypes,
                     onOpenSubject = onOpenSubject,
                     onLoadMore = viewModel::loadNextPage,
                     onRetry = viewModel::retryDetail
@@ -346,7 +368,7 @@ private fun SeasonCoverCollage(
                             Box(
                                 modifier = Modifier
                                     .size(cellSize)
-                                    .background(MiuixTheme.colorScheme.tertiaryContainer),
+                                    .background(Color.White),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -354,7 +376,7 @@ private fun SeasonCoverCollage(
                                         R.string.bangumi_season_count_short,
                                         total
                                     ),
-                                    color = MiuixTheme.colorScheme.onTertiaryContainer,
+                                    color = Color.Black,
                                     fontSize = DesignTokens.TextTitle.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -421,6 +443,7 @@ private fun SeasonSubjectList(
     topPadding: androidx.compose.ui.unit.Dp,
     bottomPadding: androidx.compose.ui.unit.Dp,
     showRating: Boolean,
+    collectionTypes: Map<Int, Int>,
     onOpenSubject: (BangumiSubjectDetail) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit
@@ -444,7 +467,7 @@ private fun SeasonSubjectList(
                 BangumiSubjectListItem(
                     subject = subject,
                     showRating = showRating,
-                    collectionType = null,
+                    collectionType = subject.id?.let(collectionTypes::get),
                     modifier = Modifier.animateItem()
                 ) {
                     onOpenSubject(subject)

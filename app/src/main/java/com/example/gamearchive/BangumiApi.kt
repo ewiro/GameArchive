@@ -152,6 +152,8 @@ interface BangumiService {
     val name: String? = null,
     val name_cn: String? = null,
     val type: Int? = null,
+    val platform: String? = null,
+    val meta_tags: List<String>? = null,
     val summary: String? = null,
     val nsfw: Boolean? = null,
     val date: String? = null,

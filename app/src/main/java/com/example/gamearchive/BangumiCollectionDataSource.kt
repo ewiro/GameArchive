@@ -90,3 +90,65 @@ internal class DefaultBangumiCollectionDataSource(context: Context) : BangumiCol
         BangumiViewModel.collectionChanged = true
     }
 }
+
+internal suspend fun loadBangumiCollectionTypes(context: Context): Map<Int, Int> {
+    var username = UserPrefs.getBangumiUsername(context)
+    val cachedSnapshot = withContext(Dispatchers.IO) {
+        if (username.isBlank()) null else BangumiPageCache.load(context, username)
+    }
+    if (cachedSnapshot != null) {
+        return cachedSnapshot.collections
+            .values
+            .flatten()
+            .associate { it.subject_id to it.type }
+    }
+    val token = UserPrefs.getBangumiAccessToken(context)
+    return runCatchingCancellable {
+        if (token.isNotEmpty()) {
+            BangumiAuthSession.execute(context) { service ->
+                if (username.isBlank()) {
+                    username = service.getCurrentUser().username
+                    UserPrefs.setBangumiUsername(context, username)
+                }
+                fetchBangumiCollectionTypes { offset ->
+                    service.getUserCollections(
+                        username = username,
+                        subjectType = 2,
+                        collectionType = null,
+                        limit = 50,
+                        offset = offset
+                    )
+                }
+            }
+        } else if (username.isNotBlank()) {
+            fetchBangumiCollectionTypes { offset ->
+                GameArchiveApp.bgmService.getUserCollections(
+                    username = username,
+                    subjectType = 2,
+                    collectionType = null,
+                    limit = 50,
+                    offset = offset
+                )
+            }
+        } else {
+            emptyMap()
+        }
+    }.getOrDefault(emptyMap())
+}
+
+private suspend fun fetchBangumiCollectionTypes(
+    loadPage: suspend (offset: Int) -> BangumiPagedCollection
+): Map<Int, Int> {
+    val result = linkedMapOf<Int, Int>()
+    var offset = 0
+    while (true) {
+        val page = loadPage(offset)
+        val collections = page.data.orEmpty()
+        collections.forEach { collection ->
+            result[collection.subject_id] = bangumiCollectionTypeToUi(collection.type)
+        }
+        if (collections.isEmpty() || offset + collections.size >= page.total) break
+        offset += collections.size
+    }
+    return result
+}

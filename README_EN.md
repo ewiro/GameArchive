@@ -209,5 +209,6 @@ Keep Pull Requests focused on a single purpose. Do not commit Steam API Keys, Ba
 
 - [Steam Web API](https://steamcommunity.com/dev)
 - [Bangumi API](https://github.com/bangumi/api)
+- [Bangumi by czy0729](https://github.com/czy0729/Bangumi): layout and visual reference for the seasonal anime page
 - [MIUI X](https://github.com/compose-miuix-ui/miuix)
 - [DSEG](https://www.keshikan.net/fonts-e.html)

@@ -71,7 +71,7 @@ internal fun BangumiSeason.toSearchRequest(): BangumiSubjectSearchRequest =
         sort = "heat",
         filter = BangumiSubjectSearchFilter(
             type = listOf(2),
-            meta_tags = listOf("TV"),
+            meta_tags = listOf("TV", "日本"),
             air_date = listOf(">=$startDate", "<$endExclusiveDate")
         )
     )
@@ -137,19 +137,9 @@ internal class BangumiSeasonViewModel internal constructor(
                 states + (season to BangumiSeasonSummaryUiState(isLoading = true))
             }
             try {
-                val response = dataSource.subjects(
-                    season = season,
-                    limit = SUMMARY_LIMIT,
-                    offset = 0
-                )
+                val summary = loadSummaryPages(season)
                 _summaries.update { states ->
-                    states + (
-                        season to BangumiSeasonSummaryUiState(
-                            total = response.total,
-                            previewSubjects = response.data.orEmpty().validAnimeSubjects()
-                                .take(SUMMARY_LIMIT)
-                        )
-                    )
+                    states + (season to summary)
                 }
             } catch (error: CancellationException) {
                 throw error
@@ -160,6 +150,28 @@ internal class BangumiSeasonViewModel internal constructor(
                 android.util.Log.e("BangumiSeason", "Season summary load failed", error)
             }
         }
+    }
+
+    private suspend fun loadSummaryPages(season: BangumiSeason): BangumiSeasonSummaryUiState {
+        val subjectsById = linkedMapOf<Int, BangumiSubjectDetail>()
+        var offset = 0
+        while (true) {
+            val response = dataSource.subjects(
+                season = season,
+                limit = SUMMARY_PAGE_SIZE,
+                offset = offset
+            )
+            val rawSubjects = response.data.orEmpty()
+            rawSubjects.filterSeasonalAnime().forEach { subject ->
+                subject.id?.let { subjectsById.putIfAbsent(it, subject) }
+            }
+            if (rawSubjects.isEmpty() || offset + rawSubjects.size >= response.total) break
+            offset += rawSubjects.size
+        }
+        return BangumiSeasonSummaryUiState(
+            total = subjectsById.size,
+            previewSubjects = subjectsById.values.take(SUMMARY_PREVIEW_COUNT)
+        )
     }
 
     fun openSeason(season: BangumiSeason) {
@@ -210,7 +222,7 @@ internal class BangumiSeasonViewModel internal constructor(
             try {
                 val response = dataSource.subjects(season, pageSize, offset)
                 val rawSubjects = response.data.orEmpty()
-                val pageSubjects = rawSubjects.validAnimeSubjects()
+                val pageSubjects = rawSubjects.filterSeasonalAnime()
                 _detail.update { state ->
                     if (state.season != season) return@update state
                     val existing = if (reset) emptyList() else state.subjects.orEmpty()
@@ -243,10 +255,37 @@ internal class BangumiSeasonViewModel internal constructor(
         }
     }
 
-    private fun List<BangumiSubjectDetail>.validAnimeSubjects(): List<BangumiSubjectDetail> =
-        filter { it.id != null && it.type == 2 }
-
     private companion object {
-        const val SUMMARY_LIMIT = 4
+        const val SUMMARY_PAGE_SIZE = 100
+        const val SUMMARY_PREVIEW_COUNT = 3
     }
 }
+
+internal fun BangumiSubjectDetail.isSeasonalAnime(): Boolean {
+    val normalizedMetaTags = meta_tags.orEmpty().map { it.trim() }
+    val normalizedTags = tags.orEmpty().map { it.name.trim() }
+    val excludedTags = setOf(
+        "TVSP",
+        "OVA",
+        "OAD",
+        "中国",
+        "国产动画",
+        "国产漫画",
+        "国创",
+        "动态漫画",
+        "动态漫",
+        "子供向",
+        "短片"
+    )
+    return id != null &&
+        type == 2 &&
+        platform.equals("TV", ignoreCase = true) &&
+        normalizedMetaTags.any { it.equals("TV", ignoreCase = true) } &&
+        normalizedMetaTags.any { it == "日本" } &&
+        (normalizedMetaTags + normalizedTags).none { tag ->
+            excludedTags.any { excluded -> tag.equals(excluded, ignoreCase = true) }
+        }
+}
+
+private fun List<BangumiSubjectDetail>.filterSeasonalAnime(): List<BangumiSubjectDetail> =
+    filter(BangumiSubjectDetail::isSeasonalAnime)

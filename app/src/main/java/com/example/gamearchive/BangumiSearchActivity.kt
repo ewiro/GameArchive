@@ -49,9 +49,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Surface
@@ -126,7 +124,7 @@ private fun BangumiSearchScreen(
     }
 
     LaunchedEffect(resumeRevision) {
-        collectionTypes = loadSearchCollectionTypes(context)
+        collectionTypes = loadBangumiCollectionTypes(context)
     }
 
     LaunchedEffect(query) {
@@ -425,72 +423,6 @@ private fun bangumiSearchGradeRes(score: Double): Int = when {
     score >= 5.0 -> R.string.bangumi_grade_decent
     score >= 4.0 -> R.string.bangumi_grade_poor
     else -> R.string.bangumi_grade_bad
-}
-
-private suspend fun loadSearchCollectionTypes(context: Context): Map<Int, Int> {
-    var username = UserPrefs.getBangumiUsername(context)
-    val cachedSnapshot = withContext(Dispatchers.IO) {
-        if (username.isBlank()) {
-            null
-        } else {
-            BangumiPageCache.load(context, username)
-        }
-    }
-    if (cachedSnapshot != null) {
-        return cachedSnapshot.collections
-            .values
-            .flatten()
-            .associate { it.subject_id to it.type }
-    }
-    val token = UserPrefs.getBangumiAccessToken(context)
-    return runCatchingCancellable {
-        if (token.isNotEmpty()) {
-            BangumiAuthSession.execute(context) { service ->
-                if (username.isBlank()) {
-                    username = service.getCurrentUser().username
-                    UserPrefs.setBangumiUsername(context, username)
-                }
-                fetchSearchCollectionTypes { offset ->
-                    service.getUserCollections(
-                        username = username,
-                        subjectType = 2,
-                        collectionType = null,
-                        limit = 50,
-                        offset = offset
-                    )
-                }
-            }
-        } else if (username.isNotBlank()) {
-            fetchSearchCollectionTypes { offset ->
-                GameArchiveApp.bgmService.getUserCollections(
-                    username = username,
-                    subjectType = 2,
-                    collectionType = null,
-                    limit = 50,
-                    offset = offset
-                )
-            }
-        } else {
-            emptyMap()
-        }
-    }.getOrDefault(emptyMap())
-}
-
-private suspend fun fetchSearchCollectionTypes(
-    loadPage: suspend (offset: Int) -> BangumiPagedCollection
-): Map<Int, Int> {
-    val result = linkedMapOf<Int, Int>()
-    var offset = 0
-    while (true) {
-        val page = loadPage(offset)
-        val collections = page.data.orEmpty()
-        collections.forEach { collection ->
-            result[collection.subject_id] = bangumiCollectionTypeToUi(collection.type)
-        }
-        if (collections.isEmpty() || offset + collections.size >= page.total) break
-        offset += collections.size
-    }
-    return result
 }
 
 private fun extractSearchScore(rating: Any?): Double? {

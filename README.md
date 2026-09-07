@@ -208,5 +208,6 @@ tags:
 
 - [Steam Web API](https://steamcommunity.com/dev)
 - [Bangumi API](https://github.com/bangumi/api)
+- [Bangumi（czy0729）](https://github.com/czy0729/Bangumi)：季度新番页面的布局与视觉设计参考
 - [MIUI X](https://github.com/compose-miuix-ui/miuix)
 - [DSEG](https://www.keshikan.net/fonts-e.html)
