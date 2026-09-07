@@ -128,7 +128,9 @@ interface BangumiService {
 }
 
 @Keep data class BangumiSubjectSearchFilter(
-    val type: List<Int>
+    val type: List<Int>,
+    val meta_tags: List<String>? = null,
+    val air_date: List<String>? = null
 )
 
 @Keep data class BangumiSubjectSearchRequest(

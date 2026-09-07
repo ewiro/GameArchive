@@ -412,6 +412,20 @@ internal fun MainScreen() {
                             colorFilter = ColorFilter.tint(topBarContentColor)
                         )
                     }
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, BangumiSeasonActivity::class.java))
+                        (context as? android.app.Activity)?.overridePendingTransition(
+                            R.anim.slide_in_right,
+                            R.anim.slide_out_left
+                        )
+                    }) {
+                        Image(
+                            imageVector = MiuixIcons.Demibold.Months,
+                            contentDescription = stringResource(R.string.bangumi_season_title),
+                            modifier = Modifier.size(DesignTokens.IconXl),
+                            colorFilter = ColorFilter.tint(topBarContentColor)
+                        )
+                    }
                 }
                 if (!showSpecialsPage && !showActivityPage && selectedTab == 0) {
                     IconButton(onClick = {

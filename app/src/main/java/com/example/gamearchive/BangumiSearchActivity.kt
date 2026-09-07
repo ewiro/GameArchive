@@ -193,7 +193,7 @@ private fun BangumiSearchScreen(
                                 modifier = Modifier.padding(horizontal = 18.dp)
                             )
                         }
-                        BangumiSearchResult(
+                        BangumiSubjectListItem(
                             subject = subject,
                             showRating = showRating,
                             collectionType = subject.id?.let(collectionTypes::get),
@@ -264,7 +264,7 @@ private fun SearchMessage(text: String) {
 }
 
 @Composable
-private fun BangumiSearchResult(
+internal fun BangumiSubjectListItem(
     subject: BangumiSubjectDetail,
     showRating: Boolean,
     collectionType: Int?,

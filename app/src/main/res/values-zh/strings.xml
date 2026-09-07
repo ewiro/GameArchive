@@ -231,6 +231,16 @@
     <string name="bangumi_search_title">搜索动漫</string>
     <string name="bangumi_search_no_results">未找到相关动漫</string>
     <string name="bangumi_search_failed">搜索失败，请重试</string>
+    <string name="bangumi_season_title">新番</string>
+    <string name="bangumi_season_quarter">%1$d 年 %2$d 月</string>
+    <string name="bangumi_season_quarter_with_count">%1$d 年 %2$d 月（共 %3$d 部）</string>
+    <string name="bangumi_season_quarter_title">%1$d 年 %2$d 月新番</string>
+    <string name="bangumi_season_date_range">%1$s 至 %2$s</string>
+    <string name="bangumi_season_category">TV 动画</string>
+    <string name="bangumi_season_count_short">+%1$d</string>
+    <string name="bangumi_season_load_earlier">查看更早季度</string>
+    <string name="bangumi_season_load_failed">该季度加载失败</string>
+    <string name="bangumi_season_empty">该季度暂无新番</string>
     <string name="bangumi_detail_load_failed">动漫详情加载失败</string>
     <string name="bangumi_collection_load_failed">无法读取你的 Bangumi 收藏信息</string>
     <string name="bangumi_my_collection">我的进度</string>
