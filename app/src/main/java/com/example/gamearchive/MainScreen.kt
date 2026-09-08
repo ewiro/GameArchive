@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
@@ -252,7 +253,24 @@ private fun CompactPullToRefresh(
         circleSize = PullToRefreshDefaults.circleSize * (16f / 15f),
         refreshTexts = emptyList(),
     ) {
-        content(Modifier.offset(y = -(36.dp * textSpaceProgress)))
+        content(
+            Modifier.layout { measurable, constraints ->
+                val textSpacePx = (36.dp * textSpaceProgress).roundToPx()
+                val contentConstraints = if (constraints.hasBoundedHeight) {
+                    constraints.copy(maxHeight = constraints.maxHeight + textSpacePx)
+                } else {
+                    constraints
+                }
+                val placeable = measurable.measure(contentConstraints)
+                layout(
+                    width = placeable.width.coerceIn(constraints.minWidth, constraints.maxWidth),
+                    height = (placeable.height - textSpacePx)
+                        .coerceIn(constraints.minHeight, constraints.maxHeight)
+                ) {
+                    placeable.placeRelative(0, -textSpacePx)
+                }
+            }
+        )
     }
 }
 
