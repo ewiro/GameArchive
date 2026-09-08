@@ -81,7 +81,7 @@ GameArchive 最初用于整理 Steam 库存，现在也可以连接 Bangumi 管�
 - `arm64-v8a`：推荐用于绝大多数现代 Android 手机。
 - `armeabi-v7a`：用于仍为 32 位架构的旧设备。
 
-最低系统版本为 Android 7.0（API 24）。
+最低系统版本为 Android 13（API 33）。
 
 ### Steam
 

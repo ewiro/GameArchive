@@ -14,6 +14,7 @@ androidx-test-core = "1.7.0"
 robolectric = "4.16.1"
 miuix-ui = "0.9.3"
 miuix-icons = "0.9.3"
+backdrop = "2.0.0"
 
 [libraries]
 androidx-core = { group = "androidx.core", name = "core", version.ref = "core" }
@@ -35,7 +36,7 @@ androidx-test-core = { group = "androidx.test", name = "core", version.ref = "an
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui", version.ref = "miuix-ui" }
 miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons", version.ref = "miuix-icons" }
-miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur-android", version.ref = "miuix-ui" }
+backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

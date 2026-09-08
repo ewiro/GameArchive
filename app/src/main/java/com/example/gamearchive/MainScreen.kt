@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,6 +88,16 @@ import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.isRuntimeShaderSupported
+import com.kyant.backdrop.shadow.Shadow
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.*
@@ -133,6 +144,79 @@ private fun ActivityTopBarIcon(
             end = Offset(center.x + radius * 0.5f, center.y),
             strokeWidth = strokeWidth,
             cap = StrokeCap.Round
+        )
+    }
+}
+
+@Composable
+private fun FloatingGlassIconBar(
+    backdrop: Backdrop?,
+    useDarkGlass: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit
+) {
+    val shape = RoundedCornerShape(DesignTokens.CornerXLarge)
+    val isDarkTheme = isAppInDarkTheme()
+    val shouldUseDarkGlass = useDarkGlass && isDarkTheme
+    val glassTint = if (shouldUseDarkGlass) {
+        Color.Black.copy(alpha = 0.14f)
+    } else {
+        MiuixTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.24f else 0.16f)
+    }
+    val glassModifier = if (backdrop != null) {
+        Modifier.drawBackdrop(
+            backdrop = backdrop,
+            shape = { shape },
+            effects = {
+                vibrancy()
+                blur(7.dp.toPx())
+                lens(
+                    refractionHeight = 10.dp.toPx(),
+                    refractionAmount = 8.dp.toPx(),
+                    depthEffect = true,
+                    chromaticAberration = false
+                )
+            },
+            highlight = {
+                Highlight.Default.copy(
+                    alpha = if (shouldUseDarkGlass || isDarkTheme) 0.34f else 0.52f
+                )
+            },
+            shadow = {
+                Shadow(
+                    radius = 10.dp,
+                    offset = DpOffset(0.dp, 2.dp),
+                    color = Color.Black.copy(
+                        alpha = if (shouldUseDarkGlass || isDarkTheme) 0.16f else 0.08f
+                    )
+                )
+            },
+            onDrawSurface = {
+                drawRect(glassTint)
+            }
+        )
+    } else {
+        Modifier
+            .background(glassTint, shape)
+            .border(
+                width = DesignTokens.BorderThin,
+                color = Color.White.copy(
+                    alpha = if (shouldUseDarkGlass || isDarkTheme) 0.12f else 0.28f
+                ),
+                shape = shape
+            )
+    }
+
+    Box(
+        modifier = modifier
+            .height(DesignTokens.ButtonHeightSmall)
+            .clip(shape)
+    ) {
+        Box(Modifier.matchParentSize().then(glassModifier))
+        Row(
+            modifier = Modifier.fillMaxHeight(),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
         )
     }
 }
@@ -207,11 +291,7 @@ internal fun MainScreen() {
     val immersiveHeaderUsesDarkBackground =
         isImmersiveLibraryHeader ||
             (isImmersiveBangumiHeader && bangumiProfileBackgroundFile != null)
-    val topBarContentColor = if (immersiveHeaderUsesDarkBackground) {
-        Color.White
-    } else {
-        MiuixTheme.colorScheme.onSurface
-    }
+    val topBarContentColor = MiuixTheme.colorScheme.onSurface
     val mainLifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(
@@ -335,7 +415,30 @@ internal fun MainScreen() {
         }
 
     Surface(modifier = Modifier.fillMaxSize()) {
+    val blurSupported = isRuntimeShaderSupported()
+    val pageBackgroundColor = MiuixTheme.colorScheme.background
+    val topBarBackdrop = if (
+        blurSupported && !showSpecialsPage && !showActivityPage
+    ) {
+        rememberLayerBackdrop {
+            drawRect(pageBackgroundColor)
+            drawContent()
+        }
+    } else {
+        null
+    }
     Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .then(
+                    if (topBarBackdrop != null) {
+                        Modifier.layerBackdrop(topBarBackdrop)
+                    } else {
+                        Modifier
+                    }
+                )
+        ) {
         // ── 内容层：特惠与记录独立打开，主分页仅包含游戏和动漫 ──
         if (showSpecialsPage) {
             SpecialsScreen(
@@ -383,6 +486,7 @@ internal fun MainScreen() {
                 )
             }
         }
+        }
 
         // ── 顶栏叠加层 ──
         val topBarModifier = Modifier
@@ -401,61 +505,93 @@ internal fun MainScreen() {
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!showSpecialsPage && !showActivityPage && selectedTab == bangumiPage) {
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, BangumiSearchActivity::class.java))
-                    }) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Search,
-                            contentDescription = stringResource(R.string.bangumi_search_title),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(topBarContentColor)
-                        )
+                if (!showSpecialsPage && !showActivityPage) {
+                    FloatingGlassIconBar(
+                        backdrop = topBarBackdrop,
+                        useDarkGlass = immersiveHeaderUsesDarkBackground
+                    ) {
+                        if (selectedTab == bangumiPage) {
+                            IconButton(onClick = {
+                                context.startActivity(
+                                    Intent(context, BangumiSearchActivity::class.java)
+                                )
+                            }) {
+                                Image(
+                                    imageVector = MiuixIcons.Demibold.Search,
+                                    contentDescription = stringResource(R.string.bangumi_search_title),
+                                    modifier = Modifier.size(DesignTokens.IconXl),
+                                    colorFilter = ColorFilter.tint(topBarContentColor)
+                                )
+                            }
+                            IconButton(onClick = {
+                                context.startActivity(
+                                    Intent(context, BangumiSeasonActivity::class.java)
+                                )
+                                (context as? android.app.Activity)?.overridePendingTransition(
+                                    R.anim.slide_in_right,
+                                    R.anim.slide_out_left
+                                )
+                            }) {
+                                Image(
+                                    imageVector = MiuixIcons.Demibold.Months,
+                                    contentDescription = stringResource(R.string.bangumi_season_title),
+                                    modifier = Modifier.size(DesignTokens.IconXl),
+                                    colorFilter = ColorFilter.tint(topBarContentColor)
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = {
+                                context.startActivity(Intent(context, WishlistActivity::class.java))
+                                (context as? android.app.Activity)?.overridePendingTransition(
+                                    R.anim.slide_in_right,
+                                    R.anim.slide_out_left
+                                )
+                            }) {
+                                Image(
+                                    imageVector = MiuixIcons.Demibold.Favorites,
+                                    contentDescription = stringResource(R.string.wishlist_title),
+                                    modifier = Modifier.size(DesignTokens.IconXl),
+                                    colorFilter = ColorFilter.tint(topBarContentColor)
+                                )
+                            }
+                            if (specialsEnabled) {
+                                IconButton(onClick = { showSpecialsPage = true }) {
+                                    Image(
+                                        imageVector = MiuixIcons.Demibold.Promotions,
+                                        contentDescription = stringResource(R.string.nav_specials),
+                                        modifier = Modifier.size(DesignTokens.IconXl),
+                                        colorFilter = ColorFilter.tint(topBarContentColor)
+                                    )
+                                }
+                            }
+                        }
                     }
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, BangumiSeasonActivity::class.java))
-                        (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.slide_in_right,
-                            R.anim.slide_out_left
-                        )
-                    }) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Months,
-                            contentDescription = stringResource(R.string.bangumi_season_title),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(topBarContentColor)
-                        )
-                    }
-                }
-                if (!showSpecialsPage && !showActivityPage && selectedTab == 0) {
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, WishlistActivity::class.java))
-                        (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.slide_in_right,
-                            R.anim.slide_out_left
-                        )
-                    }) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Favorites,
-                            contentDescription = stringResource(R.string.wishlist_title),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(topBarContentColor)
-                        )
-                    }
-                    if (specialsEnabled) {
-                        IconButton(onClick = { showSpecialsPage = true }) {
+                    Spacer(Modifier.weight(1f))
+                    FloatingGlassIconBar(
+                        backdrop = topBarBackdrop,
+                        useDarkGlass = immersiveHeaderUsesDarkBackground
+                    ) {
+                        if (activityEnabled) {
+                            IconButton(onClick = { showActivityPage = true }) {
+                                ActivityTopBarIcon(
+                                    color = topBarContentColor,
+                                    contentDescription = stringResource(R.string.nav_activity),
+                                    modifier = Modifier.size(DesignTokens.IconXl)
+                                )
+                            }
+                        }
+                        IconButton(onClick = {
+                            context.startActivity(Intent(context, SettingsActivity::class.java))
+                        }) {
                             Image(
-                                imageVector = MiuixIcons.Demibold.Promotions,
-                                contentDescription = stringResource(R.string.nav_specials),
+                                imageVector = MiuixIcons.Demibold.Settings,
+                                contentDescription = stringResource(R.string.settings_title),
                                 modifier = Modifier.size(DesignTokens.IconXl),
                                 colorFilter = ColorFilter.tint(topBarContentColor)
                             )
                         }
                     }
-                }
-                if (!showSpecialsPage) {
-                    Spacer(Modifier.weight(1f))
-                } else {
+                } else if (showSpecialsPage) {
                     Text(
                         text = stringResource(R.string.nav_specials),
                         fontWeight = FontWeight.Bold,
@@ -463,28 +599,6 @@ internal fun MainScreen() {
                         color = topBarContentColor,
                         modifier = Modifier.weight(1f)
                     )
-                }
-                if (!showSpecialsPage && !showActivityPage) {
-                    if (activityEnabled) {
-                        IconButton(onClick = { showActivityPage = true }) {
-                            ActivityTopBarIcon(
-                                color = topBarContentColor,
-                                contentDescription = stringResource(R.string.nav_activity),
-                                modifier = Modifier.size(DesignTokens.IconXl)
-                            )
-                        }
-                    }
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, SettingsActivity::class.java))
-                    }) {
-                        Image(
-                            imageVector = MiuixIcons.Demibold.Settings,
-                            contentDescription = stringResource(R.string.settings_title),
-                            modifier = Modifier.size(DesignTokens.IconXl),
-                            colorFilter = ColorFilter.tint(topBarContentColor)
-                        )
-                    }
-                } else if (showSpecialsPage) {
                     IconButton(onClick = { showSortDialog = true }) {
                         Image(
                             imageVector = MiuixIcons.Demibold.Filter,
@@ -496,7 +610,7 @@ internal fun MainScreen() {
                 }
             }
         }
-        if (isImmersiveProfileHeader) {
+        if (!showSpecialsPage && !showActivityPage) {
             Box(modifier = topBarModifier) {
                 topBarContent()
             }

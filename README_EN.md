@@ -81,7 +81,7 @@ You can also get APKs automatically built after each push to `main` from the [CI
 - `arm64-v8a`: recommended for most modern Android devices.
 - `armeabi-v7a`: intended for older 32-bit devices.
 
-The minimum supported version is Android 7.0 (API 24).
+The minimum supported version is Android 13 (API 33).
 
 ### Steam
 

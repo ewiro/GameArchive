@@ -18,7 +18,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.gamearchive"
-        minSdk = 24
+        minSdk = 33
         targetSdk = 36
         versionCode = 14
         versionName = "2.3"
@@ -126,7 +126,7 @@ dependencies {
 
     implementation(libs.miuix.ui)
     implementation(libs.miuix.icons)
-    implementation(libs.miuix.blur)
+    implementation(libs.backdrop)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.test.core)
