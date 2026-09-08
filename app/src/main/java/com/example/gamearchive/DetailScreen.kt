@@ -235,6 +235,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                         * { margin:0;padding:0;box-sizing:border-box;max-width:100%; }
                         body { background:transparent;color:$bodyColor;font-family:sans-serif;width:100vw;overflow-x:hidden;font-size:15px;line-height:1.6; }
                         img,video { display:block!important;max-width:100%!important;width:auto!important;height:auto!important;border:0!important;margin:0!important; }
+                        img,video { border-radius:${DesignTokens.CornerMedium.value}px!important; }
                         a { color:$linkColor;text-decoration:none;font-weight:bold; }
                         h1,h2,h3 { margin:24px 0 12px 0!important;font-weight:bold;line-height:1.4!important;color:$headColor;font-size:18px!important; }
                         p { margin-bottom:12px!important; }
@@ -408,7 +409,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(vertical = 6.dp),
                     cornerRadius = DesignTokens.CornerLarge
                 ) {
                     Row(
@@ -418,13 +419,15 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                         // ── 左：价格区（折扣 2/5 + 价格 3/5）──
                         Row(
                             modifier = Modifier.weight(1f).height(IntrinsicSize.Max),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            // 折扣块（左半的 2/5）
+                            // 折扣块 + 价格作为一组在左半区居中
                             if (discountPercent > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .weight(0.4f).fillMaxHeight()
+                                        .width(72.dp)
+                                        .fillMaxHeight()
                                         .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                                         .background(DesignTokens.DiscountGreen),
                                     contentAlignment = Alignment.Center
@@ -436,11 +439,9 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                                         color = DesignTokens.DiscountGreenText
                                     )
                                 }
+                                Spacer(Modifier.width(DesignTokens.SpaceXs))
                             }
-                            // 价格双行（左半的 3/5）
                             Column(
-                                modifier = Modifier.weight(if (discountPercent > 0) 0.6f else 1f)
-                                    .padding(start = if (discountPercent > 0) 10.dp else 0.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
@@ -504,6 +505,15 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                     }
                 }
 
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    cornerRadius = DesignTokens.CornerLarge
+                ) {
+                Column(
+                    modifier = Modifier.padding(top = 6.dp, bottom = 10.dp)
+                ) {
                 // ── 开发商 + 日期 ──
                 Row(
                     modifier = Modifier
@@ -591,7 +601,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                         .heightIn(min = 56.dp)
                         .clickable { showMarkSheet = true }
                         .padding(
-                            horizontal = DesignTokens.SpaceXl,
+                            horizontal = 16.dp,
                             vertical = DesignTokens.SpaceLg
                         ),
                     verticalAlignment = Alignment.CenterVertically,
@@ -636,7 +646,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                                 Modifier
                             }
                         )
-                        .padding(horizontal = DesignTokens.SpaceXl),
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (gameTags.isEmpty()) {
@@ -706,7 +716,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                             .fillMaxWidth()
                             .heightIn(min = 56.dp)
                             .padding(
-                                horizontal = DesignTokens.SpaceXl,
+                                horizontal = 16.dp,
                                 vertical = DesignTokens.SpaceLg
                             ),
                         verticalAlignment = Alignment.CenterVertically,
@@ -754,28 +764,40 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                     kind = ActivityKind.GAME,
                     records = playRecords,
                     dimTitle = true,
-                    modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
                 SteamAchievementsSection(
                     appId = appId,
-                    modifier = Modifier.padding(horizontal = DesignTokens.SpaceXl)
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
-                Spacer(Modifier.height(DesignTokens.SpaceMassive))
-                Box(
+                }
+                }
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .height(DesignTokens.DividerHeight)
-                        .background(MiuixTheme.colorScheme.outline)
-                )
-
-                // ── 简介标题 ──
-                Text(
-                    text = stringResource(R.string.detail_about),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = DesignTokens.TextBody2.sp,
-                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
-                )
+                        .padding(vertical = 6.dp),
+                    cornerRadius = DesignTokens.CornerLarge
+                ) {
+                Column(
+                    modifier = Modifier.padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 6.dp,
+                        bottom = 10.dp
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.detail_about),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = DesignTokens.TextBody1.sp
+                        )
+                    }
 
                 // ── 简介 WebView ──
                 if (descriptionHtml.isNotEmpty()) {
@@ -813,9 +835,10 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
                             .defaultMinSize(minHeight = 200.dp)
                     )
+                }
+                }
                 }
 
                 // ── 评价标题 ──
