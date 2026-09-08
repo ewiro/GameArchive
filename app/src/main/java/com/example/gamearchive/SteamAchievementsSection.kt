@@ -3,13 +3,6 @@ package com.example.gamearchive
 import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.util.Log
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,11 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -125,27 +113,6 @@ fun SteamAchievementsSection(
         }
 
         ExpandableSectionContent(expanded = expanded) {
-            val rareGlowTransition = rememberInfiniteTransition(
-                label = "rare_achievement_glow"
-            )
-            val rareGlowRotation = rareGlowTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 2_400, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
-                ),
-                label = "rare_achievement_rotation"
-            )
-            val rareGlowPulse = rareGlowTransition.animateFloat(
-                initialValue = 0.45f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 900),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "rare_achievement_pulse"
-            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,9 +140,7 @@ fun SteamAchievementsSection(
                             ),
                             achievements = unlockedAchievements,
                             expanded = unlockedExpanded,
-                            onExpandedChange = { unlockedExpanded = it },
-                            rareGlowRotation = rareGlowRotation,
-                            rareGlowPulse = rareGlowPulse
+                            onExpandedChange = { unlockedExpanded = it }
                         )
                         Spacer(Modifier.height(DesignTokens.SpaceLg))
                         AchievementGroup(
@@ -186,9 +151,7 @@ fun SteamAchievementsSection(
                             ),
                             achievements = lockedAchievements,
                             expanded = lockedExpanded,
-                            onExpandedChange = { lockedExpanded = it },
-                            rareGlowRotation = rareGlowRotation,
-                            rareGlowPulse = rareGlowPulse
+                            onExpandedChange = { lockedExpanded = it }
                         )
                     }
                 }
@@ -202,9 +165,7 @@ private fun AchievementGroup(
     title: String,
     achievements: List<SteamAchievementItem>,
     expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    rareGlowRotation: State<Float>,
-    rareGlowPulse: State<Float>
+    onExpandedChange: (Boolean) -> Unit
 ) {
     ExpandableSectionTrigger(
         expanded = expanded,
@@ -238,11 +199,7 @@ private fun AchievementGroup(
         ) {
             achievements.forEachIndexed { index, achievement ->
                 if (index > 0) Spacer(Modifier.height(DesignTokens.SpaceLg))
-                SteamAchievementRow(
-                    achievement = achievement,
-                    rareGlowRotation = rareGlowRotation,
-                    rareGlowPulse = rareGlowPulse
-                )
+                SteamAchievementRow(achievement = achievement)
             }
         }
     }
@@ -250,9 +207,7 @@ private fun AchievementGroup(
 
 @Composable
 private fun SteamAchievementRow(
-    achievement: SteamAchievementItem,
-    rareGlowRotation: State<Float>,
-    rareGlowPulse: State<Float>
+    achievement: SteamAchievementItem
 ) {
     val context = LocalContext.current
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
@@ -279,9 +234,7 @@ private fun SteamAchievementRow(
         SteamAchievementIcon(
             iconModel = iconModel,
             contentDescription = title,
-            rare = isRare,
-            glowRotation = rareGlowRotation,
-            glowPulse = rareGlowPulse
+            rare = isRare
         )
         Spacer(Modifier.width(DesignTokens.SpaceLg))
         Column(
@@ -331,45 +284,31 @@ private fun SteamAchievementRow(
 private fun SteamAchievementIcon(
     iconModel: ImageRequest?,
     contentDescription: String,
-    rare: Boolean,
-    glowRotation: State<Float>,
-    glowPulse: State<Float>
+    rare: Boolean
 ) {
-    val gold = Color(0xFFFFC84A)
-    val paleGold = Color(0xFFFFE9A3)
+    val gold = Color(0xFFFFB300)
+    val borderWidth = 3.dp
+    val outerShape = RoundedCornerShape(DesignTokens.CornerMedium)
+    val innerShape = RoundedCornerShape(DesignTokens.CornerMedium - borderWidth)
 
-    Box(modifier = Modifier.size(52.dp)) {
-        if (rare) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val cornerRadius = CornerRadius(DesignTokens.CornerMedium.toPx())
-                drawRoundRect(
-                    color = gold.copy(alpha = 0.16f + 0.12f * glowPulse.value),
-                    cornerRadius = cornerRadius,
-                    style = Stroke(width = 5.dp.toPx())
-                )
-                rotate(degrees = glowRotation.value) {
-                    drawRoundRect(
-                        brush = Brush.sweepGradient(
-                            colors = listOf(
-                                gold.copy(alpha = 0.25f),
-                                paleGold,
-                                Color.White,
-                                gold,
-                                gold.copy(alpha = 0.25f)
-                            ),
-                            center = center
-                        ),
-                        cornerRadius = cornerRadius,
-                        style = Stroke(width = 2.dp.toPx())
-                    )
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .then(
+                if (rare) {
+                    Modifier
+                        .clip(outerShape)
+                        .background(gold)
+                } else {
+                    Modifier
                 }
-            }
-        }
+            )
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(if (rare) 2.dp else 0.dp)
-                .clip(RoundedCornerShape(DesignTokens.CornerMedium))
+                .padding(if (rare) borderWidth else 0.dp)
+                .clip(if (rare) innerShape else outerShape)
                 .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.35f))
         ) {
             if (iconModel != null) {
