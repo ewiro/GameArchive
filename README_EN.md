@@ -184,7 +184,7 @@ Format and import rules:
 
 ## Technology
 
-- Kotlin 2.4.10 and JVM 17
+- Kotlin 2.4.20 and JVM 17
 - Compose Multiplatform 1.11.1
 - MIUI X (`miuix-ui` / `miuix-icons`)
 - Activity-based navigation and MVVM

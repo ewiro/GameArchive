@@ -183,7 +183,7 @@ tags:
 
 ## 技术实现
 
-- Kotlin 2.4.10、JVM 17
+- Kotlin 2.4.20、JVM 17
 - Compose Multiplatform 1.11.1
 - MIUI X (`miuix-ui` / `miuix-icons`)
 - Activity 导航与 MVVM
