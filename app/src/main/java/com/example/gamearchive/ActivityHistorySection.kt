@@ -4,10 +4,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,39 +84,81 @@ fun ActivityHistorySection(
                 } else {
                     records.forEachIndexed { index, record ->
                         if (index > 0) Spacer(Modifier.size(DesignTokens.SpaceMd))
-                        Text(
-                            text = if (kind == ActivityKind.GAME) {
-                                stringResource(
-                                    R.string.activity_game_record,
-                                    record.date,
-                                    formatHours(record.amount)
-                                )
-                            } else {
-                                stringResource(
-                                    R.string.activity_anime_record,
-                                    record.date,
-                                    formatEpisodeAmount(record.amount)
-                                )
-                            },
-                            fontSize = DesignTokens.TextBody1.sp,
+                        ActivityRecordRow(
+                            kind = kind,
+                            record = record,
                             color = dim,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (onRecordClick != null) {
-                                        Modifier.noRippleClickable {
-                                            onRecordClick(record)
-                                        }
-                                    } else {
-                                        Modifier
-                                    }
-                                )
+                            onClick = onRecordClick
                         )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun ActivityHistorySheetContent(
+    kind: ActivityKind,
+    records: List<ItemActivityRecord>,
+    modifier: Modifier = Modifier
+) {
+    val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+
+    if (records.isEmpty()) {
+        Text(
+            text = stringResource(R.string.general_no_data),
+            fontSize = DesignTokens.TextBody1.sp,
+            color = dim,
+            modifier = modifier.fillMaxWidth()
+        )
+    } else {
+        LazyColumn(modifier = modifier.fillMaxSize()) {
+            itemsIndexed(records) { index, record ->
+                if (index > 0) Spacer(Modifier.size(DesignTokens.SpaceMd))
+                ActivityRecordRow(
+                    kind = kind,
+                    record = record,
+                    color = dim
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityRecordRow(
+    kind: ActivityKind,
+    record: ItemActivityRecord,
+    color: androidx.compose.ui.graphics.Color,
+    onClick: ((ItemActivityRecord) -> Unit)? = null
+) {
+    Text(
+        text = if (kind == ActivityKind.GAME) {
+            stringResource(
+                R.string.activity_game_record,
+                record.date,
+                formatHours(record.amount)
+            )
+        } else {
+            stringResource(
+                R.string.activity_anime_record,
+                record.date,
+                formatEpisodeAmount(record.amount)
+            )
+        },
+        fontSize = DesignTokens.TextBody1.sp,
+        color = color,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) {
+                    Modifier.noRippleClickable { onClick(record) }
+                } else {
+                    Modifier
+                }
+            )
+    )
 }
 
 private fun formatHours(minutes: Double): String =

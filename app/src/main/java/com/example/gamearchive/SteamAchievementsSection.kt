@@ -13,11 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,68 +63,55 @@ private data class SteamAchievementItem(
 private const val RARE_ACHIEVEMENT_PERCENT = 10f
 
 @Composable
-fun SteamAchievementsSection(
+fun SteamAchievementsBottomSheet(
     appId: Int,
-    modifier: Modifier = Modifier
+    visible: Boolean,
+    onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
     val dim = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
-    var expanded by remember(appId) { mutableStateOf(false) }
     var loading by remember(appId) { mutableStateOf(false) }
     var loaded by remember(appId) { mutableStateOf(false) }
     var achievements by remember(appId) { mutableStateOf<List<SteamAchievementItem>>(emptyList()) }
     var unlockedExpanded by remember(appId) { mutableStateOf(true) }
     var lockedExpanded by remember(appId) { mutableStateOf(true) }
 
-    LaunchedEffect(expanded, appId) {
-        if (!expanded || loading || loaded || appId == 0) return@LaunchedEffect
-        loading = true
-        achievements = withContext(Dispatchers.IO) {
-            runCatchingCancellable {
-                loadSteamAchievements(context.applicationContext, appId)
-            }
-                .onFailure {
-                    Log.w("SteamAchievements", "Failed to load achievements for appId=$appId", it)
-                }
-                .getOrDefault(emptyList())
+    LaunchedEffect(visible, appId) {
+        if (!visible || loading || loaded) return@LaunchedEffect
+        if (appId == 0) {
+            loaded = true
+            return@LaunchedEffect
         }
-        loading = false
-        loaded = true
+        loading = true
+        try {
+            achievements = withContext(Dispatchers.IO) {
+                runCatchingCancellable {
+                    loadSteamAchievements(context.applicationContext, appId)
+                }
+                    .onFailure {
+                        Log.w("SteamAchievements", "Failed to load achievements for appId=$appId", it)
+                    }
+                    .getOrDefault(emptyList())
+            }
+            loaded = true
+        } finally {
+            loading = false
+        }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        ExpandableSectionTrigger(
-            expanded = expanded,
-            onToggle = { expanded = !expanded },
+    DetailBottomSheet(
+        visible = visible,
+        onDismissRequest = onDismissRequest,
+        title = stringResource(R.string.achievement_title),
+        expandable = true
+    ) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp),
-            contentPadding = PaddingValues(vertical = DesignTokens.SpaceLg),
-            arrowColor = MiuixTheme.colorScheme.onSurface.copy(
-                alpha = DesignTokens.OpacityHint
-            )
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = stringResource(R.string.achievement_title),
-                fontSize = DesignTokens.TextBody1.sp,
-                fontWeight = FontWeight.Bold,
-                color = dim,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        ExpandableSectionContent(expanded = expanded) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = DesignTokens.SpaceXl,
-                        end = DesignTokens.SpaceXl,
-                        bottom = DesignTokens.SpaceLg
-                    )
-            ) {
                 when {
-                    loading -> SteamAchievementsLoadingSkeleton()
+                    loading || !loaded -> SteamAchievementsLoadingSkeleton()
                     achievements.isEmpty() -> Text(
                         text = stringResource(R.string.achievement_unavailable),
                         fontSize = DesignTokens.TextBody1.sp,
@@ -155,7 +143,6 @@ fun SteamAchievementsSection(
                         )
                     }
                 }
-            }
         }
     }
 }

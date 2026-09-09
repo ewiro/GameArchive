@@ -11,6 +11,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,9 +35,13 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -42,6 +49,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,6 +88,9 @@ private val TAG_PINYIN_INITIAL_BOUNDARIES = listOf(
     'Q' to "期", 'R' to "然", 'S' to "撒", 'T' to "塌", 'W' to "挖",
     'X' to "昔", 'Y' to "压", 'Z' to "匝"
 )
+
+private val DETAIL_BOTTOM_SHEET_HEIGHT = 450.dp
+private val DETAIL_BOTTOM_SHEET_MAX_HEIGHT = 600.dp
 
 private fun tagAlphabetGroup(tag: String, collator: Collator): Char {
     val first = tag.firstOrNull() ?: return Char.MIN_VALUE
@@ -141,6 +152,8 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
     // 备注状态
     var gameNote by remember { mutableStateOf(GameNotes.getNote(context, appId)) }
     var showNoteSheet by remember { mutableStateOf(false) }
+    var showHistorySheet by remember { mutableStateOf(false) }
+    var showAchievementsSheet by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameText by remember { mutableStateOf("") }
     var noteExpanded by remember { mutableStateOf(false) }
@@ -759,15 +772,14 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                     }
                 }
 
-                // 分割线
-                ActivityHistorySection(
-                    kind = ActivityKind.GAME,
-                    records = playRecords,
-                    dimTitle = true,
+                DetailPopupTrigger(
+                    title = stringResource(R.string.activity_game_history),
+                    onClick = { showHistorySheet = true },
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
-                SteamAchievementsSection(
-                    appId = appId,
+                DetailPopupTrigger(
+                    title = stringResource(R.string.achievement_title),
+                    onClick = { showAchievementsSheet = true },
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
                 }
@@ -911,125 +923,103 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
     } // close Box
 
         // ── 标记选择底部弹窗 ──
-        MotionModalOverlay(
+        DetailBottomSheet(
             visible = showMarkSheet,
             onDismissRequest = { showMarkSheet = false },
-            contentAlignment = Alignment.BottomCenter,
-            bottomSheet = true
+            title = stringResource(R.string.mark_select_status)
         ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .noRippleClickable { }  // 阻止事件穿透
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = stringResource(R.string.mark_select_status),
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-                            fontSize = DesignTokens.TextBody1.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        // 清除标记
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .noRippleClickable {
-                                    GameMarks.setMark(context, appId, -1)
-                                    currentMark = -1
-                                    showMarkSheet = false
-                                }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(DesignTokens.IconSm)
-                                    .background(
-                                        if (currentMark == -1) MiuixTheme.colorScheme.primary else Color.Transparent,
-                                        RoundedCornerShape(DesignTokens.CornerMedium)
-                                    )
-                                    .then(
-                                        if (currentMark != -1) Modifier.border(
-                                            DesignTokens.BorderThick,
-                                            MiuixTheme.colorScheme.outline,
-                                            RoundedCornerShape(DesignTokens.CornerMedium)
-                                        )
-                                        else Modifier
-                                    )
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = stringResource(R.string.mark_clear),
-                                fontSize = DesignTokens.TextBody1.sp,
-                                color = if (currentMark == -1) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        // 7 种状态
-                        GameMarks.markResIds.forEach { resId ->
-                            val markColor = Color(GameMarks.colorFor(resId))
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .noRippleClickable {
-                                        GameMarks.setMark(context, appId, resId)
-                                        currentMark = resId
-                                        showMarkSheet = false
-                                    }
-                                    .padding(vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(DesignTokens.IconSm)
-                                        .background(
-                                            if (currentMark == resId) markColor else Color.Transparent,
-                                            RoundedCornerShape(DesignTokens.CornerMedium)
-                                        )
-                                        .then(
-                                            if (currentMark != resId) Modifier.border(
-                                                DesignTokens.BorderThick, markColor, RoundedCornerShape(DesignTokens.CornerMedium)
-                                            )
-                                            else Modifier
-                                        )
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text = stringResource(resId),
-                                    fontSize = DesignTokens.TextBody1.sp,
-                                    fontWeight = if (currentMark == resId) FontWeight.Bold else FontWeight.Normal,
-                                    color = markColor
-                                )
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                item {
+                    // 清除标记
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .noRippleClickable {
+                                GameMarks.setMark(context, appId, -1)
+                                currentMark = -1
+                                showMarkSheet = false
                             }
-                        }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(DesignTokens.IconSm)
+                                .background(
+                                    if (currentMark == -1) MiuixTheme.colorScheme.primary else Color.Transparent,
+                                    RoundedCornerShape(DesignTokens.CornerMedium)
+                                )
+                                .then(
+                                    if (currentMark != -1) Modifier.border(
+                                        DesignTokens.BorderThick,
+                                        MiuixTheme.colorScheme.outline,
+                                        RoundedCornerShape(DesignTokens.CornerMedium)
+                                    ) else Modifier
+                                )
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(R.string.mark_clear),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            color = if (currentMark == -1) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                items(GameMarks.markResIds) { resId ->
+                    val markColor = Color(GameMarks.colorFor(resId))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .noRippleClickable {
+                                GameMarks.setMark(context, appId, resId)
+                                currentMark = resId
+                                showMarkSheet = false
+                            }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(DesignTokens.IconSm)
+                                .background(
+                                    if (currentMark == resId) markColor else Color.Transparent,
+                                    RoundedCornerShape(DesignTokens.CornerMedium)
+                                )
+                                .then(
+                                    if (currentMark != resId) Modifier.border(
+                                        DesignTokens.BorderThick,
+                                        markColor,
+                                        RoundedCornerShape(DesignTokens.CornerMedium)
+                                    ) else Modifier
+                                )
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(resId),
+                            fontSize = DesignTokens.TextBody1.sp,
+                            fontWeight = if (currentMark == resId) FontWeight.Bold else FontWeight.Normal,
+                            color = markColor
+                        )
                     }
                 }
+            }
         }
 
         // ── 标签选择底部弹窗 ──
-        MotionModalOverlay(
+        DetailBottomSheet(
             visible = showTagSheet,
             onDismissRequest = { showTagSheet = false },
-            contentAlignment = Alignment.BottomCenter,
-            bottomSheet = true
+            title = stringResource(R.string.tag_edit),
+            imeAware = true,
+            expandable = true
         ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .noRippleClickable { }
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = stringResource(R.string.tag_select),
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-                            fontSize = DesignTokens.TextBody1.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        // ── 新建标签 ──
-                        var newTagInput by remember { mutableStateOf("") }
-                        val tagListState = rememberLazyListState()
-                        val tagListScope = rememberCoroutineScope()
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(IntrinsicSize.Max)) {
+            // ── 新建标签 ──
+            var newTagInput by remember { mutableStateOf("") }
+            val tagListState = rememberLazyListState()
+            val tagListScope = rememberCoroutineScope()
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(IntrinsicSize.Max)) {
                             top.yukonga.miuix.kmp.basic.TextField(
                                 value = newTagInput,
                                 onValueChange = { newTagInput = it },
@@ -1068,21 +1058,24 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                                 Text(text = stringResource(R.string.tag_create), fontSize = DesignTokens.TextBody1.sp, color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
-                        Spacer(Modifier.height(12.dp))
-                        // ── 标签池 ──
-                        if (allTags.isEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                // ── 标签池 ──
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (allTags.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.general_no_data),
                                 color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint),
-                                fontSize = DesignTokens.TextBody1.sp,
-                                modifier = Modifier.padding(bottom = 12.dp)
+                                fontSize = DesignTokens.TextBody1.sp
                             )
-                        } else {
+                    } else {
                             LazyColumn(
                                 state = tagListState,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 420.dp)
+                                    .fillMaxSize()
                             ) {
                                 items(allTags, key = { it.lowercase() }) { tag ->
                                     val checked = gameTags.contains(tag)
@@ -1123,48 +1116,37 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                                     }
                                 }
                             }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(DesignTokens.ButtonHeightSmall)
-                                .clip(RoundedCornerShape(DesignTokens.CornerLarge))
-                                .background(buttonBgColor())
-                                .clickable { showTagSheet = false },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = stringResource(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
-                        }
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(DesignTokens.ButtonHeightSmall)
+                        .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+                        .background(buttonBgColor())
+                        .clickable { showTagSheet = false },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = stringResource(R.string.settings_save_profile), color = Color.White, fontWeight = FontWeight.Bold, fontSize = DesignTokens.TextBody1.sp)
+                }
+            }
         }
 
         // ── 本地评论弹窗 ──
-        MotionModalOverlay(
+        DetailBottomSheet(
             visible = showNoteSheet,
             onDismissRequest = { showNoteSheet = false },
-            contentAlignment = Alignment.BottomCenter,
-            bottomSheet = true
+            title = stringResource(R.string.note_local),
+            imeAware = true,
+            expandable = true
         ) {
             var editText by remember { mutableStateOf(gameNote) }
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .imePadding()
-                        .noRippleClickable { }
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = stringResource(R.string.note_local),
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-                            fontSize = DesignTokens.TextBody1.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
+            Column(modifier = Modifier.fillMaxSize()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp)
+                                .weight(1f)
                                 .clip(RoundedCornerShape(DesignTokens.CornerMedium))
                                 .background(MiuixTheme.colorScheme.surface)
                                 .border(
@@ -1216,8 +1198,27 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                             )
                         }
                     }
-                }
         }
+
+        DetailBottomSheet(
+            visible = showHistorySheet,
+            onDismissRequest = { showHistorySheet = false },
+            title = stringResource(R.string.activity_game_history),
+            expandable = true
+        ) {
+            ActivityHistorySheetContent(
+                kind = ActivityKind.GAME,
+                records = playRecords,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        SteamAchievementsBottomSheet(
+            appId = appId,
+            visible = showAchievementsSheet,
+            onDismissRequest = { showAchievementsSheet = false }
+        )
+
         // ── 重命名弹窗 ──
         if (showRenameDialog) {
             Dialog(
@@ -1296,6 +1297,162 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
             }
         }
     } // close Surface
+}
+
+@Composable
+private fun DetailPopupTrigger(
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .motionClickable(pressedScale = 0.99f, onClick = onClick)
+            .padding(vertical = DesignTokens.SpaceLg),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            fontSize = DesignTokens.TextBody1.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
+            modifier = Modifier.weight(1f)
+        )
+        Image(
+            imageVector = MiuixIcons.Basic.ArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(DesignTokens.IconMd),
+            colorFilter = ColorFilter.tint(
+                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint)
+            )
+        )
+    }
+}
+
+@Composable
+internal fun DetailBottomSheet(
+    visible: Boolean,
+    onDismissRequest: () -> Unit,
+    title: String,
+    imeAware: Boolean = false,
+    expandable: Boolean = false,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val density = LocalDensity.current
+    var sheetHeight by remember { mutableStateOf(DETAIL_BOTTOM_SHEET_HEIGHT) }
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
+
+    fun resizeSheet(deltaY: Float): Float {
+        if (!expandable || deltaY == 0f) return 0f
+        val previousHeight = sheetHeight
+        sheetHeight = (sheetHeight - with(density) { deltaY.toDp() })
+            .coerceIn(DETAIL_BOTTOM_SHEET_HEIGHT, DETAIL_BOTTOM_SHEET_MAX_HEIGHT)
+        return with(density) { (previousHeight - sheetHeight).toPx() }
+    }
+
+    val dragState = rememberDraggableState { delta ->
+        resizeSheet(delta)
+    }
+    val sheetNestedScrollConnection = remember(expandable, density) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                return if (available.y < 0f && sheetHeight < DETAIL_BOTTOM_SHEET_MAX_HEIGHT) {
+                    Offset(x = 0f, y = resizeSheet(available.y))
+                } else {
+                    Offset.Zero
+                }
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                return if (available.y > 0f && sheetHeight > DETAIL_BOTTOM_SHEET_HEIGHT) {
+                    Offset(x = 0f, y = resizeSheet(available.y))
+                } else {
+                    Offset.Zero
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(visible, imeAware, imeVisible) {
+        when {
+            !visible -> sheetHeight = DETAIL_BOTTOM_SHEET_HEIGHT
+            expandable && imeAware && imeVisible -> {
+                sheetHeight = DETAIL_BOTTOM_SHEET_MAX_HEIGHT
+            }
+        }
+    }
+
+    MotionModalOverlay(
+        visible = visible,
+        onDismissRequest = onDismissRequest,
+        contentAlignment = Alignment.BottomCenter,
+        bottomSheet = true
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(sheetHeight)
+                .then(if (imeAware) Modifier.imePadding() else Modifier)
+                .then(
+                    if (expandable) {
+                        Modifier.nestedScroll(sheetNestedScrollConnection)
+                    } else {
+                        Modifier
+                    }
+                )
+                .noRippleClickable { },
+            cornerRadius = DesignTokens.CornerLarge
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    start = DesignTokens.SpaceXxl,
+                    top = DesignTokens.SpaceMd,
+                    end = DesignTokens.SpaceXxl,
+                    bottom = DesignTokens.SpaceXxl
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                        .then(
+                            if (expandable) {
+                                Modifier.draggable(
+                                    state = dragState,
+                                    orientation = Orientation.Vertical
+                                )
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = title,
+                        color = MiuixTheme.colorScheme.onSurface.copy(
+                            alpha = DesignTokens.OpacityBody
+                        ),
+                        fontSize = DesignTokens.TextSubtitle.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    content = content
+                )
+            }
+        }
+    }
 }
 
 @Composable
