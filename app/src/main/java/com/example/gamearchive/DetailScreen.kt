@@ -671,53 +671,46 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                             modifier = Modifier.weight(1f)
                         )
                     } else {
-                        FlowRow(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(
-                                    end = DesignTokens.SpaceMd,
-                                    top = DesignTokens.SpaceLg,
-                                    bottom = DesignTokens.SpaceLg
-                                ),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            gameTags.distinctBy { it.lowercase() }.forEach { tag ->
-                                Text(
-                                    text = tag,
-                                    fontSize = DesignTokens.TextBody1.sp,
-                                    color = DesignTokens.AccentBlue,
-                                    modifier = Modifier
-                                        .motionClickable {
-                                            context.startActivity(
-                                                GameCollectionActivity.createIntent(
-                                                    context,
-                                                    GameCollectionActivity.MODE_TAG,
-                                                    tag
+                        Box(modifier = Modifier.weight(1f)) {
+                            DetailTagEditArrow(
+                                onClick = { showTagSheet = true },
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            )
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        end = DesignTokens.IconMd + DesignTokens.SpaceSm,
+                                        top = DesignTokens.SpaceLg,
+                                        bottom = DesignTokens.SpaceLg
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                gameTags.distinctBy { it.lowercase() }.forEach { tag ->
+                                    Text(
+                                        text = tag,
+                                        fontSize = DesignTokens.TextBody1.sp,
+                                        color = DesignTokens.AccentBlue,
+                                        modifier = Modifier
+                                            .motionClickable {
+                                                context.startActivity(
+                                                    GameCollectionActivity.createIntent(
+                                                        context,
+                                                        GameCollectionActivity.MODE_TAG,
+                                                        tag
+                                                    )
                                                 )
-                                            )
-                                        }
-                                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                                )
+                                            }
+                                            .padding(end = 12.dp, top = 3.dp, bottom = 3.dp)
+                                    )
+                                }
                             }
                         }
                     }
-                    Box(
-                        modifier = Modifier
-                            .width(DesignTokens.ButtonHeight)
-                            .heightIn(min = 56.dp)
-                            .noRippleClickable { showTagSheet = true },
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        Image(
-                            imageVector = MiuixIcons.Basic.ArrowRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(DesignTokens.IconMd),
-                            colorFilter = ColorFilter.tint(
-                                MiuixTheme.colorScheme.onSurface.copy(
-                                    alpha = DesignTokens.OpacityHint
-                                )
-                            )
+                    if (gameTags.isEmpty()) {
+                        DetailTagEditArrow(
+                            onClick = { showTagSheet = true }
                         )
                     }
                 }
@@ -1297,6 +1290,29 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
             }
         }
     } // close Surface
+}
+
+@Composable
+private fun DetailTagEditArrow(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(DesignTokens.ButtonHeight)
+            .heightIn(min = 56.dp)
+            .noRippleClickable(onClick = onClick),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Image(
+            imageVector = MiuixIcons.Basic.ArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(DesignTokens.IconMd),
+            colorFilter = ColorFilter.tint(
+                MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityHint)
+            )
+        )
+    }
 }
 
 @Composable
