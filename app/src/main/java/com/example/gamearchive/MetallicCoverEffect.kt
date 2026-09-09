@@ -42,6 +42,71 @@ internal data class CoverMotion(
     val depth: Float = 0f
 )
 
+internal class StablePoseResetTracker(
+    private val stableDurationNanos: Long = STABLE_POSE_RESET_DURATION_NANOS,
+    private val toleranceRadians: Float = STABLE_POSE_TOLERANCE_RADIANS
+) {
+    private var referencePitch: Float? = null
+    private var referenceRoll: Float? = null
+    private var stableSinceNanos = 0L
+    private var resetForCurrentPose = false
+
+    fun reset() {
+        referencePitch = null
+        referenceRoll = null
+        stableSinceNanos = 0L
+        resetForCurrentPose = false
+    }
+
+    fun shouldReset(pitch: Float, roll: Float, timestampNanos: Long): Boolean {
+        val currentReferencePitch = referencePitch
+        val currentReferenceRoll = referenceRoll
+        if (
+            currentReferencePitch == null ||
+            currentReferenceRoll == null ||
+            timestampNanos < stableSinceNanos
+        ) {
+            startTracking(pitch, roll, timestampNanos)
+            return false
+        }
+
+        val poseChanged =
+            abs(shortestAngleDelta(pitch, currentReferencePitch)) > toleranceRadians ||
+                abs(shortestAngleDelta(roll, currentReferenceRoll)) > toleranceRadians
+        if (poseChanged) {
+            startTracking(pitch, roll, timestampNanos)
+            return false
+        }
+
+        if (
+            !resetForCurrentPose &&
+            timestampNanos - stableSinceNanos >= stableDurationNanos
+        ) {
+            resetForCurrentPose = true
+            return true
+        }
+        return false
+    }
+
+    private fun startTracking(pitch: Float, roll: Float, timestampNanos: Long) {
+        referencePitch = pitch
+        referenceRoll = roll
+        stableSinceNanos = timestampNanos
+        resetForCurrentPose = false
+    }
+}
+
+private fun shortestAngleDelta(value: Float, baseline: Float): Float =
+    atan2(sin(value - baseline), cos(value - baseline))
+
+internal fun stablePoseResetProgress(elapsedNanos: Long): Float {
+    val progress = (
+        elapsedNanos.coerceAtLeast(0L).toDouble() /
+            STABLE_POSE_RESET_ANIMATION_DURATION_NANOS.toDouble()
+        ).toFloat().coerceIn(0f, 1f)
+    return progress * progress * (3f - 2f * progress)
+}
+
 @Composable
 internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
     val context = LocalContext.current
@@ -78,10 +143,11 @@ internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
         var filteredImpulseX = 0f
         var filteredImpulseY = 0f
         var filteredDepth = 0f
+        var resetAnimationStartedNanos: Long? = null
+        var resetAnimationStartHorizontal = 0f
+        var resetAnimationStartVertical = 0f
         var registered = false
-
-        fun angleDelta(value: Float, baseline: Float): Float =
-            atan2(sin(value - baseline), cos(value - baseline))
+        val stablePoseResetTracker = StablePoseResetTracker()
 
         fun normalizedAcceleration(value: Float): Float {
             val magnitude = abs(value)
@@ -185,17 +251,45 @@ internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
                 if (baselinePitch == null || baselineRoll == null) {
                     baselinePitch = pitch
                     baselineRoll = roll
+                    stablePoseResetTracker.shouldReset(pitch, roll, event.timestamp)
+                    return
+                }
+
+                if (stablePoseResetTracker.shouldReset(pitch, roll, event.timestamp)) {
+                    baselinePitch = pitch
+                    baselineRoll = roll
+                    resetAnimationStartedNanos = event.timestamp
+                    resetAnimationStartHorizontal = filteredHorizontal
+                    resetAnimationStartVertical = filteredVertical
                     return
                 }
 
                 val targetHorizontal = (
-                    angleDelta(roll, baselineRoll!!) / MOTION_RANGE_RADIANS
+                    shortestAngleDelta(roll, baselineRoll!!) / MOTION_RANGE_RADIANS
                 ).coerceIn(-1f, 1f)
                 val targetVertical = (
-                    angleDelta(pitch, baselinePitch!!) / MOTION_RANGE_RADIANS
+                    shortestAngleDelta(pitch, baselinePitch!!) / MOTION_RANGE_RADIANS
                 ).coerceIn(-1f, 1f)
-                filteredHorizontal += (targetHorizontal - filteredHorizontal) * MOTION_SMOOTHING
-                filteredVertical += (targetVertical - filteredVertical) * MOTION_SMOOTHING
+                val resetStartedNanos = resetAnimationStartedNanos
+                val movedDuringReset =
+                    abs(shortestAngleDelta(roll, baselineRoll!!)) >
+                        STABLE_POSE_TOLERANCE_RADIANS ||
+                        abs(shortestAngleDelta(pitch, baselinePitch!!)) >
+                        STABLE_POSE_TOLERANCE_RADIANS
+                if (resetStartedNanos != null && !movedDuringReset) {
+                    val progress = stablePoseResetProgress(event.timestamp - resetStartedNanos)
+                    filteredHorizontal = resetAnimationStartHorizontal +
+                        (targetHorizontal - resetAnimationStartHorizontal) * progress
+                    filteredVertical = resetAnimationStartVertical +
+                        (targetVertical - resetAnimationStartVertical) * progress
+                    if (progress >= 1f) resetAnimationStartedNanos = null
+                } else {
+                    resetAnimationStartedNanos = null
+                    filteredHorizontal +=
+                        (targetHorizontal - filteredHorizontal) * MOTION_SMOOTHING
+                    filteredVertical +=
+                        (targetVertical - filteredVertical) * MOTION_SMOOTHING
+                }
                 publishMotion()
             }
 
@@ -211,6 +305,10 @@ internal fun rememberCoverMotion(enabled: Boolean): State<CoverMotion> {
             filteredImpulseX = 0f
             filteredImpulseY = 0f
             filteredDepth = 0f
+            resetAnimationStartedNanos = null
+            resetAnimationStartHorizontal = 0f
+            resetAnimationStartVertical = 0f
+            stablePoseResetTracker.reset()
             motion.value = CoverMotion()
             registered = sensorManager.registerListener(
                 listener,
@@ -393,6 +491,9 @@ internal fun MetallicCoverOverlay(
 private const val MOTION_RANGE_RADIANS = 0.38f
 private const val MOTION_SMOOTHING = 0.20f
 private const val MOTION_UPDATE_THRESHOLD = 0.004f
+private const val STABLE_POSE_RESET_DURATION_NANOS = 3_000_000_000L
+private const val STABLE_POSE_RESET_ANIMATION_DURATION_NANOS = 800_000_000L
+private const val STABLE_POSE_TOLERANCE_RADIANS = 0.035f
 private const val ACCELERATION_RANGE = 5f
 private const val ACCELERATION_DEAD_ZONE = 0.25f
 private const val ACCELERATION_SMOOTHING = 0.28f
