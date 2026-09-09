@@ -89,6 +89,22 @@ jobs:
       - name: Compile release APK
         run: bash ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
+      - name: Verify release DEX compression
+        run: |
+          for apk in \
+            app/build/outputs/apk/release/app-arm64-v8a-release.apk \
+            app/build/outputs/apk/release/app-armeabi-v7a-release.apk; do
+            dex_rows="$(unzip -lv "$apk" | awk '$8 ~ /^classes([0-9]+)?\.dex$/ { print $2 " " $8 }')"
+            if [[ -z "$dex_rows" ]]; then
+              echo "::error file=${apk}::No DEX files found in release APK"
+              exit 1
+            fi
+            if grep -q '^Stored ' <<< "$dex_rows"; then
+              echo "::error file=${apk}::Release DEX files are not compressed"
+              exit 1
+            fi
+          done
+
       - name: Prepare Telegram CI build
         env:
           PUSH_BEFORE: ${{ github.event.before }}

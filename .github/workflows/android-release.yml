@@ -136,6 +136,22 @@ jobs:
           test -f "official-release/${BASE_NAME}-arm64-v8a.apk"
           test -f "official-release/${BASE_NAME}-armeabi-v7a.apk"
 
+      - name: Verify release DEX compression
+        run: |
+          for apk in \
+            "official-release/${BASE_NAME}-arm64-v8a.apk" \
+            "official-release/${BASE_NAME}-armeabi-v7a.apk"; do
+            dex_rows="$(unzip -lv "$apk" | awk '$8 ~ /^classes([0-9]+)?\.dex$/ { print $2 " " $8 }')"
+            if [[ -z "$dex_rows" ]]; then
+              echo "::error file=${apk}::No DEX files found in release APK"
+              exit 1
+            fi
+            if grep -q '^Stored ' <<< "$dex_rows"; then
+              echo "::error file=${apk}::Release DEX files are not compressed"
+              exit 1
+            fi
+          done
+
       - name: Prepare release notes
         run: |
           release_sha="$(git rev-list -n 1 "$RELEASE_TAG")"
