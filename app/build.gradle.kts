@@ -19,8 +19,8 @@ android {
         applicationId = "com.example.gamearchive"
         minSdk = 33
         targetSdk = 37
-        versionCode = 14
-        versionName = "2.3"
+        versionCode = 15
+        versionName = "2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
