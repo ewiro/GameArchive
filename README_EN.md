@@ -163,7 +163,7 @@ Format and import rules:
    ```
 3. Configure the values you need:
 
-   - `PROXY_URL`: the default public proxy or your own Worker URL.
+   - `PROXY_URL`: your own Worker URL, see "Self-hosted proxy" below.
    - `BANGUMI_CLIENT_ID` and `BANGUMI_CLIENT_SECRET`: create an app on the [Bangumi developer page](https://bgm.tv/dev/app).
    - `BANGUMI_REDIRECT_URI`: must match both the developer registration and the Manifest intent filter.
 
@@ -180,7 +180,9 @@ Format and import rules:
 
 ### Self-hosted proxy
 
-[`cloudflare_worker.js`](cloudflare_worker.js) in the repository root contains the proxy implementation. Deploy it to your own Cloudflare Worker and update `PROXY_URL` in `AppConfig.kt`.
+No public proxy is maintained any more, so you need to deploy your own. [`cloudflare_worker.js`](cloudflare_worker.js) in the repository root is the complete implementation; deploy it to a Cloudflare Worker, use the free `<worker>.<subdomain>.workers.dev` address it gets, and update `PROXY_URL` in `AppConfig.kt`.
+
+The proxy also handles the store age-gate cookie, the `cc=cn` region lock, and browser header spoofing, so calling the official endpoints directly does not produce the same result — it is not optional.
 
 ## Technology
 

@@ -162,7 +162,7 @@ tags:
    ```
 3. 根据需要配置：
 
-   - `PROXY_URL`：默认公共代理或自行部署的 Worker 地址。
+   - `PROXY_URL`：自行部署的 Worker 地址，见下方「自建代理」。
    - `BANGUMI_CLIENT_ID`、`BANGUMI_CLIENT_SECRET`：在 [Bangumi 开发者平台](https://bgm.tv/dev/app) 注册应用后获得。
    - `BANGUMI_REDIRECT_URI`：须与开发者平台登记值及 Manifest 回调保持一致。
 
@@ -179,7 +179,9 @@ tags:
 
 ### 自建代理
 
-根目录的 [`cloudflare_worker.js`](cloudflare_worker.js) 是默认代理脚本。部署到自己的 Cloudflare Worker 后，将 `AppConfig.kt` 中的 `PROXY_URL` 替换为对应地址即可。
+项目不再维护公共代理，必须自行部署。根目录的 [`cloudflare_worker.js`](cloudflare_worker.js) 是完整实现，部署到 Cloudflare Worker 后可直接使用免费分配的 `<worker 名>.<子域>.workers.dev` 地址，把 `AppConfig.kt` 中的 `PROXY_URL` 换成它即可。
+
+这个代理还负责商店年龄门 Cookie、`cc=cn` 区域锁定和浏览器请求头伪装，直接请求官方接口拿不到相同结果，不能省略。
 
 ## 技术实现
 

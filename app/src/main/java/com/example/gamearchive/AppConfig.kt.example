@@ -8,8 +8,9 @@ package com.example.gamearchive
  */
 object AppConfig {
     // Steam 数据代理地址（Cloudflare Worker）。末尾的斜杠不要省。
-    // 如果你部署了自己的 Worker，改为你的地址。
-    const val PROXY_URL = "https://api.steam-tracker-proxy.cyou/"
+    // 项目不再维护公共代理，必须先部署根目录的 cloudflare_worker.js，
+    // 再换成你自己 Worker 的地址（例如 https://<名字>.<子域>.workers.dev/）。
+    const val PROXY_URL = "https://your-worker.workers.dev/"
 
     // ── Bangumi OAuth 凭证 ──
     // 去 https://bgm.tv/dev/app 注册应用后填入
