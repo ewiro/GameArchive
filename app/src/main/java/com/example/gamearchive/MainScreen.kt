@@ -903,7 +903,8 @@ private fun LibraryScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 4.dp),
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 2.dp),
                     label = stringResource(R.string.library_search),
                     useLabelAsPlaceholder = true,
                     singleLine = true
@@ -917,30 +918,26 @@ private fun LibraryScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 18.dp)
+                            .padding(horizontal = 16.dp)
                             .clipToBounds()
                     ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(markScrollState)
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // "全部" 按钮
                         MarkFilterChip(
                             label = stringResource(R.string.mark_filter_all),
                             selected = markFilter == -1,
-                            color = null,
                             onClick = { markFilter = -1 }
                         )
                         GameMarks.markResIds.forEach { resId ->
                             MarkFilterChip(
                                 label = stringResource(resId),
                                 selected = markFilter == resId,
-                                color = androidx.compose.ui.graphics.Color(
-                                    GameMarks.colorFor(resId)
-                                ),
                                 onClick = {
                                     markFilter = if (markFilter == resId) -1 else resId
                                 }
@@ -1348,7 +1345,7 @@ private fun ProfileHeader(
 @Composable
 private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
     val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
+        targetValue = if (expanded) 90f else 0f,
         animationSpec = tween(durationMillis = DesignTokens.AnimDuration, easing = FastOutSlowInEasing),
         label = "arrowRotation"
     )
@@ -1356,21 +1353,23 @@ private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .motionClickable(pressedScale = 0.985f, onClick = onClick)
-            .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "<",
-            fontSize = DesignTokens.TextSubtitle.sp,
-            fontWeight = FontWeight.Bold,
-            color = MiuixTheme.colorScheme.primary,
-            modifier = Modifier.graphicsLayer { rotationZ = rotation }
+        Image(
+            imageVector = MiuixIcons.Basic.ArrowRight,
+            contentDescription = null,
+            modifier = Modifier
+                .size(DesignTokens.IconExpandable)
+                .graphicsLayer { rotationZ = rotation },
+            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurfaceVariantSummary)
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             text = title,
-            fontWeight = FontWeight.Bold,
-            fontSize = DesignTokens.TextSubtitle.sp
+            fontWeight = FontWeight.SemiBold,
+            fontSize = DesignTokens.TextBodyLarge.sp,
+            color = MiuixTheme.colorScheme.onSurface
         )
     }
 }
@@ -1380,36 +1379,25 @@ private fun GroupHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
 private fun MarkFilterChip(
     label: String,
     selected: Boolean,
-    color: Color?,
     count: Int? = null,
     onClick: () -> Unit
 ) {
-    val textColor = when {
-        selected && color != null -> color
-        selected -> MiuixTheme.colorScheme.onTertiaryContainer
-        else -> MiuixTheme.colorScheme.onSurfaceContainerVariant
+    val textColor = if (selected) {
+        MiuixTheme.colorScheme.primary
+    } else {
+        MiuixTheme.colorScheme.onSurfaceVariantSummary
     }
-    val containerColor = when {
-        selected && color != null -> color.copy(alpha = DesignTokens.OpacityChipBg)
-        selected -> MiuixTheme.colorScheme.tertiaryContainer
-        else -> MiuixTheme.colorScheme.surfaceContainerHigh
-    }
-    val borderColor = when {
-        selected && color != null -> color
-        selected -> MiuixTheme.colorScheme.primary
-        else -> MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled)
+    val containerColor = if (selected) {
+        MiuixTheme.colorScheme.primary.copy(alpha = 0.12f)
+    } else {
+        MiuixTheme.colorScheme.surfaceContainerHigh
     }
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(DesignTokens.CornerLarge))
+            .clip(RoundedCornerShape(percent = 50))
             .background(containerColor)
-            .border(
-                if (selected) DesignTokens.BorderThick else DesignTokens.BorderThin,
-                borderColor,
-                RoundedCornerShape(DesignTokens.CornerLarge)
-            )
             .motionClickable(pressedScale = 0.96f, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1418,14 +1406,14 @@ private fun MarkFilterChip(
             Text(
                 text = label,
                 fontSize = DesignTokens.TextBody2.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 color = textColor
             )
             count?.let {
                 Spacer(Modifier.width(DesignTokens.SpaceXxs))
                 Text(
                     text = it.toString(),
-                    fontSize = DesignTokens.TextCaption.sp,
+                    fontSize = DesignTokens.TextCaptionLarge.sp,
                     color = textColor
                 )
             }
@@ -1450,91 +1438,99 @@ internal fun GameItem(
     val badgeColor = DesignTokens.badgeColor(h)
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val playtimeContentColor = if (showPlaytimeBackground) {
-        Color.White
-    } else {
-        MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+    val reviewText by viewModel.reviewScore(context, game.appid)
+        .collectAsStateWithLifecycle()
+    val hasMark = markRes in GameMarks.markResIds
+    val recentHours = game.playtime_2weeks?.takeIf { it > 0 }?.div(60.0)
+    val showPrice = price.isNotBlank() && price != "Free / Unknown"
+    val playtimeTextColor = when {
+        showPlaytimeBackground -> Color.White
+        usePlaytimeBadgeTextColor -> badgeColor
+        else -> MiuixTheme.colorScheme.onSurface.copy(alpha = 0.82f)
     }
-    val playtimeTextColor = if (!showPlaytimeBackground && usePlaytimeBadgeTextColor) {
-        badgeColor
-    } else {
-        playtimeContentColor
-    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .motionClickable(pressedScale = 0.985f, onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 6.dp)
+            .motionClickable(pressedScale = 0.99f, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 9.dp)
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-        // 封面：130dp×61dp, 6dp 圆角（含 BF6 本地封面 + 404 回退）
-        val headerUrl = buildHeaderUrl(context, game.appid)
-        AsyncImage(
-            model = remember(headerUrl, game.appid) {
-                ImageRequest.Builder(context)
-                .data(headerUrl)
-                .crossfade(true)
-                .memoryCacheKey(game.appid.toString())
-                .listener(
-                    onError = { _, _ ->
-                        if (game.appid == BF6_APPID) return@listener
-                        val cache = context.getSharedPreferences("steam_header_cache", Context.MODE_PRIVATE)
-                        if (cache.contains("header_${game.appid}")) return@listener
-                        // 异步查 Steam API 获取真实封面 URL
-                        coroutineScope.launch(Dispatchers.IO) {
-                            runCatchingCancellable {
-                                val resp = GameArchiveApp.apiService.getGameDetails(
-                                    game.appid, l = LocaleHelper.currentApiLanguage
-                                )
-                                val realUrl = resp[game.appid.toString()]?.data?.header_image
-                                if (!realUrl.isNullOrEmpty()) {
-                                    cache.edit {putString(
-                                            "header_${game.appid}",
-                                            "$realUrl|${System.currentTimeMillis()}"
-                                    )}
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // 封面：124dp×58dp，8dp 圆角（含 BF6 本地封面 + 404 回退）
+            val headerUrl = buildHeaderUrl(context, game.appid)
+            AsyncImage(
+                model = remember(headerUrl, game.appid) {
+                    ImageRequest.Builder(context)
+                        .data(headerUrl)
+                        .crossfade(true)
+                        .memoryCacheKey(game.appid.toString())
+                        .listener(
+                            onError = { _, _ ->
+                                if (game.appid == BF6_APPID) return@listener
+                                val cache =
+                                    context.getSharedPreferences("steam_header_cache", Context.MODE_PRIVATE)
+                                if (cache.contains("header_${game.appid}")) return@listener
+                                // 异步查 Steam API 获取真实封面 URL
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    runCatchingCancellable {
+                                        val resp = GameArchiveApp.apiService.getGameDetails(
+                                            game.appid, l = LocaleHelper.currentApiLanguage
+                                        )
+                                        val realUrl = resp[game.appid.toString()]?.data?.header_image
+                                        if (!realUrl.isNullOrEmpty()) {
+                                            cache.edit {
+                                                putString(
+                                                    "header_${game.appid}",
+                                                    "$realUrl|${System.currentTimeMillis()}"
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                )
-                    .build()
-            },
-            contentDescription = null,
-            modifier = Modifier
-                .width(DesignTokens.CoverWidth).height(DesignTokens.CoverHeight)
-                .clip(RoundedCornerShape(DesignTokens.CornerMedium)),
-            contentScale = ContentScale.Crop
-        )
-        Column(
-            modifier = Modifier.weight(1f).padding(start = 12.dp).heightIn(min = DesignTokens.CoverHeight)
-        ) {
-            // 第一行：游戏名 + 时长徽章（近期时长在徽章下方）
-            Row(verticalAlignment = Alignment.Top) {
-                Text(
-                    text = customName ?: game.name,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = DesignTokens.TextBody1.sp,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp)
-                )
-                Column(horizontalAlignment = Alignment.End) {
-                    // 时长胶囊徽章
+                        )
+                        .build()
+                },
+                contentDescription = null,
+                modifier = Modifier
+                    .width(124.dp)
+                    .height(58.dp)
+                    .clip(RoundedCornerShape(DesignTokens.CornerMedium)),
+                contentScale = ContentScale.Crop
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp)
+                    .heightIn(min = 58.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
+            ) {
+                // 第一行：游戏名 + 时长（右列只保留一个主数字）
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = customName ?: game.name,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = DesignTokens.TextBodyLarge.sp,
+                        lineHeight = 18.sp,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    )
                     Row(
                         modifier = Modifier
                             .then(
                                 if (showPlaytimeBackground) {
                                     Modifier.background(
                                         badgeColor,
-                                        RoundedCornerShape(DesignTokens.CornerMedium)
+                                        RoundedCornerShape(6.dp)
                                     )
                                 } else {
                                     Modifier
                                 }
                             )
                             .padding(
-                                horizontal = if (showPlaytimeBackground) 9.dp else 0.dp,
-                                vertical = 4.dp
+                                horizontal = if (showPlaytimeBackground) 8.dp else 0.dp,
+                                vertical = if (showPlaytimeBackground) 3.dp else 0.dp
                             ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1542,88 +1538,75 @@ internal fun GameItem(
                             painter = painterResource(R.drawable.ic_time),
                             contentDescription = null,
                             modifier = Modifier.size(DesignTokens.IconSm),
-                            colorFilter = ColorFilter.tint(playtimeContentColor)
+                            colorFilter = ColorFilter.tint(playtimeTextColor)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(3.dp))
                         Text(
                             text = if (h < 0.05) "0h" else String.format(Locale.ROOT, "%.1fh", h),
                             fontSize = if (showPlaytimeBackground) {
-                                DesignTokens.TextCaption.sp
+                                DesignTokens.TextCaptionLarge.sp
                             } else {
-                                DesignTokens.TextBody2.sp
+                                DesignTokens.TextBody1.sp
                             },
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = playtimeTextColor
                         )
                     }
-                    // 近期时长（徽章下方）
-                    if (game.playtime_2weeks != null && game.playtime_2weeks > 0) {
+                }
+                // 第二行：评价、标记、近期时长等弱信息，统一为一种字号和颜色
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (reviewText != null) {
                         Text(
-                            text = "+${String.format(Locale.ROOT, "%.1f", game.playtime_2weeks / 60.0)}h",
-                            fontSize = DesignTokens.TextCaption.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-                            modifier = Modifier.padding(top = 2.dp)
+                            text = reviewText.orEmpty(),
+                            fontSize = DesignTokens.TextBody2.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(
+                                alpha = DesignTokens.OpacityBody
+                            ),
+                            maxLines = 1
                         )
                     }
-                }
-            }
-            Spacer(Modifier.weight(1f))
-            // 游玩标记 + 好评率 — 底部同行，左标右评
-            val reviewText by viewModel.reviewScore(context, game.appid)
-                .collectAsStateWithLifecycle()
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ReviewScore(reviewText)
-                Spacer(Modifier.weight(1f))
-                if (markRes in GameMarks.markResIds) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (hasMark) {
+                        if (reviewText != null) Spacer(Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
-                                .size(6.dp)
+                                .size(5.dp)
                                 .background(Color(GameMarks.colorFor(markRes)), CircleShape)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = stringResource(markRes),
                             fontSize = DesignTokens.TextBody2.sp,
-                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
+                            color = MiuixTheme.colorScheme.onSurface.copy(
+                                alpha = DesignTokens.OpacityBody
+                            ),
+                            maxLines = 1
+                        )
+                    }
+                    if (recentHours != null) {
+                        if (reviewText != null || hasMark) Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "+${String.format(Locale.ROOT, "%.1f", recentHours)}h",
+                            fontSize = DesignTokens.TextBody2.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(
+                                alpha = DesignTokens.OpacityBody
+                            ),
+                            maxLines = 1
                         )
                     }
                 }
+                if (showPrice) {
+                    Text(
+                        text = price,
+                        fontSize = DesignTokens.TextBody2.sp,
+                        color = DesignTokens.PriceOrange,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                }
             }
         }
-        } // close Row
-        // 价格 — 在封面行下方
-        if (price.isNotEmpty()) {
-            Text(
-                text = price,
-                fontSize = DesignTokens.TextBody2.sp,
-                color = DesignTokens.PriceOrange,
-                modifier = Modifier.padding(start = 14.dp + 130.dp, top = 2.dp)
-            )
-        }
-        // 卡片间分割线 — 微调：改 height 调粗细，改 alpha 调深浅，改 top 调上间距
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp)
-                .height(DesignTokens.DividerHeight)
-                .background(MiuixTheme.colorScheme.outline.copy(alpha = DesignTokens.OpacityDisabled))
-        )
-    } // close outer Column
-}
-
-// ── 好评率文字（弱化灰色） ──
-@Composable
-private fun ReviewScore(text: String?) {
-    if (text == null) return
-    Text(
-        text = text,
-        fontSize = DesignTokens.TextCaption.sp,
-        fontWeight = FontWeight.Bold,
-        color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
-        modifier = Modifier.padding(top = 2.dp)
-    )
+    }
 }
 
 // ────────── 特惠页 ──────────
@@ -2596,15 +2579,6 @@ private data class ActivitySummaryUi(
     val includeAnime: Boolean
 )
 
-/** Bangumi 收藏类型 → 标签颜色 */
-private val BANGUMI_TYPE_COLORS: Map<Int, Color> = mapOf(
-    1 to Color(0xFF42A5F5),
-    2 to Color(0xFFFF9800),
-    3 to Color(0xFF66BB6A),
-    4 to Color(0xFF9E9E9E),
-    5 to Color(0xFFEF5350),
-)
-
 @Composable
 private fun BangumiPage(
     listState: LazyListState,
@@ -2896,7 +2870,6 @@ private fun BangumiPage(
                             MarkFilterChip(
                                 label = stringResource(nameRes),
                                 selected = typeFilter == type,
-                                color = BANGUMI_TYPE_COLORS[type],
                                 count = collectionMap?.get(type)?.size ?: 0,
                                 onClick = {
                                     onTypeFilterChange(if (typeFilter == type) 2 else type)

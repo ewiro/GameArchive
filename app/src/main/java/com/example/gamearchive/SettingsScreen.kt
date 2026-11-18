@@ -367,10 +367,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         item("appearance_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)) {
                     // 主题样式
                     val themeOptions = listOf(
                         stringResource(R.string.settings_follow_system),
@@ -430,15 +430,15 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         item("page_visibility_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
                 Column(
                     modifier = Modifier.padding(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 6.dp,
-                        bottom = 10.dp
+                        top = 4.dp,
+                        bottom = 4.dp
                     )
                 ) {
                     SwitchRow(
@@ -486,10 +486,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
 
         item("profile_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)) {
                     SwitchRow(
                         label = stringResource(R.string.settings_show_profile),
                         checked = showProfile,
@@ -598,10 +598,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         // ── 游戏列表设置 ──
         item("library_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)) {
                     SwitchRow(
                         label = stringResource(R.string.settings_playtime_background),
                         checked = showPlaytimeBackground,
@@ -665,10 +665,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         // ── 标签管理 ──
         item("tags_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -698,10 +698,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         // ── 数据管理 ──
         item("data_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)) {
                     // 导出配置
                     Row(
                         modifier = Modifier
@@ -806,10 +806,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         }
         item("bangumi_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)) {
                     // 评分展示下拉
                     var ratingMode by remember { mutableIntStateOf(UserPrefs.getBangumiRatingMode(context)) }
                     val ratingOptions = listOf(
@@ -893,15 +893,15 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
         }
         item("about_card") {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
                 Column(
                     modifier = Modifier.padding(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 6.dp,
-                        bottom = 10.dp
+                        top = 4.dp,
+                        bottom = 4.dp
                     )
                 ) {
                     Row(
@@ -961,10 +961,10 @@ internal fun SettingsScreen(onBack: () -> Unit, onRecreate: () -> Unit) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 cornerRadius = DesignTokens.CornerLarge
             ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)) {
                     Text(
                         text = stringResource(R.string.account_steam),
                         fontSize = DesignTokens.TextBody1.sp,
@@ -1491,7 +1491,7 @@ private fun AccountTypeRow(label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(DesignTokens.CornerMedium))
             .noRippleClickable(onClick)
             .padding(horizontal = 4.dp),
@@ -1518,13 +1518,13 @@ private fun AccountTypeRow(label: String, onClick: () -> Unit) {
 @Composable
 private fun SectionHeader(text: String, accentColor: Color) {
     Row(
-        modifier = Modifier.padding(start = 16.dp, top = 22.dp, bottom = 8.dp),
+        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .width(4.dp)
-                .height(14.dp)
+                .width(3.dp)
+                .height(12.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(accentColor)
         )
@@ -1532,7 +1532,7 @@ private fun SectionHeader(text: String, accentColor: Color) {
         Text(
             text = text,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             fontSize = DesignTokens.TextBody1.sp
         )
     }
@@ -1544,8 +1544,7 @@ private fun DividerLine() {
         modifier = Modifier
             .fillMaxWidth()
             .height(DesignTokens.DividerHeight)
-            .padding(vertical = 12.dp)
-            .background(MiuixTheme.colorScheme.outline)
+            .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.6f))
     )
 }
 
@@ -1560,7 +1559,8 @@ private fun SwitchRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .heightIn(min = 52.dp)
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -1610,6 +1610,7 @@ private fun DropdownSelector(
                         )
                     )
                 }
+                .heightIn(min = 52.dp)
                 .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

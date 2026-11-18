@@ -91,11 +91,12 @@ object DesignTokens {
     val AccentBlue = Color(0xFF3482FF)
 
     // ── 设置页分组点缀色（仅用于装饰标记，不承载状态） ──
-    val SettingsAppearanceAccent = Color(0xFF7E57C2)
-    val SettingsGameAccent       = AccentBlue
-    val SettingsAnimeAccent      = Color(0xFFFF8A34)
-    val SettingsAboutAccent      = Color(0xFF36A269)
-    val SettingsAccountsAccent   = Color(0xFFE85D8E)
+    // 低饱和取值：保留分组辨识度，避免与内容语义色争夺注意力。
+    val SettingsAppearanceAccent = Color(0xFF8B7DB8)
+    val SettingsGameAccent       = Color(0xFF5A8FD6)
+    val SettingsAnimeAccent      = Color(0xFFC98B60)
+    val SettingsAboutAccent      = Color(0xFF5E9A7C)
+    val SettingsAccountsAccent   = Color(0xFFB56F89)
 
     // ── 评价语义色 ──
     val ReviewGreat   = Color(0xFFE65100)  // ≥95%
@@ -113,12 +114,13 @@ object DesignTokens {
     val PriceOrange       = Color(0xFFFF6600)
 
     // ── 时长徽章 ──
-    val BadgeZero    = Color(0xFFCCCCD6)
-    val Badge200     = Color(0xFFD42517)
-    val Badge100     = Color(0xFFFB8B05)
-    val Badge050     = Color(0xFF7E1671)
-    val Badge020     = Color(0xFF1772B4)
-    val BadgeDefault = Color(0xFF20894D)
+    // 保留分档，但统一压低饱和度并保证白色文字可读，避免五色同时抢占视线。
+    val BadgeZero    = Color(0xFF6E6E78)
+    val Badge200     = Color(0xFFB34A40)
+    val Badge100     = Color(0xFFA8641F)
+    val Badge050     = Color(0xFF7E5F91)
+    val Badge020     = Color(0xFF3F7397)
+    val BadgeDefault = Color(0xFF42795C)
 
     /** 根据小时数取徽章颜色 */
     fun badgeColor(hours: Double): Color = when {
@@ -157,8 +159,10 @@ object DesignTokens {
     // ═══════════════════ 字号层级 ═══════════════════
 
     const val TextCaption  = 10  // 底栏标签 / 近期时长 / 点赞数 / 时长徽章
+    const val TextCaptionLarge = 11  // 徽章等小号但仍需可读的数据
     const val TextBody2    = 12  // 区块标题 / 标记芯片 / 评价摘要 / 单选标签
     const val TextBody1    = 14  // 正文 / 游戏名 / 设置标签 / 评价正文
+    const val TextBodyLarge = 15  // 列表主标题
     const val TextSubtitle = 16  // 分组标题 / 弹窗标题 / 折扣% / 统计数值
     const val TextTitle    = 18  // 顶栏标题 / 折后价
     const val TextHeadline = 20  // 个人资料名 / 全价展示 / "+" 按钮

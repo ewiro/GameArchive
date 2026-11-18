@@ -422,7 +422,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 8.dp),
                     cornerRadius = DesignTokens.CornerLarge
                 ) {
                     Row(
@@ -461,7 +461,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                                 if (originalPrice.isNotEmpty()) {
                                     Text(
                                         text = originalPrice,
-                                        fontSize = DesignTokens.TextCaption.sp,
+                                        fontSize = DesignTokens.TextCaptionLarge.sp,
                                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                                         textDecoration = TextDecoration.LineThrough
                                     )
@@ -509,7 +509,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                             if (reviewCount > 0) {
                                 Text(
                                     text = stringResource(R.string.detail_reviews_count, reviewCount),
-                                    fontSize = DesignTokens.TextCaption.sp,
+                                    fontSize = DesignTokens.TextCaptionLarge.sp,
                                     color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                                     modifier = Modifier.padding(top = 2.dp)
                                 )
@@ -521,11 +521,11 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 8.dp),
                     cornerRadius = DesignTokens.CornerLarge
                 ) {
                 Column(
-                    modifier = Modifier.padding(top = 6.dp, bottom = 10.dp)
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
                 ) {
                 // ── 开发商 + 日期 ──
                 Row(
@@ -565,7 +565,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                             )
                             Text(
                                 text = stringResource(R.string.detail_developer),
-                                fontSize = DesignTokens.TextCaption.sp,
+                                fontSize = DesignTokens.TextCaptionLarge.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                                 modifier = Modifier.padding(start = 4.dp)
@@ -586,7 +586,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = stringResource(R.string.detail_release_date),
-                                fontSize = DesignTokens.TextCaption.sp,
+                                fontSize = DesignTokens.TextCaptionLarge.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                                 modifier = Modifier.padding(end = 4.dp)
@@ -780,15 +780,15 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 8.dp),
                     cornerRadius = DesignTokens.CornerLarge
                 ) {
                 Column(
                     modifier = Modifier.padding(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 6.dp,
-                        bottom = 10.dp
+                        top = 4.dp,
+                        bottom = 4.dp
                     )
                 ) {
                     Box(
@@ -854,7 +854,7 @@ internal fun DetailScreen(appId: Int, appName: String, price: String, onOpenStor
                     Text(
                         text = stringResource(R.string.detail_reviews_title),
                         fontWeight = FontWeight.Bold,
-                        fontSize = DesignTokens.TextBody2.sp,
+                        fontSize = DesignTokens.TextBody1.sp,
                         modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 12.dp)
                     )
 
@@ -1514,11 +1514,11 @@ private fun ReviewItem(review: SteamReview) {
                     }
                     Text(
                         text = stringResource(R.string.review_playtime, hours),
-                        fontSize = DesignTokens.TextCaption.sp,
+                        fontSize = DesignTokens.TextCaptionLarge.sp,
                         color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody)
                     )
                 }
-                Text(text = date, fontSize = DesignTokens.TextCaption.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
+                Text(text = date, fontSize = DesignTokens.TextCaptionLarge.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody))
             }
 
             // 分割线
@@ -1541,7 +1541,7 @@ private fun ReviewItem(review: SteamReview) {
             if (review.votes_up > 0) {
                 Text(
                     text = stringResource(R.string.review_helpful, review.votes_up),
-                    fontSize = DesignTokens.TextCaption.sp,
+                    fontSize = DesignTokens.TextCaptionLarge.sp,
                     color = MiuixTheme.colorScheme.onSurface.copy(alpha = DesignTokens.OpacityBody),
                     modifier = Modifier.padding(top = 8.dp)
                 )
